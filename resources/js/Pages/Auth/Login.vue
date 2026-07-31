@@ -11,8 +11,7 @@ import {
   FileText,
   Utensils,
   Calendar,
-  ShieldCheck,
-  UserCheck
+  ShieldCheck
 } from 'lucide-vue-next';
 
 defineProps({
@@ -31,11 +30,6 @@ const form = useForm({
   password: '',
   remember: false,
 });
-
-const fillAccount = (email, password) => {
-  form.email = email;
-  form.password = password;
-};
 
 const submit = () => {
   form.post(route('login'), {
@@ -86,7 +80,7 @@ const submit = () => {
             </p>
           </div>
 
-          <!-- Feature Cards List (Refined matching mockup colors) -->
+          <!-- Feature Cards List -->
           <div class="space-y-3">
             <div class="p-3.5 rounded-2xl bg-slate-800/40 border border-slate-700/50 flex items-center gap-3.5 backdrop-blur-sm">
               <div class="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
@@ -163,7 +157,7 @@ const submit = () => {
                   required
                   autofocus
                   autocomplete="username"
-                  placeholder="Masukkan Username (mis: kustian, ucu, aisiti) atau Email..."
+                  placeholder="Masukkan Username atau Email..."
                   class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                   :class="{ 'border-rose-500 ring-2 ring-rose-200': form.errors.email }"
                 />
@@ -239,51 +233,6 @@ const submit = () => {
               <span>Masuk ke System ESS</span>
             </button>
           </form>
-
-          <!-- QUICK DEMO ACCOUNTS ACCORDION -->
-          <div class="mt-8 pt-6 border-t border-slate-100">
-            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <UserCheck class="w-3.5 h-3.5 text-indigo-600" />
-              1-Klik Login Akun Pengguna
-            </p>
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <button
-                type="button"
-                @click="fillAccount('kustian', 'password')"
-                class="p-2.5 bg-slate-50 hover:bg-indigo-50/70 border border-slate-200 hover:border-indigo-200 rounded-xl text-left transition-colors group"
-              >
-                <p class="text-xs font-bold text-slate-800 group-hover:text-indigo-600 truncate">Kustiani A. Aziz</p>
-                <p class="text-[10px] text-slate-500 font-medium">Karyawan (kustian)</p>
-              </button>
-
-              <button
-                type="button"
-                @click="fillAccount('ucu', 'password')"
-                class="p-2.5 bg-slate-50 hover:bg-amber-50/70 border border-slate-200 hover:border-amber-200 rounded-xl text-left transition-colors group"
-              >
-                <p class="text-xs font-bold text-slate-800 group-hover:text-amber-700 truncate">Ucu Komarudin</p>
-                <p class="text-[10px] text-slate-500 font-medium">Direktur / L1 (ucu)</p>
-              </button>
-
-              <button
-                type="button"
-                @click="fillAccount('aisiti', 'password')"
-                class="p-2.5 bg-slate-50 hover:bg-emerald-50/70 border border-slate-200 hover:border-emerald-200 rounded-xl text-left transition-colors group"
-              >
-                <p class="text-xs font-bold text-slate-800 group-hover:text-emerald-700 truncate">Ai Siti Nuralisah</p>
-                <p class="text-[10px] text-slate-500 font-medium">HRD & Keuangan (aisiti)</p>
-              </button>
-
-              <button
-                type="button"
-                @click="fillAccount('admin@edu.id', 'password')"
-                class="p-2.5 bg-slate-50 hover:bg-purple-50/70 border border-slate-200 hover:border-purple-200 rounded-xl text-left transition-colors group"
-              >
-                <p class="text-xs font-bold text-slate-800 group-hover:text-purple-700 truncate">System Admin</p>
-                <p class="text-[10px] text-slate-500 font-medium">Admin (admin)</p>
-              </button>
-            </div>
-          </div>
         </div>
 
         <!-- Copyright Footer -->
