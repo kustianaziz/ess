@@ -44,9 +44,7 @@ const isHrdOrAdmin = computed(() => {
     <div>
       <!-- Brand Header -->
       <div class="h-20 px-6 flex items-center gap-3 border-b border-slate-800/60">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
-          <GraduationCap class="w-6 h-6 stroke-[2]" />
-        </div>
+        <img src="/logo.png" alt="EDU ESS Logo" class="w-10 h-10 object-contain rounded-xl" />
         <div>
           <h1 class="font-black text-xl text-white tracking-tight leading-none">
             EDU

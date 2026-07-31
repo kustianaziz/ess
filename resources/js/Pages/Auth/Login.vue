@@ -2,7 +2,6 @@
 import { ref } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import {
-  GraduationCap,
   Mail,
   Lock,
   Eye,
@@ -57,9 +56,7 @@ const submit = () => {
         <div>
           <!-- Logo & Brand Header -->
           <div class="flex items-center gap-3.5 mb-10">
-            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-xl shadow-indigo-500/30 ring-1 ring-white/20">
-              <GraduationCap class="w-7 h-7 stroke-[2]" />
-            </div>
+            <img src="/logo.png" alt="EDU ESS Logo" class="w-12 h-12 object-contain rounded-2xl" />
             <div>
               <h1 class="text-2xl font-black text-white tracking-tight leading-none">
                 EDU
@@ -126,9 +123,7 @@ const submit = () => {
         <div>
           <!-- Compact Mobile Brand Badge Header -->
           <div class="flex items-center gap-2.5 mb-6 lg:hidden">
-            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
-              <GraduationCap class="w-5 h-5 stroke-[2]" />
-            </div>
+            <img src="/logo.png" alt="EDU ESS Logo" class="w-9 h-9 object-contain rounded-xl" />
             <div>
               <h1 class="text-base font-black text-slate-900 tracking-tight leading-none">EDU ESS</h1>
               <p class="text-[10px] font-semibold text-indigo-600 tracking-wider uppercase mt-0.5">Portal Self Service Karyawan</p>
