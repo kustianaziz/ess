@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Laporan ESS</title>
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 12px; }
+        .title { font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 5px; }
+        .subtitle { font-size: 12px; text-align: center; margin-bottom: 20px; color: #555; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th { background-color: #0F172A; color: #ffffff; font-weight: bold; padding: 8px; border: 1px solid #cbd5e1; text-align: left; }
+        td { padding: 6px 8px; border: 1px solid #cbd5e1; vertical-align: top; }
+        .bg-section { background-color: #f1f5f9; font-weight: bold; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .badge { font-weight: bold; padding: 2px 6px; border-radius: 4px; font-size: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="title">LAPORAN REKAPITULASI & DETAIL PENGAJUAN ESS</div>
+    <div class="subtitle">Sistem Employee Self Service (ESS) - EDU Management | Periode: Awal s/d Sekarang | Dibuat: 31 July 2026 10:16</div>
+
+    <!-- 1. RINGKASAN REKAPITULASI DIVISI -->
+    <h3 style="margin-bottom: 8px; color: #1e293b;">I. REKAPITULASI PER DIVISI</h3>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 40px;" class="text-center">No</th>
+                <th>Nama Divisi</th>
+                <th class="text-center">Total Pengajuan</th>
+                <th class="text-right">Reimbursement (Rp)</th>
+                <th class="text-right">Operasional (Rp)</th>
+                <th class="text-center">Cuti (Hari)</th>
+            </tr>
+        </thead>
+        <tbody>
+                            <tr>
+                    <td class="text-center">1</td>
+                    <td><b>IT Department</b></td>
+                    <td class="text-center">3 Transaksi</td>
+                    <td class="text-right">Rp 10.000</td>
+                    <td class="text-right">Rp 0</td>
+                    <td class="text-center">0 Hari</td>
+                </tr>
+                        <tr class="bg-section">
+                <td colspan="2" class="text-right"><b>GRAND TOTAL PERUSAHAAN:</b></td>
+                <td class="text-center"><b>3 Transaksi</b></td>
+                <td class="text-right"><b>Rp 10.000</b></td>
+                <td class="text-right"><b>Rp 0</b></td>
+                <td class="text-center"><b>0 Hari</b></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <br>
+
+    <!-- 2. DAFTAR DETAIL LIST PENGAJUAN -->
+    <h3 style="margin-bottom: 8px; color: #1e293b;">II. DAFTAR DETAIL LIST PENGAJUAN</h3>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 30px;" class="text-center">No</th>
+                <th>No. Pengajuan</th>
+                <th>Tanggal</th>
+                <th>NIK</th>
+                <th>Nama Karyawan</th>
+                <th>Divisi</th>
+                <th>Layanan</th>
+                <th>Kategori</th>
+                <th class="text-right">Nominal / Durasi</th>
+                <th class="text-center">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+                            <tr>
+                    <td class="text-center">1</td>
+                    <td><b>CT/2026/07/0002</b></td>
+                    <td>31/07/2026</td>
+                    <td>EDU-IT-001</td>
+                    <td>Andi Kurniawan</td>
+                    <td>IT Department</td>
+                    <td>Cuti Karyawan</td>
+                    <td>Cuti Tahunan</td>
+                    <td class="text-right"><b>1 Hari</b></td>
+                    <td class="text-center">Menunggu Persetujuan</td>
+                </tr>
+                            <tr>
+                    <td class="text-center">2</td>
+                    <td><b>CT/2026/07/0001</b></td>
+                    <td>31/07/2026</td>
+                    <td>EDU-ADM-001</td>
+                    <td>System Admin</td>
+                    <td>IT Department</td>
+                    <td>Cuti Karyawan</td>
+                    <td>Cuti Tahunan</td>
+                    <td class="text-right"><b>1 Hari</b></td>
+                    <td class="text-center">Menunggu Persetujuan</td>
+                </tr>
+                            <tr>
+                    <td class="text-center">3</td>
+                    <td><b>RB/2026/07/0001</b></td>
+                    <td>31/07/2026</td>
+                    <td>EDU-IT-001</td>
+                    <td>Andi Kurniawan</td>
+                    <td>IT Department</td>
+                    <td>Reimbursement</td>
+                    <td>Konsumsi</td>
+                    <td class="text-right"><b>Rp 10.000</b></td>
+                    <td class="text-center">Disetujui</td>
+                </tr>
+                                </tbody>
+    </table>
+
+</body>
+</html>

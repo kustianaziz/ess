@@ -1,0 +1,203 @@
+<script setup>
+import { ref } from 'vue';
+import { Head, Link, useForm } from '@inertiajs/vue3';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { CheckCircle2, XCircle, CheckSquare, Clock, History } from 'lucide-vue-next';
+
+const props = defineProps({
+  pendingApprovals: Array,
+});
+
+const selectedItem = ref(null);
+const actionType = ref(''); // 'approve' or 'reject'
+const notesInput = ref('');
+
+const approveForm = useForm({
+  notes: '',
+});
+
+const rejectForm = useForm({
+  reason: '',
+});
+
+const openApproveModal = (item) => {
+  selectedItem.value = item;
+  actionType.value = 'approve';
+  notesInput.value = 'Pengajuan disetujui.';
+};
+
+const openRejectModal = (item) => {
+  selectedItem.value = item;
+  actionType.value = 'reject';
+  notesInput.value = '';
+};
+
+const submitApproval = () => {
+  if (!selectedItem.value) return;
+
+  if (actionType.value === 'approve') {
+    approveForm.notes = notesInput.value;
+    approveForm.post(route('approval.approve', { type: selectedItem.value.type, id: selectedItem.value.id }), {
+      onSuccess: () => {
+        selectedItem.value = null;
+      },
+    });
+  } else {
+    if (!notesInput.value) {
+      alert('Alasan penolakan wajib diisi.');
+      return;
+    }
+    rejectForm.reason = notesInput.value;
+    rejectForm.post(route('approval.reject', { type: selectedItem.value.type, id: selectedItem.value.id }), {
+      onSuccess: () => {
+        selectedItem.value = null;
+      },
+    });
+  }
+};
+</script>
+
+<template>
+  <Head title="Persetujuan (Approval)" />
+
+  <AuthenticatedLayout>
+    <div class="max-w-7xl mx-auto space-y-6">
+      <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
+            <CheckSquare class="w-5 h-5 text-amber-500" />
+            Daftar Persetujuan (Approval)
+          </h1>
+          <p class="text-xs text-slate-400 mt-1">
+            Pengajuan karyawan yang membutuhkan verifikasi & persetujuan Anda.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2 self-stretch sm:self-auto">
+          <span class="px-4 py-2 rounded-xl bg-amber-50 text-amber-700 text-xs font-bold border border-amber-200 flex items-center gap-2">
+            <CheckSquare class="w-4 h-4" />
+            <span>Antrean Persetujuan</span>
+          </span>
+
+          <Link
+            :href="route('approval.history')"
+            class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold transition-all flex items-center gap-2"
+          >
+            <History class="w-4 h-4 text-emerald-600" />
+            <span>Riwayat Persetujuan</span>
+          </Link>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-50 border-b border-slate-100 text-xs uppercase font-semibold text-slate-500 tracking-wider">
+              <tr>
+                <th class="px-6 py-4">No. Pengajuan</th>
+                <th class="px-6 py-4">Pemohon</th>
+                <th class="px-6 py-4">Divisi</th>
+                <th class="px-6 py-4">Jenis Layanan</th>
+                <th class="px-6 py-4">Level</th>
+                <th class="px-6 py-4">Waktu Submit</th>
+                <th class="px-6 py-4 text-right">Aksi Persetujuan</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr
+                v-for="item in pendingApprovals"
+                :key="item.approval_id"
+                class="hover:bg-slate-50/60 transition-colors"
+              >
+                <td class="px-6 py-4 font-bold text-slate-800">
+                  {{ item.request_number }}
+                </td>
+                <td class="px-6 py-4 font-semibold text-slate-800">
+                  {{ item.applicant_name }}
+                </td>
+                <td class="px-6 py-4 text-xs text-slate-500">
+                  {{ item.applicant_division }}
+                </td>
+                <td class="px-6 py-4 text-xs font-medium text-slate-700">
+                  {{ item.type_label }}
+                </td>
+                <td class="px-6 py-4">
+                  <span class="px-2.5 py-1 text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 rounded-full">
+                    Level {{ item.level }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 text-xs text-slate-400">
+                  {{ item.submitted_at }}
+                </td>
+                <td class="px-6 py-4 text-right">
+                  <div class="flex items-center justify-end gap-2">
+                    <button
+                      @click="openApproveModal(item)"
+                      class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1 transition-all shadow-sm"
+                    >
+                      <CheckCircle2 class="w-3.5 h-3.5" />
+                      <span>Setujui</span>
+                    </button>
+                    <button
+                      @click="openRejectModal(item)"
+                      class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold flex items-center gap-1 transition-all shadow-sm"
+                    >
+                      <XCircle class="w-3.5 h-3.5" />
+                      <span>Tolak</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+
+              <tr v-if="pendingApprovals.length === 0">
+                <td colspan="7" class="px-6 py-12 text-center text-slate-400 text-sm">
+                  Tidak ada pengajuan yang membutuhkan persetujuan saat ini.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Modal Confirmation -->
+    <div v-if="selectedItem" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
+      <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl border border-slate-100 space-y-4">
+        <h3 class="text-base font-bold text-slate-800">
+          {{ actionType === 'approve' ? 'Konfirmasi Persetujuan' : 'Konfirmasi Penolakan' }}
+        </h3>
+        <p class="text-xs text-slate-500">
+          Apakah Anda yakin ingin {{ actionType === 'approve' ? 'menyetujui' : 'menolak' }} pengajuan <span class="font-bold text-slate-800">{{ selectedItem.request_number }}</span> dari <span class="font-bold text-slate-800">{{ selectedItem.applicant_name }}</span>?
+        </p>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">
+            {{ actionType === 'approve' ? 'Catatan Approval (Opsional)' : 'Alasan Penolakan (Wajib)' }}
+          </label>
+          <textarea
+            v-model="notesInput"
+            rows="3"
+            class="w-full text-xs border-slate-200 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+            :placeholder="actionType === 'approve' ? 'Catatan tambahan...' : 'Jelaskan alasan penolakan...'"
+          ></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-2">
+          <button
+            @click="selectedItem = null"
+            class="px-4 py-2 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50"
+          >
+            Batal
+          </button>
+          <button
+            @click="submitApproval"
+            class="px-4 py-2 rounded-xl text-xs font-semibold text-white shadow-md transition-all"
+            :class="actionType === 'approve' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'"
+          >
+            {{ actionType === 'approve' ? 'Ya, Setujui' : 'Ya, Tolak' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </AuthenticatedLayout>
+</template>

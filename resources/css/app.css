@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Thin & Sleek Scrollbar for Sidebar */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(51, 65, 85, 0.5) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.5);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.7);
+}
