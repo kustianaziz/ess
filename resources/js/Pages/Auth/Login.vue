@@ -41,7 +41,7 @@ const submit = () => {
 <template>
   <Head title="Masuk - Portal ESS EDU" />
 
-  <div class="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4 sm:p-6 lg:p-8 font-sans antialiased relative overflow-hidden">
+  <div class="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-3 sm:p-6 lg:p-8 font-sans antialiased relative overflow-hidden">
     <!-- Decorative Glowing Background Orbs -->
     <div class="absolute -top-40 -left-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none"></div>
     <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl pointer-events-none"></div>
@@ -50,8 +50,8 @@ const submit = () => {
     <!-- Container Box -->
     <div class="w-full max-w-5xl bg-[#0F172A]/90 backdrop-blur-xl border border-slate-800 rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 z-10">
       
-      <!-- LEFT HERO COLUMN (Branding & Feature Showcase) -->
-      <div class="lg:col-span-5 p-8 lg:p-10 bg-gradient-to-b from-slate-900 via-slate-900/90 to-[#0B1120] border-b lg:border-b-0 lg:border-r border-slate-800 flex flex-col justify-between relative overflow-hidden">
+      <!-- LEFT HERO COLUMN (Desktop Only) -->
+      <div class="hidden lg:flex lg:col-span-5 p-8 lg:p-10 bg-gradient-to-b from-slate-900 via-slate-900/90 to-[#0B1120] border-r border-slate-800 flex-col justify-between relative overflow-hidden">
         <div class="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
         
         <div>
@@ -121,12 +121,23 @@ const submit = () => {
         </div>
       </div>
 
-      <!-- RIGHT LOGIN FORM COLUMN -->
-      <div class="lg:col-span-7 p-8 lg:p-12 bg-white flex flex-col justify-between">
+      <!-- RIGHT LOGIN FORM COLUMN (Direct To The Point on Mobile HP) -->
+      <div class="lg:col-span-7 p-6 sm:p-8 lg:p-12 bg-white flex flex-col justify-between min-h-[500px] sm:min-h-0">
         <div>
+          <!-- Compact Mobile Brand Badge Header -->
+          <div class="flex items-center gap-2.5 mb-6 lg:hidden">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+              <GraduationCap class="w-5 h-5 stroke-[2]" />
+            </div>
+            <div>
+              <h1 class="text-base font-black text-slate-900 tracking-tight leading-none">EDU ESS</h1>
+              <p class="text-[10px] font-semibold text-indigo-600 tracking-wider uppercase mt-0.5">Portal Self Service Karyawan</p>
+            </div>
+          </div>
+
           <!-- Title Section -->
-          <div class="mb-8">
-            <h3 class="text-2xl font-bold text-slate-900 tracking-tight">
+          <div class="mb-6 sm:mb-8">
+            <h3 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
               Selamat Datang Kembali 👋
             </h3>
             <p class="text-xs text-slate-500 mt-1">
@@ -140,10 +151,10 @@ const submit = () => {
           </div>
 
           <!-- Form -->
-          <form @submit.prevent="submit" class="space-y-5">
+          <form @submit.prevent="submit" class="space-y-4 sm:space-y-5">
             <!-- Username / Email Input -->
             <div>
-              <label for="email" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+              <label for="email" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 sm:mb-2">
                 Username / Email Karyawan
               </label>
               <div class="relative">
@@ -158,7 +169,7 @@ const submit = () => {
                   autofocus
                   autocomplete="username"
                   placeholder="Masukkan Username atau Email..."
-                  class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                  class="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                   :class="{ 'border-rose-500 ring-2 ring-rose-200': form.errors.email }"
                 />
               </div>
@@ -169,7 +180,7 @@ const submit = () => {
 
             <!-- Password Input -->
             <div>
-              <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center justify-between mb-1.5 sm:mb-2">
                 <label for="password" class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                   Kata Sandi
                 </label>
@@ -192,7 +203,7 @@ const submit = () => {
                   required
                   autocomplete="current-password"
                   placeholder="••••••••"
-                  class="w-full pl-10 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                  class="w-full pl-10 pr-11 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                   :class="{ 'border-rose-500 ring-2 ring-rose-200': form.errors.password }"
                 />
                 <button
@@ -227,7 +238,7 @@ const submit = () => {
             <button
               type="submit"
               :disabled="form.processing"
-              class="w-full py-3.5 px-4 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-600/30 hover:shadow-indigo-600/40 transition-all duration-200 flex items-center justify-center gap-2 group disabled:opacity-50"
+              class="w-full py-3 sm:py-3.5 px-4 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-600/30 hover:shadow-indigo-600/40 transition-all duration-200 flex items-center justify-center gap-2 group disabled:opacity-50"
             >
               <LogIn class="w-4 h-4 transition-transform group-hover:translate-x-1" />
               <span>Masuk ke System ESS</span>
