@@ -1,8 +1,8 @@
 <script setup>
 import { ref } from 'vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { CheckCircle2, XCircle, CheckSquare, Clock, History } from 'lucide-vue-next';
+import { CheckCircle2, XCircle, CheckSquare, Clock, History, Eye } from 'lucide-vue-next';
 
 const props = defineProps({
   pendingApprovals: Array,
@@ -19,6 +19,10 @@ const approveForm = useForm({
 const rejectForm = useForm({
   reason: '',
 });
+
+const goToDetail = (item) => {
+  router.visit(route('riwayat-pengajuan.show', { type: item.type, id: item.id }));
+};
 
 const openApproveModal = (item) => {
   selectedItem.value = item;
@@ -69,7 +73,7 @@ const submitApproval = () => {
             Daftar Persetujuan (Approval)
           </h1>
           <p class="text-xs text-slate-400 mt-1">
-            Pengajuan karyawan yang membutuhkan verifikasi & persetujuan Anda.
+            Pengajuan karyawan yang membutuhkan verifikasi & persetujuan Anda. (Klik baris untuk lihat detail).
           </p>
         </div>
 
@@ -107,9 +111,11 @@ const submitApproval = () => {
               <tr
                 v-for="item in pendingApprovals"
                 :key="item.approval_id"
-                class="hover:bg-slate-50/60 transition-colors"
+                @click="goToDetail(item)"
+                class="hover:bg-indigo-50/50 transition-colors cursor-pointer group"
+                title="Klik untuk membuka detail pengajuan"
               >
-                <td class="px-6 py-4 font-bold text-slate-800">
+                <td class="px-6 py-4 font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
                   {{ item.request_number }}
                 </td>
                 <td class="px-6 py-4 font-semibold text-slate-800">
@@ -129,17 +135,28 @@ const submitApproval = () => {
                 <td class="px-6 py-4 text-xs text-slate-400">
                   {{ item.submitted_at }}
                 </td>
-                <td class="px-6 py-4 text-right">
+                <td class="px-6 py-4 text-right" @click.stop>
                   <div class="flex items-center justify-end gap-2">
+                    <Link
+                      :href="route('riwayat-pengajuan.show', { type: item.type, id: item.id })"
+                      @click.stop
+                      class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-900 text-slate-600 hover:text-white text-xs font-semibold flex items-center gap-1 transition-all"
+                      title="Lihat Detail Rincian"
+                    >
+                      <Eye class="w-3.5 h-3.5" />
+                      <span>Detail</span>
+                    </Link>
+
                     <button
-                      @click="openApproveModal(item)"
+                      @click.stop="openApproveModal(item)"
                       class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1 transition-all shadow-sm"
                     >
                       <CheckCircle2 class="w-3.5 h-3.5" />
                       <span>Setujui</span>
                     </button>
+
                     <button
-                      @click="openRejectModal(item)"
+                      @click.stop="openRejectModal(item)"
                       class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold flex items-center gap-1 transition-all shadow-sm"
                     >
                       <XCircle class="w-3.5 h-3.5" />

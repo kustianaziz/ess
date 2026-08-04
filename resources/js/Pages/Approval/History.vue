@@ -19,6 +19,10 @@ const endDate = ref(props.filters?.end_date || '');
 
 const unapproveItem = ref(null);
 
+const goToDetail = (item) => {
+  router.visit(route('riwayat-pengajuan.show', { type: item.type, id: item.id }));
+};
+
 const applyFilters = () => {
   router.get(
     route('approval.history'),
@@ -81,7 +85,7 @@ watch(search, () => {
             Riwayat Persetujuan Transaksi
           </h1>
           <p class="text-xs text-slate-400 mt-1">
-            Histori lengkap keputusan persetujuan/penolakan beserta fitur Batal Approve.
+            Histori lengkap keputusan persetujuan/penolakan beserta fitur Batal Approve. (Klik baris untuk lihat detail).
           </p>
         </div>
 
@@ -223,10 +227,12 @@ watch(search, () => {
               <tr
                 v-for="item in approvals.data"
                 :key="item.approval_id"
-                class="hover:bg-slate-50/70 transition-colors"
+                @click="goToDetail(item)"
+                class="hover:bg-indigo-50/50 transition-colors cursor-pointer group"
+                title="Klik untuk membuka detail transaksi"
               >
                 <td class="py-3.5 px-4">
-                  <span class="font-bold text-slate-900 block text-xs">{{ item.request_number }}</span>
+                  <span class="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors block text-xs">{{ item.request_number }}</span>
                   <span class="text-[10px] text-slate-400 font-semibold">{{ item.type_label }}</span>
                 </td>
                 <td class="py-3.5 px-4">
@@ -267,10 +273,11 @@ watch(search, () => {
                 <td class="py-3.5 px-4 text-[11px] text-slate-500 whitespace-nowrap">
                   {{ item.acted_at }}
                 </td>
-                <td class="py-3.5 px-4 text-center">
+                <td class="py-3.5 px-4 text-center" @click.stop>
                   <div class="flex items-center justify-center gap-1.5">
                     <Link
                       :href="route('riwayat-pengajuan.show', { type: item.type, id: item.id })"
+                      @click.stop
                       class="p-2 rounded-xl bg-slate-100 hover:bg-slate-900 text-slate-600 hover:text-white transition-all inline-flex items-center justify-center"
                       title="Lihat Detail Transaksi"
                     >
@@ -280,7 +287,7 @@ watch(search, () => {
                     <!-- Batal Approve Action Button -->
                     <button
                       v-if="item.status === 'approved' && item.overall_status !== 'paid' && item.overall_status !== 'completed'"
-                      @click="confirmUnapprove(item)"
+                      @click.stop="confirmUnapprove(item)"
                       class="p-2 rounded-xl bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white border border-amber-200 transition-all inline-flex items-center justify-center"
                       title="Batalkan Persetujuan (Batal Approve)"
                     >
