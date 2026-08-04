@@ -139,6 +139,7 @@ const submitForm = (actionType) => {
         <Stepper
           :current-step="currentStep"
           :steps="['Informasi Perjalanan', 'Lampiran Pendukung', 'Review & Kirim']"
+          accent-color="blue"
         />
       </div>
 

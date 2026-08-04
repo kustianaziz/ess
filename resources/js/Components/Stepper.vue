@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue';
 import { Check } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -17,8 +18,17 @@ const props = defineProps({
   },
   accentColor: {
     type: String,
-    default: 'emerald', // emerald (reimbursement), orange (operasional), purple (cuti)
+    default: 'emerald', // emerald, orange, purple, blue
   },
+});
+
+const normalizedSteps = computed(() => {
+  return props.steps.map((s, idx) => {
+    if (typeof s === 'string') {
+      return { number: idx + 1, label: s };
+    }
+    return { number: s.number || idx + 1, label: s.label || s };
+  });
 });
 
 const getBgColor = (stepNumber) => {
@@ -26,6 +36,7 @@ const getBgColor = (stepNumber) => {
   if (stepNumber === props.currentStep) {
     if (props.accentColor === 'orange') return 'bg-orange-500 text-white shadow-md shadow-orange-200';
     if (props.accentColor === 'purple') return 'bg-purple-600 text-white shadow-md shadow-purple-200';
+    if (props.accentColor === 'blue') return 'bg-blue-600 text-white shadow-md shadow-blue-200';
     return 'bg-emerald-600 text-white shadow-md shadow-emerald-200';
   }
   return 'bg-slate-200 text-slate-500';
@@ -44,14 +55,15 @@ const getBgColor = (stepNumber) => {
         :class="{
           'bg-orange-500': accentColor === 'orange',
           'bg-purple-600': accentColor === 'purple',
+          'bg-blue-600': accentColor === 'blue',
           'bg-emerald-600': accentColor === 'emerald'
         }"
-        :style="{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }"
+        :style="{ width: `${((currentStep - 1) / (normalizedSteps.length - 1)) * 100}%` }"
       ></div>
 
       <!-- Steps -->
       <div
-        v-for="step in steps"
+        v-for="step in normalizedSteps"
         :key="step.number"
         class="flex flex-col items-center bg-white px-1 sm:px-2 z-10"
       >

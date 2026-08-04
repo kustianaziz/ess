@@ -152,6 +152,31 @@ const submitApproval = () => {
         </div>
       </div>
 
+      <!-- SETTLEMENT ACTION BANNER FOR APPLICANT (IF PERJALANAN DINAS & APPROVED/PAID) -->
+      <div
+        v-if="requestData.type === 'perjalanan-dinas' && ['approved', 'paid'].includes(requestData.status)"
+        class="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 sm:p-5 rounded-2xl text-white shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+      >
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 uppercase tracking-wider">
+              Settlement Pertanggungjawaban
+            </span>
+            <h4 class="font-bold text-sm sm:text-base">Sudah Pulang Perjalanan Dinas?</h4>
+          </div>
+          <p class="text-xs text-blue-100 leading-snug">
+            Silakan isi form pertanggungjawaban realisasi biaya (settlement) & upload bukti nota/struk pengeluaran.
+          </p>
+        </div>
+
+        <Link
+          :href="route('pengajuan.perjalanan-dinas.settlement.create', requestData.id)"
+          class="px-5 py-2.5 rounded-xl bg-white hover:bg-blue-50 text-blue-600 font-bold text-xs shadow transition-all shrink-0 w-full sm:w-auto text-center"
+        >
+          Isi Pertanggungjawaban (Settlement) →
+        </Link>
+      </div>
+
       <!-- Applicant Info Card -->
       <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
@@ -189,6 +214,26 @@ const submitApproval = () => {
           <div v-for="(value, key) in requestData.details" :key="key" class="p-3 bg-slate-50 rounded-xl border border-slate-100">
             <span class="text-xs text-slate-400 block mb-0.5">{{ key }}</span>
             <span class="font-semibold text-slate-800">{{ value }}</span>
+          </div>
+        </div>
+
+        <!-- RINCIAN KOMPONEN UANG MUKA DARI KEUANGAN (IF ANY) -->
+        <div
+          v-if="requestData.allowance_breakdown && requestData.allowance_breakdown.length > 0"
+          class="mt-4 p-4 rounded-xl bg-blue-50/80 border border-blue-100 space-y-2"
+        >
+          <h4 class="text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
+            <span>Rincian Komponen Uang Muka Dicairkan Keuangan:</span>
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <div
+              v-for="(comp, cIdx) in requestData.allowance_breakdown"
+              :key="cIdx"
+              class="p-2.5 bg-white rounded-lg border border-blue-100/80 flex items-center justify-between"
+            >
+              <span class="font-medium text-slate-700">{{ comp.item }}</span>
+              <span class="font-bold text-blue-700">Rp {{ new Intl.NumberFormat('id-ID').format(comp.amount || 0) }}</span>
+            </div>
           </div>
         </div>
 

@@ -25,6 +25,11 @@ class BusinessTripRequest extends Model
         'end_date',
         'transportation_type',
         'estimated_budget',
+        'disbursed_budget',
+        'allowance_breakdown',
+        'payment_reference',
+        'paid_at',
+        'paid_by',
         'status',
         'current_approval_level',
         'submitted_at',
@@ -35,13 +40,21 @@ class BusinessTripRequest extends Model
         'start_date' => 'date',
         'end_date' => 'date',
         'estimated_budget' => 'decimal:2',
+        'disbursed_budget' => 'decimal:2',
+        'allowance_breakdown' => 'array',
         'submitted_at' => 'datetime',
+        'paid_at' => 'datetime',
         'status' => RequestStatus::class,
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function paidBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'paid_by');
     }
 
     public function settlement(): HasOne
