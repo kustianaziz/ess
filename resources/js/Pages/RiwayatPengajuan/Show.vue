@@ -109,33 +109,46 @@ const submitApproval = () => {
         </div>
       </div>
 
-      <!-- APPROVAL ACTION CARD (Shown ONLY for Approvers, NEVER for Applicant) -->
+      <!-- APPROVAL ACTION CARD (Soft & Elegant Theme Matching Application Aesthetics) -->
       <div
         v-if="requestData.can_approve"
-        class="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 p-5 rounded-2xl text-white shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in"
+        class="bg-[#0F172A] border border-indigo-500/20 p-5 sm:p-6 rounded-2xl text-white shadow-xl shadow-slate-950/20 relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in"
       >
-        <div>
-          <h3 class="font-bold text-base flex items-center gap-2">
-            <CheckSquare class="w-5 h-5 text-amber-200" />
-            Membutuhkan Persetujuan Anda (Level {{ requestData.pending_approval_level }})
-          </h3>
-          <p class="text-xs text-amber-100 mt-1">
-            Silakan periksa rincian pengajuan ini dan berikan keputusan persetujuan Anda.
-          </p>
+        <!-- Subtle Decorative Ambient Glowing Orbs -->
+        <div class="absolute -top-12 -right-12 w-48 h-48 bg-indigo-600/15 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="absolute -bottom-12 -left-12 w-48 h-48 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+        <div class="relative z-10 flex items-start gap-3.5">
+          <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+            <CheckSquare class="w-5 h-5 stroke-[2]" />
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h3 class="font-bold text-sm sm:text-base text-white tracking-tight">
+                Membutuhkan Persetujuan Anda
+              </h3>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider">
+                Level {{ requestData.pending_approval_level }}
+              </span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+              Silakan periksa rincian pengajuan ini dan berikan keputusan persetujuan Anda.
+            </p>
+          </div>
         </div>
 
-        <div class="flex items-center gap-2.5 self-stretch sm:self-auto shrink-0">
+        <div class="relative z-10 flex items-center gap-2.5 self-stretch sm:self-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800/80">
           <button
             @click="openApproveModal"
-            class="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-white hover:bg-emerald-50 text-emerald-700 text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5"
+            class="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white text-xs font-bold shadow-lg shadow-emerald-950/30 transition-all duration-200 flex items-center justify-center gap-1.5"
           >
-            <CheckCircle2 class="w-4 h-4 text-emerald-600" />
+            <CheckCircle2 class="w-4 h-4" />
             <span>Setujui</span>
           </button>
 
           <button
             @click="openRejectModal"
-            class="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 border border-rose-400"
+            class="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-rose-950/60 text-rose-400 hover:text-rose-300 border border-slate-700 hover:border-rose-500/40 text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5"
           >
             <XCircle class="w-4 h-4" />
             <span>Tolak</span>
