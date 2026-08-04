@@ -39,6 +39,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/quota', [LeaveController::class, 'quota'])->name('quota');
     });
 
+    // Pengajuan Perjalanan Dinas & Settlement
+    Route::prefix('pengajuan/perjalanan-dinas')->name('pengajuan.perjalanan-dinas.')->group(function () {
+        Route::get('/create', [\App\Http\Controllers\BusinessTripController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\BusinessTripController::class, 'store'])->name('store');
+        Route::get('/{id}/settlement', [\App\Http\Controllers\BusinessTripController::class, 'settlementCreate'])->name('settlement.create');
+        Route::post('/{id}/settlement', [\App\Http\Controllers\BusinessTripController::class, 'settlementStore'])->name('settlement.store');
+    });
+
     // Riwayat Pengajuan & Detail
     Route::get('/riwayat-pengajuan', [RequestHistoryController::class, 'index'])->name('riwayat-pengajuan.index');
     Route::get('/riwayat-pengajuan/{type}/{id}', [RequestHistoryController::class, 'show'])->name('riwayat-pengajuan.show');

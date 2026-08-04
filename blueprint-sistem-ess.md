@@ -28,6 +28,21 @@ Portal internal berbasis web yang memungkinkan karyawan mengajukan **reimburseme
 - **Riwayat & Status**: Riwayat Pengajuan, Notifikasi.
 - **Akun Saya**: Profil Saya, Keluar (logout).
 
+### 1.2.1 Modul Tambahan (Perluasan Sistem — Keuangan & Operasional)
+
+Selain modul ESS di atas, sistem diperluas menjadi platform **Finance & Operations** dengan modul-modul berikut (detail lengkap ada di **Bagian 16** dan **Bagian 17**):
+
+| Modul | Sub Modul | Sifat |
+|---|---|---|
+| **Kas Operasional** | Perjalanan Dinas (pengajuan & penyelesaian) | Pengeluaran |
+| | Reimburse (Meeting, Transport, dll) | Pengeluaran |
+| | Pembayaran Bulanan Rutin (Listrik, Internet, Parkir, dll) | Pengeluaran |
+| | Kas Operasional (Transaksi, Saldo, Laporan) | Pengeluaran/Kas |
+| **Invoicing** | Customer & Invoice (Invoice, Pembayaran, Reminder) | Pendapatan |
+| **Renewal Webpraktis** | Domain & Hosting (Renewal, Invoice, Pembayaran Customer/Vendor, Reminder) | Pendapatan |
+
+> Modul-modul ini menggunakan **arsitektur & konvensi teknis yang sama** dengan modul ESS inti (Form Request validation, Policy authorization, Action pattern, notifikasi, audit trail via `status_histories`), sehingga tetap 1 platform terintegrasi dengan Laravel + Inertia + Vue + MySQL.
+
 ### 1.3 Aktor / Role Pengguna
 | Role | Deskripsi |
 |---|---|
@@ -35,6 +50,8 @@ Portal internal berbasis web yang memungkinkan karyawan mengajukan **reimburseme
 | **Atasan Langsung (Manager/Approver L1)** | Approve/reject pengajuan bawahannya (level 1). |
 | **HRD/Finance (Approver L2)** | Validasi akhir, approve/reject, dan memproses pembayaran (untuk reimbursement & konsumsi/operasional) atau approval cuti final. |
 | **Admin/Superadmin** | Mengelola data master (divisi, jenis pengeluaran, jenis kegiatan, jenis cuti), mengelola user & role, mengatur kuota cuti. |
+| **Finance/Kasir (Kas Operasional)** | Mengelola kas operasional (transaksi, saldo), verifikasi & memproses pembayaran reimburse/perjalanan dinas/tagihan bulanan. *(Bisa memakai role `hrd_finance` yang sudah ada, diperluas cakupannya, atau role baru `finance_ops` jika ingin dipisah dari HRD).* |
+| **Sales/Admin Invoicing** | Mengelola data customer, membuat & mengirim invoice, mencatat pembayaran customer, mengirim reminder jatuh tempo (modul Invoicing & Renewal Webpraktis). |
 
 ---
 
@@ -330,12 +347,326 @@ Relasi role: gunakan tabel pivot Spatie `model_has_roles` (role: `employee`, `ma
 #### `notifications` (default Laravel notifications table)
 Gunakan struktur default Laravel (`php artisan notifications:table`): `id (uuid)`, `type`, `notifiable_type`, `notifiable_id`, `data (json)`, `read_at`, `created_at`, `updated_at`.
 
+### 4.2.1 ERD Tambahan — Modul Kas Operasional & Perjalanan Dinas
+
+```mermaid
+erDiagram
+    USERS ||--o{ BUSINESS_TRIP_REQUESTS : mengajukan
+    BUSINESS_TRIP_REQUESTS ||--o| BUSINESS_TRIP_SETTLEMENTS : diselesaikan_dengan
+    BUSINESS_TRIP_SETTLEMENTS ||--o{ BUSINESS_TRIP_EXPENSE_ITEMS : terdiri_dari
+
+    USERS ||--o{ MONTHLY_BILL_PAYMENTS : mengajukan
+    MONTHLY_BILL_TYPES ||--o{ MONTHLY_BILL_PAYMENTS : kategori
+
+    CASH_ACCOUNTS ||--o{ CASH_TRANSACTIONS : mencatat
+    USERS ||--o{ CASH_TRANSACTIONS : dibuat_oleh
+
+    BUSINESS_TRIP_SETTLEMENTS ||--o| CASH_TRANSACTIONS : pengeluaran_kas
+    REIMBURSEMENT_REQUESTS ||--o| CASH_TRANSACTIONS : pengeluaran_kas
+    MONTHLY_BILL_PAYMENTS ||--o| CASH_TRANSACTIONS : pengeluaran_kas
+```
+
+### 4.2.2 ERD Tambahan — Modul Invoicing & Renewal Webpraktis (Pendapatan)
+
+```mermaid
+erDiagram
+    CUSTOMERS ||--o{ INVOICES : ditagih
+    INVOICES ||--o{ INVOICE_ITEMS : terdiri_dari
+    INVOICES ||--o{ INVOICE_PAYMENTS : dibayar_via
+    INVOICES ||--o{ INVOICE_REMINDERS : diingatkan_via
+
+    CUSTOMERS ||--o{ DOMAINS : memiliki
+    VENDORS ||--o{ DOMAINS : disediakan_oleh
+    DOMAINS ||--o{ RENEWAL_REQUESTS : diperpanjang
+    RENEWAL_REQUESTS ||--o| INVOICES : tagihan_customer
+    RENEWAL_REQUESTS ||--o| VENDOR_PAYMENTS : pembayaran_vendor
+    VENDORS ||--o{ VENDOR_PAYMENTS : menerima
+```
+
 ### 4.3 Index & Optimisasi
 - Index composite pada `(user_id, status)` di ketiga tabel request untuk query dashboard ringkasan cepat.
 - Index pada `approvable_type, approvable_id` dan `attachable_type, attachable_id` untuk query polymorphic.
 - Index pada `request_number` (unique) untuk pencarian cepat di riwayat.
 
 ---
+
+### 4.4 Detail Tabel — Modul Tambahan
+
+#### A. Kas Operasional (Umum)
+
+**`cash_accounts`** (Akun/pos kas — bisa lebih dari satu, mis. per divisi/cabang)
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigIncrements | |
+| name | string | mis. "Kas Operasional Pusat" |
+| code | string, unique | |
+| current_balance | decimal(15,2) default 0 | Saldo berjalan (di-update via observer setiap transaksi) |
+| pic_user_id | foreignId → users, nullable | Penanggung jawab kas |
+| is_active | boolean default true | |
+| timestamps | | |
+
+**`cash_transactions`** (Riwayat transaksi kas — mutasi masuk/keluar)
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigIncrements | |
+| transaction_number | string, unique | mis. `KAS/2026/07/0001` |
+| cash_account_id | foreignId → cash_accounts | |
+| type | enum('in','out') | Masuk / Keluar |
+| category | enum('perjalanan_dinas','reimburse','pembayaran_bulanan','operasional_lain','setoran_kas','lainnya') | |
+| amount | decimal(15,2) | |
+| description | text | |
+| transaction_date | date | |
+| source_type | string, nullable | Model class sumber (polymorphic, mis. `BusinessTripSettlement`, `ReimbursementRequest`, `MonthlyBillPayment`) |
+| source_id | bigInteger, nullable | |
+| created_by | foreignId → users | |
+| approved_by | foreignId → users, nullable | |
+| status | enum('draft','submitted','approved','rejected','posted') default 'draft' | `posted` = sudah mempengaruhi saldo |
+| timestamps | | |
+
+> **Laporan Kas** (Saldo, Riwayat Transaksi, Laporan Kas) dibuat sebagai *query/report*, bukan tabel — agregasi dari `cash_transactions` per periode/kategori/akun kas.
+
+#### B. Perjalanan Dinas
+
+**`business_trip_requests`** (Form Pengajuan Perjalanan Dinas)
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigIncrements | |
+| request_number | string, unique | mis. `PD/2026/07/0001` |
+| user_id | foreignId → users | Karyawan yang berangkat |
+| assignment_letter_number | string, nullable | No. Surat Tugas (jika ada) |
+| destination | string | Tujuan/kota |
+| purpose | text | Tujuan perjalanan |
+| start_date | date | |
+| end_date | date | |
+| transportation_type | string, nullable | mis. Pesawat/Kereta/Mobil Dinas |
+| estimated_budget | decimal(15,2) | Estimasi biaya (uang muka/advance) |
+| status | enum('draft','submitted','approved','rejected','ongoing','settled','completed') default 'draft' | |
+| current_approval_level | tinyInteger default 0 | |
+| submitted_at | timestamp, nullable | |
+| rejected_reason | text, nullable | |
+| timestamps + softDeletes | | |
+
+**`business_trip_settlements`** (Form Penyelesaian Perjalanan Dinas — 1:1 dengan request)
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigIncrements | |
+| settlement_number | string, unique | mis. `PD-SL/2026/07/0001` |
+| business_trip_request_id | foreignId → business_trip_requests | |
+| total_actual_cost | decimal(15,2) | Total realisasi biaya (sum dari expense items) |
+| advance_amount | decimal(15,2) | Diambil dari `estimated_budget` request |
+| difference_amount | decimal(15,2) | `total_actual_cost - advance_amount` (+ = kurang bayar ke karyawan, − = karyawan harus kembalikan sisa) |
+| trip_report | text, nullable | Laporan perjalanan (ringkasan kegiatan) |
+| status | enum('draft','submitted','verified','approved','rejected','settled') default 'draft' | |
+| submitted_at | timestamp, nullable | |
+| verified_by | foreignId → users, nullable | Verifikasi Finance |
+| verified_at | timestamp, nullable | |
+| timestamps | | |
+
+**`business_trip_expense_items`** (Rincian biaya realisasi)
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigIncrements | |
+| business_trip_settlement_id | foreignId → business_trip_settlements | |
+| category | enum('tiket','boarding_pass','hotel','bbm','tol','parkir','makan','lainnya') | |
+| description | string | |
+| amount | decimal(15,2) | |
+| expense_date | date | |
+| timestamps | | |
+
+> Lampiran (Surat Tugas, Tiket, Boarding Pass, Invoice Hotel, Struk BBM/Tol/Parkir, Nota Makan) disimpan lewat tabel `attachments` polymorphic (`attachable_type` = `BusinessTripRequest` / `BusinessTripSettlement`, bisa juga relasi ke `business_trip_expense_items` per item bila ingin lampiran per-item).
+>
+> **Output**: *Rekap Perjalanan Dinas* & *Laporan Biaya* adalah report/query gabungan dari `business_trip_requests` + `business_trip_settlements` + `business_trip_expense_items`.
+
+#### C. Reimburse (Meeting, Transport, dll)
+
+> Sub-modul ini **menggunakan ulang tabel `reimbursement_requests`** yang sudah didefinisikan di Bagian 4.2 (tidak perlu tabel baru), dengan penyesuaian berikut:
+
+| Kolom Tambahan | Tipe | Keterangan |
+|---|---|---|
+| verified_by | foreignId → users, nullable | Mendukung *"Form Verifikasi Reimburse"* — verifikasi Finance sebelum masuk approval final |
+| verified_at | timestamp, nullable | |
+| verification_notes | text, nullable | |
+
+- Pastikan `expense_types` mencakup kategori: **Meeting**, **Transport**, **Konsumsi**, **Perlengkapan Kantor**, **Kesehatan**, **Lainnya**.
+- Lampiran: Nota, Invoice, Struk Pembayaran, Dokumentasi (opsional) — via tabel `attachments`.
+- Alur: `Draft → Submitted → Diverifikasi Finance → Approval Berjenjang (Atasan → HRD/Finance) → Disetujui → Dibayarkan → Selesai`.
+- **Output**: *Rekap Reimburse* & *Status Pembayaran* — report/query dari `reimbursement_requests`.
+
+#### D. Pembayaran Bulanan Rutin (Listrik, Internet, Parkir, dll)
+
+**`monthly_bill_types`** (Jenis tagihan rutin — data master)
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigIncrements | |
+| name | string | mis. "Listrik Kantor Pusat", "Internet ISP A", "Parkir Bulanan" |
+| vendor_name | string, nullable | |
+| default_amount | decimal(15,2), nullable | Estimasi nominal (jika relatif tetap) |
+| billing_day | tinyInteger, nullable | Tanggal jatuh tempo rutin tiap bulan (untuk reminder otomatis) |
+| cash_account_id | foreignId → cash_accounts, nullable | Sumber kas default |
+| is_active | boolean default true | |
+| timestamps | | |
+
+**`monthly_bill_payments`** (Form Pembayaran Tagihan Bulanan — 1 record per periode/bulan)
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigIncrements | |
+| payment_number | string, unique | mis. `TB/2026/07/0001` |
+| bill_type_id | foreignId → monthly_bill_types | |
+| period_month | tinyInteger | 1–12 |
+| period_year | year | |
+| bill_amount | decimal(15,2) | Nominal tagihan aktual bulan tsb |
+| due_date | date | |
+| payment_date | date, nullable | |
+| status | enum('belum_dibayar','diajukan','disetujui','dibayar','selesai') default 'belum_dibayar' | |
+| submitted_by | foreignId → users, nullable | |
+| approved_by | foreignId → users, nullable | |
+| paid_by | foreignId → users, nullable | |
+| timestamps | | |
+| unique | (bill_type_id, period_month, period_year) | Cegah duplikasi pembayaran periode yang sama |
+
+> Lampiran (Invoice/Tagihan, Bukti Transfer, Bukti Pembayaran) via tabel `attachments`. **Output**: *Riwayat Pembayaran* & *Laporan Pengeluaran Bulanan* — report dari `monthly_bill_payments` join `monthly_bill_types`.
+
+#### E. Invoicing (Pendapatan)
+
+**`customers`**
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigIncrements | |
+| name | string | Nama customer/perusahaan |
+| pic_name | string, nullable | Contact person |
+| email | string, nullable | |
+| phone | string, nullable | |
+| address | text, nullable | |
+| npwp | string, nullable | |
+| notes | text, nullable | |
+| is_active | boolean default true | |
+| timestamps | | |
+
+**`invoices`**
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigIncrements | |
+| invoice_number | string, unique | mis. `INV/2026/07/0001` |
+| customer_id | foreignId → customers | |
+| source_type | enum('general','renewal') default 'general' | Pembeda invoice reguler vs invoice hasil Renewal Webpraktis |
+| source_id | bigInteger, nullable | Diisi `renewal_requests.id` jika `source_type = 'renewal'` |
+| po_number | string, nullable | No. PO/SPK jika ada |
+| invoice_date | date | |
+| due_date | date | |
+| subtotal | decimal(15,2) | |
+| tax_amount | decimal(15,2) default 0 | PPN (jika ada Faktur Pajak) |
+| total_amount | decimal(15,2) | |
+| paid_amount | decimal(15,2) default 0 | Akumulasi dari `invoice_payments` |
+| status | enum('draft','sent','partial','paid','overdue','cancelled') default 'draft' | |
+| notes | text, nullable | |
+| created_by | foreignId → users | |
+| timestamps + softDeletes | | |
+
+**`invoice_items`**
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigIncrements | |
+| invoice_id | foreignId → invoices | |
+| description | string | |
+| qty | integer default 1 | |
+| unit_price | decimal(15,2) | |
+| subtotal | decimal(15,2) | `qty * unit_price` |
+| timestamps | | |
+
+**`invoice_payments`**
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigIncrements | |
+| invoice_id | foreignId → invoices | |
+| payment_date | date | |
+| amount | decimal(15,2) | |
+| payment_method | string, nullable | Transfer/Cash/dll |
+| recorded_by | foreignId → users | |
+| timestamps | | |
+
+> Lampiran (PO/SPK, Faktur Pajak, Berita Acara, Bukti Pembayaran Customer) via tabel `attachments` (`attachable_type = Invoice`).
+
+**`invoice_reminders`** (Reminder Jatuh Tempo / Follow Up)
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigIncrements | |
+| invoice_id | foreignId → invoices | |
+| reminder_date | date | Tanggal reminder terjadwal |
+| channel | enum('email','whatsapp','system') default 'email' | |
+| status | enum('scheduled','sent','skipped') default 'scheduled' | |
+| notes | text, nullable | |
+| created_at | timestamp | |
+
+> **Output**: *Invoice PDF* (generate via DomPDF dari `invoices` + `invoice_items`), *Status Pembayaran*, *Reminder Jatuh Tempo* (list `invoice_reminders` status `scheduled` & overdue), *Laporan Pendapatan* (agregasi `invoices`/`invoice_payments` per periode).
+
+#### F. Renewal Webpraktis — Domain & Hosting (Pendapatan)
+
+**`vendors`** (Penyedia domain/hosting, mis. Niagahoster, Rumahweb, dll)
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigIncrements | |
+| name | string | |
+| type | enum('domain_registrar','hosting_provider','both','other') | |
+| contact_info | string, nullable | |
+| is_active | boolean default true | |
+| timestamps | | |
+
+**`domains`** (Aset domain/hosting milik customer yang dikelola)
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigIncrements | |
+| customer_id | foreignId → customers | |
+| vendor_id | foreignId → vendors | |
+| name | string | Nama domain / paket hosting |
+| type | enum('domain','hosting','vps','email','other') | |
+| purchase_date | date | |
+| expired_date | date | Tanggal expired saat ini |
+| price_customer | decimal(15,2) | Harga jual ke customer (acuan invoice) |
+| cost_vendor | decimal(15,2) | Modal/biaya ke vendor |
+| auto_renew | boolean default false | |
+| status | enum('active','expiring_soon','expired','cancelled') default 'active' | |
+| timestamps | | |
+
+**`renewal_requests`** (Proses perpanjangan per periode)
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigIncrements | |
+| renewal_number | string, unique | mis. `RN/2026/07/0001` |
+| domain_id | foreignId → domains | |
+| period_year | tinyInteger default 1 | Perpanjangan berapa tahun |
+| old_expired_date | date | |
+| new_expired_date | date, nullable | Diisi setelah renewal sukses |
+| status | enum('pending','invoiced_customer','paid_customer','renewed_vendor','paid_vendor','completed','cancelled') default 'pending' | |
+| invoice_id | foreignId → invoices, nullable | Invoice ke customer (relasi ke tabel `invoices`, `source_type = renewal`) |
+| vendor_payment_id | foreignId → vendor_payments, nullable | |
+| processed_by | foreignId → users, nullable | |
+| notes | text, nullable | |
+| timestamps | | |
+
+**`vendor_payments`** (Pembayaran ke vendor untuk perpanjangan)
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigIncrements | |
+| vendor_id | foreignId → vendors | |
+| renewal_request_id | foreignId → renewal_requests, nullable | |
+| amount | decimal(15,2) | |
+| payment_date | date | |
+| paid_by | foreignId → users | |
+| timestamps | | |
+
+**`renewal_reminders`** (Reminder jatuh tempo domain/hosting — ke customer & internal)
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | bigIncrements | |
+| domain_id | foreignId → domains | |
+| reminder_date | date | mis. H-30, H-14, H-7 sebelum `expired_date` |
+| channel | enum('email','whatsapp','system') default 'email' | |
+| status | enum('scheduled','sent','skipped') default 'scheduled' | |
+| timestamps | | |
+
+> Lampiran (Invoice Vendor, Invoice Customer, Bukti Pembayaran Customer/Vendor, Bukti Renewal Domain/Hosting) via tabel `attachments` (`attachable_type = RenewalRequest`).
+>
+> **Output**: *Status Renewal* (per `renewal_requests.status`), *Reminder Jatuh Tempo* (`renewal_reminders` + query domain `expired_date` mendekati hari ini), *Laporan Renewal*, *Riwayat Perpanjangan* (history `renewal_requests` per domain).
 
 ## 5. Alur Bisnis (Business Flow)
 
@@ -429,6 +760,104 @@ Setiap modul pengajuan memiliki 3 langkah dengan pola yang identik:
 
 ---
 
+### 5.5 Alur Bisnis — Modul Tambahan
+
+#### 5.5.1 Perjalanan Dinas (2 Tahap: Pengajuan → Penyelesaian)
+
+```mermaid
+flowchart LR
+    A[Karyawan: Form Pengajuan\nPerjalanan Dinas] --> B{Approval\nAtasan/Finance}
+    B -- Ditolak --> A
+    B -- Disetujui --> C[Status: Approved / Ongoing\nUang Muka Dicairkan]
+    C --> D[Karyawan Berangkat &\nMelaksanakan Tugas]
+    D --> E[Karyawan: Form Penyelesaian\nPerjalanan Dinas + Upload Bukti]
+    E --> F{Verifikasi Finance}
+    F -- Ditolak / Kurang Lengkap --> E
+    F -- Terverifikasi --> G{Approval Final}
+    G -- Disetujui --> H[Status: Settled\nSelisih Uang Muka Dibayar/Ditagih]
+    H --> I[Cash Transaction Tercatat\n+ Rekap & Laporan Biaya]
+```
+
+- Form Pengajuan berisi estimasi biaya (uang muka) → jika disetujui, dicairkan sebagai `cash_transactions` (type `out`, category `perjalanan_dinas`).
+- Form Penyelesaian berisi rincian realisasi biaya per kategori (tiket, hotel, bbm, tol, parkir, makan) + laporan perjalanan.
+- Selisih (`difference_amount`) dihitung otomatis: jika realisasi > uang muka → kurang bayar ke karyawan; jika realisasi < uang muka → karyawan mengembalikan sisa ke kas.
+
+#### 5.5.2 Reimburse (Meeting, Transport, dll) — dengan Verifikasi
+
+```
+Draft → Diajukan → Diverifikasi Finance → Menunggu Persetujuan (Atasan → HRD/Finance)
+      → Disetujui → Dibayarkan (tercatat di cash_transactions) → Selesai
+```
+Perbedaan dengan Reimbursement ESS standar: ada **tahap verifikasi Finance** (cek kelengkapan nota/bukti) sebelum masuk approval berjenjang.
+
+#### 5.5.3 Pembayaran Bulanan Rutin
+
+```mermaid
+flowchart LR
+    A[Sistem: Reminder Otomatis\nH-3 sebelum due_date] --> B[Staff Finance: Form\nPembayaran Tagihan]
+    B --> C{Approval}
+    C -- Disetujui --> D[Pembayaran Diproses\n+ Upload Bukti Transfer]
+    D --> E[Status: Dibayar/Selesai\n+ Cash Transaction Tercatat]
+    C -- Ditolak --> B
+```
+- Setiap awal bulan, sistem (via scheduler) otomatis membuat draft `monthly_bill_payments` untuk setiap `monthly_bill_types` aktif (berdasarkan `billing_day`), lalu mengirim reminder ke Finance.
+
+#### 5.5.4 Kas Operasional (Transaksi & Saldo)
+
+- Semua pengeluaran dari sub-modul lain (Perjalanan Dinas, Reimburse, Pembayaran Bulanan) **otomatis membuat record** di `cash_transactions` (via Observer, saat status mencapai `paid`/`settled`) — sehingga saldo kas (`cash_accounts.current_balance`) selalu ter-update real-time.
+- Finance juga bisa mencatat transaksi kas manual (mis. setoran kas, pengeluaran operasional lain) melalui **Form Transaksi Kas**.
+- **Form Saldo Kas**: menampilkan saldo real-time per `cash_account`.
+- **Form Laporan Kas**: filter transaksi per periode/kategori/akun, export ke Excel/PDF.
+
+#### 5.5.5 Invoicing (Pendapatan)
+
+```mermaid
+sequenceDiagram
+    participant Sales as Sales/Admin
+    participant Sys as Sistem
+    participant Cust as Customer
+
+    Sales->>Sys: Input/Pilih Customer
+    Sales->>Sys: Buat Invoice (item, qty, harga, pajak)
+    Sys->>Sys: Status = "Draft"
+    Sales->>Sys: Kirim Invoice (generate PDF)
+    Sys->>Sys: Status = "Sent"
+    Sys-->>Cust: Invoice terkirim (email/manual)
+    loop Sebelum jatuh tempo
+        Sys->>Sys: Cek due_date mendekati (H-7/H-3/H-1)
+        Sys-->>Sales: Reminder follow-up ke customer
+    end
+    Cust->>Sales: Melakukan pembayaran (transfer)
+    Sales->>Sys: Input Pembayaran Invoice + bukti transfer
+    Sys->>Sys: paid_amount bertambah
+    alt paid_amount < total_amount
+        Sys->>Sys: Status = "Partial"
+    else paid_amount >= total_amount
+        Sys->>Sys: Status = "Paid"
+        Sys->>Sys: Catat sebagai Pendapatan (Laporan Pendapatan)
+    end
+    Note over Sys: Jika lewat due_date & belum lunas → status "Overdue" (via scheduler)
+```
+
+#### 5.5.6 Renewal Webpraktis — Domain & Hosting (Pendapatan)
+
+```mermaid
+flowchart TB
+    A[Scheduler: Cek domains.expired_date\nH-30 / H-14 / H-7] --> B[Buat renewal_requests\nstatus: pending]
+    B --> C[Reminder ke Customer\n& Internal - Sales]
+    C --> D[Sales: Buat Invoice Customer\nstatus renewal: invoiced_customer]
+    D --> E{Customer Bayar?}
+    E -- Belum --> C
+    E -- Sudah --> F[Input Pembayaran Customer\nstatus: paid_customer]
+    F --> G[Finance/Admin: Proses Perpanjangan\nke Vendor + Bayar Vendor]
+    G --> H[Input vendor_payments\nstatus: paid_vendor]
+    H --> I[Update domains.expired_date\nBaru + status renewal: completed]
+    I --> J[Riwayat Perpanjangan\n& Laporan Renewal]
+```
+
+- Sistem menghasilkan **2 arah transaksi**: pendapatan dari customer (invoice) & pengeluaran ke vendor (vendor payment) — margin/keuntungan = `price_customer - cost_vendor`.
+- Reminder berjenjang (H-30, H-14, H-7) mencegah domain/hosting customer expired tanpa diperpanjang.
+
 ## 6. Use Case
 
 ### 6.1 Diagram Use Case (Ringkasan)
@@ -489,6 +918,18 @@ flowchart LR
 | UC-16 | Edit Profil | Karyawan | Update data diri, foto profil, ganti password. |
 | UC-17 | Batalkan Pengajuan | Karyawan | Batalkan pengajuan berstatus draft/submitted (sebelum diproses). |
 | UC-18 | Export Laporan | HRD/Finance/Admin | Export riwayat pengajuan ke Excel/PDF. |
+| UC-19 | Ajukan Perjalanan Dinas | Karyawan | Isi form pengajuan (tujuan, tanggal, estimasi biaya), submit ke approval. |
+| UC-20 | Ajukan Penyelesaian Perjalanan Dinas | Karyawan | Setelah perjalanan selesai, isi rincian realisasi biaya + laporan + bukti, submit untuk verifikasi. |
+| UC-21 | Verifikasi Reimburse/Perjalanan Dinas | Finance | Cek kelengkapan bukti sebelum masuk approval berjenjang. |
+| UC-22 | Kelola Tagihan Bulanan Rutin | Finance | Input/approve/bayar tagihan bulanan (Listrik, Internet, Parkir, dll), lihat riwayat & laporan. |
+| UC-23 | Kelola Kas Operasional | Finance | Catat transaksi kas manual, pantau saldo real-time, generate laporan kas per periode. |
+| UC-24 | Kelola Customer | Sales/Admin | CRUD data customer (nama, kontak, NPWP, dll). |
+| UC-25 | Buat & Kirim Invoice | Sales/Admin | Buat invoice (item, harga, pajak), generate PDF, kirim ke customer. |
+| UC-26 | Catat Pembayaran Invoice | Sales/Finance | Input pembayaran customer (partial/lunas) + bukti transfer. |
+| UC-27 | Kelola Reminder Invoice | Sistem/Sales | Reminder otomatis H-7/H-3/H-1 sebelum jatuh tempo & saat overdue. |
+| UC-28 | Kelola Domain/Hosting Customer | Sales/Admin | CRUD data domain/hosting per customer beserta vendor & tanggal expired. |
+| UC-29 | Proses Renewal Domain/Hosting | Sales/Finance | Buat invoice customer, catat pembayaran, proses perpanjangan & pembayaran ke vendor, update tanggal expired baru. |
+| UC-30 | Lihat Laporan Pendapatan & Renewal | Admin/Finance/Owner | Lihat rekap pendapatan (invoicing & renewal), status renewal per domain, riwayat perpanjangan. |
 
 ---
 
@@ -523,6 +964,33 @@ flowchart LR
 /admin/leave-types                  → Kelola jenis cuti
 /admin/leave-balances                → Kelola kuota cuti karyawan
 /admin/reports                      → Laporan & export
+
+--- Modul Kas Operasional (Karyawan & Finance) ---
+/pengajuan/perjalanan-dinas/create              → Form Pengajuan Perjalanan Dinas
+/pengajuan/perjalanan-dinas/{id}/penyelesaian    → Form Penyelesaian Perjalanan Dinas
+/pengajuan/reimburse-meeting/create              → Form Pengajuan Reimburse (Meeting/Transport)
+
+/keuangan/tagihan-bulanan                        → List & Form Pembayaran Tagihan Bulanan
+/keuangan/tagihan-bulanan/{id}                   → Detail tagihan
+
+/keuangan/kas-operasional                        → Dashboard Saldo Kas
+/keuangan/kas-operasional/transaksi              → Form & List Transaksi Kas
+/keuangan/kas-operasional/laporan                → Laporan Kas (filter periode/kategori)
+
+--- Modul Invoicing (Sales/Finance) ---
+/invoicing/customers                             → List & Form Customer
+/invoicing/invoices                              → List Invoice
+/invoicing/invoices/create                        → Form Buat Invoice
+/invoicing/invoices/{id}                          → Detail Invoice + Form Pembayaran + Reminder
+/invoicing/laporan-pendapatan                     → Laporan Pendapatan
+
+--- Modul Renewal Webpraktis (Sales/Finance) ---
+/renewal/domains                                  → List Domain/Hosting Customer
+/renewal/domains/create                            → Form Customer & Domain/Hosting baru
+/renewal/{domain_id}/renewals                      → Riwayat Perpanjangan per Domain
+/renewal/renewals/{id}                              → Detail Proses Renewal (invoice, pembayaran customer/vendor)
+/renewal/reminders                                  → List Reminder Jatuh Tempo
+/renewal/laporan                                    → Laporan Renewal
 ```
 
 ### 7.2 Komponen UI Reusable (Vue)
@@ -623,6 +1091,73 @@ Route::middleware('auth')->group(function () {
         Route::get('/reports', [Admin\ReportController::class, 'index']);
         Route::get('/reports/export', [Admin\ReportController::class, 'export']);
     });
+
+    // === Modul Kas Operasional ===
+
+    // Perjalanan Dinas
+    Route::prefix('pengajuan/perjalanan-dinas')->group(function () {
+        Route::get('/create', [BusinessTripController::class, 'create']);
+        Route::post('/', [BusinessTripController::class, 'store']);
+        Route::put('/{businessTrip}', [BusinessTripController::class, 'update']);
+        Route::get('/{businessTrip}/penyelesaian', [BusinessTripSettlementController::class, 'create']);
+        Route::post('/{businessTrip}/penyelesaian', [BusinessTripSettlementController::class, 'store']);
+        Route::post('/{businessTrip}/attachments', [BusinessTripAttachmentController::class, 'store']);
+    });
+    Route::middleware('role:hrd_finance')->group(function () {
+        Route::post('/pengajuan/perjalanan-dinas/{businessTrip}/settlement/{settlement}/verify', [BusinessTripSettlementController::class, 'verify']);
+    });
+
+    // Reimburse Meeting/Transport (reuse ReimbursementController, kategori khusus)
+    Route::get('/pengajuan/reimburse-meeting/create', [ReimbursementController::class, 'create'])
+        ->defaults('context', 'meeting');
+    Route::middleware('role:hrd_finance')->group(function () {
+        Route::post('/pengajuan/reimbursement/{reimbursement}/verify', [ReimbursementVerificationController::class, 'verify']);
+    });
+
+    // Pembayaran Bulanan Rutin
+    Route::middleware('role:hrd_finance')->prefix('keuangan/tagihan-bulanan')->group(function () {
+        Route::get('/', [MonthlyBillPaymentController::class, 'index']);
+        Route::get('/{monthlyBillPayment}', [MonthlyBillPaymentController::class, 'show']);
+        Route::post('/{monthlyBillPayment}/submit', [MonthlyBillPaymentController::class, 'submit']);
+        Route::post('/{monthlyBillPayment}/approve', [MonthlyBillPaymentController::class, 'approve']);
+        Route::post('/{monthlyBillPayment}/pay', [MonthlyBillPaymentController::class, 'pay']);
+        Route::post('/{monthlyBillPayment}/attachments', [MonthlyBillAttachmentController::class, 'store']);
+    });
+
+    // Kas Operasional (Transaksi, Saldo, Laporan)
+    Route::middleware('role:hrd_finance')->prefix('keuangan/kas-operasional')->group(function () {
+        Route::get('/', [CashAccountController::class, 'dashboard']);        // saldo
+        Route::get('/transaksi', [CashTransactionController::class, 'index']);
+        Route::post('/transaksi', [CashTransactionController::class, 'store']);
+        Route::post('/transaksi/{cashTransaction}/approve', [CashTransactionController::class, 'approve']);
+        Route::get('/laporan', [CashTransactionController::class, 'report']);
+        Route::get('/laporan/export', [CashTransactionController::class, 'exportReport']);
+    });
+
+    // === Modul Invoicing (Pendapatan) ===
+    Route::middleware('role:hrd_finance|admin')->prefix('invoicing')->group(function () {
+        Route::resource('customers', CustomerController::class);
+        Route::resource('invoices', InvoiceController::class);
+        Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'downloadPdf']);
+        Route::post('/invoices/{invoice}/send', [InvoiceController::class, 'send']);
+        Route::post('/invoices/{invoice}/payments', [InvoicePaymentController::class, 'store']);
+        Route::get('/invoices/{invoice}/reminders', [InvoiceReminderController::class, 'index']);
+        Route::post('/invoices/{invoice}/reminders', [InvoiceReminderController::class, 'store']);
+        Route::get('/laporan-pendapatan', [InvoiceReportController::class, 'index']);
+    });
+
+    // === Modul Renewal Webpraktis (Pendapatan) ===
+    Route::middleware('role:hrd_finance|admin')->prefix('renewal')->group(function () {
+        Route::resource('vendors', VendorController::class);
+        Route::resource('domains', DomainController::class);
+        Route::get('/domains/{domain}/renewals', [RenewalRequestController::class, 'index']);
+        Route::get('/renewals/{renewalRequest}', [RenewalRequestController::class, 'show']);
+        Route::post('/renewals/{renewalRequest}/invoice', [RenewalRequestController::class, 'generateInvoice']);
+        Route::post('/renewals/{renewalRequest}/vendor-payment', [RenewalVendorPaymentController::class, 'store']);
+        Route::post('/renewals/{renewalRequest}/complete', [RenewalRequestController::class, 'complete']);
+        Route::get('/reminders', [RenewalReminderController::class, 'index']);
+        Route::get('/laporan', [RenewalReportController::class, 'index']);
+    });
 });
 ```
 
@@ -643,6 +1178,27 @@ app/
 │   │   ├── SubmitLeaveAction.php
 │   │   ├── ApproveLeaveAction.php
 │   │   └── CalculateLeaveDaysAction.php
+│   ├── BusinessTrip/
+│   │   ├── SubmitBusinessTripAction.php
+│   │   ├── SubmitBusinessTripSettlementAction.php
+│   │   ├── VerifyBusinessTripSettlementAction.php
+│   │   └── CalculateSettlementDifferenceAction.php
+│   ├── CashOperational/
+│   │   ├── RecordCashTransactionAction.php     (dipanggil Observer saat status jadi paid/settled)
+│   │   └── UpdateCashBalanceAction.php
+│   ├── MonthlyBill/
+│   │   ├── GenerateMonthlyBillDraftAction.php   (dijalankan scheduler awal bulan)
+│   │   └── ProcessMonthlyBillPaymentAction.php
+│   ├── Invoicing/
+│   │   ├── CreateInvoiceAction.php
+│   │   ├── RecordInvoicePaymentAction.php
+│   │   ├── GenerateInvoicePdfAction.php
+│   │   └── ScheduleInvoiceReminderAction.php
+│   ├── Renewal/
+│   │   ├── DetectUpcomingExpirationAction.php   (dijalankan scheduler harian)
+│   │   ├── GenerateRenewalInvoiceAction.php
+│   │   ├── ProcessVendorPaymentAction.php
+│   │   └── CompleteRenewalAction.php
 │   └── Shared/
 │       ├── GenerateRequestNumberAction.php
 │       └── RecordStatusHistoryAction.php
@@ -666,10 +1222,34 @@ app/
 │   │       ├── LeaveTypeController.php
 │   │       ├── LeaveBalanceController.php
 │   │       └── ReportController.php
+│   │   ├── BusinessTripController.php
+│   │   ├── BusinessTripSettlementController.php
+│   │   ├── ReimbursementVerificationController.php
+│   │   ├── MonthlyBillPaymentController.php
+│   │   ├── CashAccountController.php
+│   │   ├── CashTransactionController.php
+│   │   ├── CustomerController.php
+│   │   ├── InvoiceController.php
+│   │   ├── InvoicePaymentController.php
+│   │   ├── InvoiceReminderController.php
+│   │   ├── InvoiceReportController.php
+│   │   ├── VendorController.php
+│   │   ├── DomainController.php
+│   │   ├── RenewalRequestController.php
+│   │   ├── RenewalVendorPaymentController.php
+│   │   ├── RenewalReminderController.php
+│   │   └── RenewalReportController.php
 │   ├── Requests/
 │   │   ├── StoreReimbursementRequest.php
 │   │   ├── StoreOperationalRequest.php
 │   │   ├── StoreLeaveRequest.php
+│   │   ├── StoreBusinessTripRequest.php
+│   │   ├── StoreBusinessTripSettlementRequest.php
+│   │   ├── StoreMonthlyBillPaymentRequest.php
+│   │   ├── StoreCashTransactionRequest.php
+│   │   ├── StoreInvoiceRequest.php
+│   │   ├── StoreDomainRequest.php
+│   │   ├── StoreRenewalRequest.php
 │   │   ├── ApprovalActionRequest.php
 │   │   └── ...
 │   └── Middleware/
@@ -687,7 +1267,24 @@ app/
 │   ├── LeaveRequest.php
 │   ├── Attachment.php
 │   ├── Approval.php
-│   └── StatusHistory.php
+│   ├── StatusHistory.php
+│   ├── BusinessTripRequest.php
+│   ├── BusinessTripSettlement.php
+│   ├── BusinessTripExpenseItem.php
+│   ├── MonthlyBillType.php
+│   ├── MonthlyBillPayment.php
+│   ├── CashAccount.php
+│   ├── CashTransaction.php
+│   ├── Customer.php
+│   ├── Invoice.php
+│   ├── InvoiceItem.php
+│   ├── InvoicePayment.php
+│   ├── InvoiceReminder.php
+│   ├── Vendor.php
+│   ├── Domain.php
+│   ├── RenewalRequest.php
+│   ├── VendorPayment.php
+│   └── RenewalReminder.php
 │
 ├── Policies/
 │   ├── ReimbursementPolicy.php
@@ -706,7 +1303,11 @@ app/
 │   └── LeaveObserver.php
 │
 ├── Console/Commands/
-│   └── CompleteFinishedRequestsCommand.php  (scheduler: auto set "Selesai")
+│   ├── CompleteFinishedRequestsCommand.php     (scheduler: auto set "Selesai")
+│   ├── GenerateMonthlyBillDraftsCommand.php    (scheduler: awal bulan, buat draft tagihan rutin)
+│   ├── DetectUpcomingRenewalsCommand.php       (scheduler harian: cek domain mendekati expired)
+│   ├── SendInvoiceRemindersCommand.php         (scheduler harian: kirim reminder invoice)
+│   └── MarkOverdueInvoicesCommand.php          (scheduler harian: set status "overdue")
 │
 └── Enums/
     ├── RequestStatus.php   (Draft, Submitted, Approved, Rejected, Paid, Completed)
@@ -730,13 +1331,34 @@ resources/
     │   ├── Approval/
     │   │   ├── Index.vue
     │   │   └── Show.vue
-    │   └── Admin/
-    │       ├── Users/Index.vue
-    │       ├── Divisions/Index.vue
-    │       ├── ExpenseTypes/Index.vue
-    │       ├── ActivityTypes/Index.vue
-    │       ├── LeaveTypes/Index.vue
-    │       └── Reports/Index.vue
+    │   ├── Admin/
+    │   │   ├── Users/Index.vue
+    │   │   ├── Divisions/Index.vue
+    │   │   ├── ExpenseTypes/Index.vue
+    │   │   ├── ActivityTypes/Index.vue
+    │   │   ├── LeaveTypes/Index.vue
+    │   │   └── Reports/Index.vue
+    │   ├── PerjalananDinas/
+    │   │   ├── Create.vue
+    │   │   └── Penyelesaian.vue
+    │   ├── Keuangan/
+    │   │   ├── TagihanBulanan/Index.vue
+    │   │   └── KasOperasional/
+    │   │       ├── Dashboard.vue
+    │   │       ├── Transaksi.vue
+    │   │       └── Laporan.vue
+    │   ├── Invoicing/
+    │   │   ├── Customers/Index.vue
+    │   │   ├── Invoices/Index.vue
+    │   │   ├── Invoices/Create.vue
+    │   │   ├── Invoices/Show.vue
+    │   │   └── LaporanPendapatan.vue
+    │   └── Renewal/
+    │       ├── Domains/Index.vue
+    │       ├── Domains/Create.vue
+    │       ├── Renewals/Show.vue
+    │       ├── Reminders/Index.vue
+    │       └── Laporan.vue
     ├── Components/
     │   ├── StatusBadge.vue
     │   ├── Stepper.vue
@@ -782,6 +1404,12 @@ database/
 | Pembayaran diproses | Karyawan pengaju | Database + Email |
 | Cuti otomatis selesai | Karyawan pengaju | Database |
 | Kuota cuti hampir habis (opsional) | Karyawan | Database |
+| Perjalanan dinas disetujui / perlu diselesaikan | Karyawan pengaju | Database + Email |
+| Penyelesaian perjalanan dinas perlu diverifikasi | Finance | Database + Email |
+| Tagihan bulanan mendekati jatuh tempo (H-3) | Finance | Database + Email |
+| Invoice mendekati/lewat jatuh tempo | Sales/Finance + Customer (opsional) | Database + Email |
+| Domain/hosting mendekati expired (H-30/H-14/H-7) | Sales/Finance + Customer (opsional) | Database + Email |
+| Renewal selesai diproses | Sales/Admin | Database |
 
 ### 10.2 Struktur Notifikasi (contoh)
 ```php
@@ -819,12 +1447,28 @@ class RequestApprovedNotification extends Notification
 ```php
 // app/Console/Kernel.php
 $schedule->command('requests:complete-finished')->daily();
+$schedule->command('bills:generate-monthly-drafts')->monthlyOn(1, '01:00');   // tgl 1 tiap bulan
+$schedule->command('renewals:detect-upcoming')->daily();
+$schedule->command('invoices:send-reminders')->daily();
+$schedule->command('invoices:mark-overdue')->daily();
 ```
 
 **`CompleteFinishedRequestsCommand`** bertugas:
 1. Set status `completed` pada `leave_requests` yang `end_date` sudah lewat dan status masih `approved`.
 2. Set status `completed` pada `reimbursement_requests`/`operational_requests` yang sudah `paid` lebih dari N hari (mis. 3 hari) — sesuai definisi bisnis "Selesai" pada kartu ringkasan.
 3. Update `leave_balances.used` & `remaining` setelah cuti disetujui.
+
+**`GenerateMonthlyBillDraftsCommand`** bertugas:
+- Membuat draft `monthly_bill_payments` untuk periode bulan berjalan dari setiap `monthly_bill_types` aktif, lalu kirim notifikasi ke Finance.
+
+**`DetectUpcomingRenewalsCommand`** bertugas:
+- Cek `domains` dengan `expired_date` mendekati H-30/H-14/H-7 → buat `renewal_requests` (jika belum ada) & `renewal_reminders`, kirim notifikasi.
+
+**`SendInvoiceRemindersCommand`** bertugas:
+- Kirim reminder untuk `invoice_reminders` berstatus `scheduled` yang `reminder_date` = hari ini.
+
+**`MarkOverdueInvoicesCommand`** bertugas:
+- Set status `overdue` pada `invoices` yang `due_date` sudah lewat dan `status` masih `sent`/`partial`.
 
 ---
 
@@ -866,6 +1510,23 @@ $schedule->command('requests:complete-finished')->daily();
 23. Optimisasi query dashboard (eager loading, caching ringkasan).
 24. Responsive check & polish UI sesuai mockup (warna badge, ikon, dsb).
 
+### Fase 7 — Modul Kas Operasional (Perluasan)
+25. Migration & model: `cash_accounts`, `cash_transactions`, `business_trip_requests`, `business_trip_settlements`, `business_trip_expense_items`, `monthly_bill_types`, `monthly_bill_payments`.
+26. Tambahkan kolom verifikasi (`verified_by`, `verified_at`, `verification_notes`) ke `reimbursement_requests` + tambahkan kategori Meeting/Transport ke `expense_types`.
+27. Bangun form 2-tahap Perjalanan Dinas (Pengajuan → Penyelesaian) + kalkulasi selisih uang muka.
+28. Bangun modul Pembayaran Bulanan Rutin + scheduler `GenerateMonthlyBillDraftsCommand`.
+29. Bangun modul Kas Operasional (dashboard saldo, form transaksi manual, laporan kas) + Observer yang otomatis mencatat `cash_transactions` dari sub-modul lain saat status `paid`/`settled`.
+30. Testing integrasi: pastikan saldo kas konsisten antar sub-modul (idempotent, tidak double-count).
+
+### Fase 8 — Modul Invoicing & Renewal Webpraktis (Pendapatan)
+31. Migration & model: `customers`, `invoices`, `invoice_items`, `invoice_payments`, `invoice_reminders`, `vendors`, `domains`, `renewal_requests`, `vendor_payments`, `renewal_reminders`.
+32. Bangun modul Customer & Invoice (CRUD customer, buat invoice, generate PDF, catat pembayaran).
+33. Implementasi `ScheduleInvoiceReminderAction` + scheduler `SendInvoiceRemindersCommand` & `MarkOverdueInvoicesCommand`.
+34. Bangun modul Domain/Hosting & Renewal (CRUD domain, proses renewal 2 arah: invoice customer + pembayaran vendor).
+35. Implementasi `DetectUpcomingRenewalsCommand` (H-30/H-14/H-7) + halaman Reminder Jatuh Tempo.
+36. Bangun Laporan Pendapatan (Invoicing) & Laporan Renewal (margin customer vs vendor, riwayat perpanjangan).
+37. Testing end-to-end: alur renewal dari deteksi expired → invoice → pembayaran customer → pembayaran vendor → completed.
+
 ---
 
 ## 14. Mapping Warna & Ikon Status (Sesuai Mockup)
@@ -883,11 +1544,54 @@ $schedule->command('requests:complete-finished')->daily();
 - Konsumsi/Operasional → Oranye (`orange-500`), ikon makan (`utensils`).
 - Cuti Karyawan → Ungu (`purple-600`), ikon kalender (`calendar`).
 
+**Status tambahan (Modul Kas Operasional, Invoicing, Renewal):**
+
+| Status | Warna Badge | Konteks |
+|---|---|---|
+| Ongoing | Biru muda (`bg-sky-100 text-sky-700`) | Perjalanan dinas sedang berlangsung |
+| Diverifikasi | Ungu muda (`bg-purple-100 text-purple-700`) | Reimburse/settlement sudah diverifikasi Finance |
+| Settled | Abu-abu (`bg-gray-100 text-gray-700`) | Penyelesaian perjalanan dinas selesai |
+| Draft | Abu-abu terang (`bg-gray-50 text-gray-500`) | Invoice/transaksi belum difinalisasi |
+| Sent | Biru (`bg-blue-100 text-blue-700`) | Invoice terkirim ke customer |
+| Partial | Kuning (`bg-yellow-100 text-yellow-700`) | Invoice dibayar sebagian |
+| Paid | Hijau (`bg-green-100 text-green-700`) | Invoice lunas |
+| Overdue | Merah (`bg-red-100 text-red-700`) | Invoice lewat jatuh tempo, belum lunas |
+| Expiring Soon | Oranye (`bg-orange-100 text-orange-700`) | Domain/hosting mendekati expired |
+| Expired | Merah (`bg-red-100 text-red-700`) | Domain/hosting sudah expired |
+
 ---
 
-## 15. Catatan Akhir untuk AI Agentic
+## 16. Ringkasan Modul, Form, Dokumen & Output (Referensi Cepat)
+
+Tabel berikut merangkum seluruh modul tambahan sebagai referensi cepat (detail teknis lengkap masing-masing sudah dijabarkan di Bagian 4.4 untuk struktur data dan Bagian 5.5 untuk alur bisnis).
+
+| Modul | Sub Modul | Form yang Dibutuhkan | Dokumen/Lampiran | Output |
+|---|---|---|---|---|
+| **Kas Operasional** | Perjalanan Dinas | Form Pengajuan Perjalanan Dinas, Form Penyelesaian Perjalanan Dinas | Surat Tugas (jika ada), Tiket, Boarding Pass, Invoice Hotel, Struk BBM/Tol/Parkir, Nota Makan, Laporan Perjalanan | Rekap Perjalanan Dinas, Laporan Biaya |
+| | Reimburse (Meeting, Transport, dll) | Form Pengajuan Reimburse, Form Verifikasi Reimburse | Nota, Invoice, Struk Pembayaran, Dokumentasi (Opsional) | Rekap Reimburse, Status Pembayaran |
+| | Pembayaran Bulanan Rutin | Form Pembayaran Tagihan Bulanan | Invoice/Tagihan (Listrik, Internet, Parkir, dll), Bukti Transfer, Bukti Pembayaran | Riwayat Pembayaran, Laporan Pengeluaran Bulanan |
+| | Kas Operasional | Form Transaksi Kas, Form Saldo Kas, Form Laporan Kas | Nota/Kwitansi, Invoice Vendor, Bukti Transfer, Struk Pembayaran | Saldo Kas, Riwayat Transaksi, Laporan Kas |
+| **Invoicing (Pendapatan)** | Customer & Invoice | Form Customer, Form Invoice, Form Pembayaran Invoice, Form Reminder/Follow Up | PO/SPK (jika ada), Invoice, Faktur Pajak (jika ada), Berita Acara (jika ada), Bukti Pembayaran Customer | Invoice PDF, Status Pembayaran, Reminder Jatuh Tempo, Laporan Pendapatan |
+| **Renewal Webpraktis (Pendapatan)** | Domain & Hosting | Form Customer, Form Domain/Hosting, Form Renewal, Form Invoice Renewal, Form Pembayaran Customer, Form Pembayaran Vendor, Form Reminder | Invoice Vendor, Invoice Customer, Bukti Pembayaran Customer, Bukti Pembayaran Vendor, Bukti Renewal Domain/Hosting, Informasi Tanggal Expired Baru | Status Renewal, Reminder Jatuh Tempo, Laporan Renewal, Riwayat Perpanjangan |
+
+**Pemetaan ke tabel database (lihat Bagian 4.4 untuk kolom lengkap):**
+
+| Sub Modul | Tabel Utama |
+|---|---|
+| Perjalanan Dinas | `business_trip_requests`, `business_trip_settlements`, `business_trip_expense_items` |
+| Reimburse (Meeting, Transport, dll) | `reimbursement_requests` (reuse, + kolom verifikasi) |
+| Pembayaran Bulanan Rutin | `monthly_bill_types`, `monthly_bill_payments` |
+| Kas Operasional | `cash_accounts`, `cash_transactions` |
+| Invoicing | `customers`, `invoices`, `invoice_items`, `invoice_payments`, `invoice_reminders` |
+| Renewal Webpraktis | `vendors`, `domains`, `renewal_requests`, `vendor_payments`, `renewal_reminders` |
+
+---
+
+## 17. Catatan Akhir untuk AI Agentic
 
 - Bangun **Fase 1 & 2 dahulu** secara end-to-end untuk 1 modul (Reimbursement) sebagai *reference implementation*, baru replikasi pola yang sama ke 2 modul lainnya (Konsumsi/Operasional, Cuti) — karena ketiganya punya struktur sangat mirip (form 3 step, approval, attachment).
-- Gunakan **satu set komponen Vue reusable** (`FormWizard`, `Stepper`, `FileUploader`, `StatusBadge`) agar konsisten dan efisien dalam development.
+- Gunakan **satu set komponen Vue reusable** (`FormWizard`, `Stepper`, `FileUploader`, `StatusBadge`) agar konsisten dan efisien dalam development, termasuk untuk modul tambahan di Fase 7 & 8.
 - Semua nama tabel, kolom, dan status di dokumen ini adalah **saran/konvensi** — dapat disesuaikan asal konsisten dipakai di seluruh layer (migration → model → controller → frontend).
 - Prioritaskan **Policy & role middleware** sejak awal (jangan ditunda ke akhir) untuk menghindari refactor besar terkait otorisasi.
+- **Urutan pengerjaan modul tambahan yang disarankan:** (1) Kas Operasional dasar (`cash_accounts`, `cash_transactions`) dibangun **lebih dulu** karena menjadi tempat pencatatan otomatis dari 3 sub-modul lain; (2) Reimburse Meeting (reuse modul existing, tambah verifikasi) → paling cepat; (3) Pembayaran Bulanan Rutin; (4) Perjalanan Dinas (paling kompleks karena 2 tahap + kalkulasi selisih); (5) Invoicing; (6) Renewal Webpraktis (paling kompleks karena melibatkan 2 arah transaksi — customer & vendor).
+- Modul **Invoicing** dan **Renewal Webpraktis** adalah modul **pendapatan**, secara konsep terpisah dari modul pengeluaran (ESS + Kas Operasional) — pastikan role & menu navigasi di sidebar dikelompokkan terpisah (mis. grup menu "Keuangan - Pengeluaran" vs "Keuangan - Pendapatan") agar tidak membingungkan pengguna non-finance.

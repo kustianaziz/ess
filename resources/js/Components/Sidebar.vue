@@ -16,7 +16,8 @@ import {
   Users,
   Building2,
   Scale,
-  BarChart3
+  BarChart3,
+  Plane
 } from 'lucide-vue-next';
 
 const page = usePage();
@@ -100,6 +101,15 @@ const isHrdOrAdmin = computed(() => {
             >
               <Calendar class="w-4 h-4 text-purple-400" />
               <span>Cuti</span>
+            </Link>
+
+            <Link
+              :href="route('pengajuan.perjalanan-dinas.create')"
+              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="isCurrentRoute('pengajuan.perjalanan-dinas') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+            >
+              <Plane class="w-4 h-4 text-sky-400" />
+              <span>Perjalanan Dinas</span>
             </Link>
           </div>
         </div>

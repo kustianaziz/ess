@@ -108,12 +108,46 @@ class RequestHistoryController extends Controller
                     'type_label' => 'Cuti Karyawan',
                     'request_number' => $item->request_number,
                     'category' => $item->leaveType?->name ?? 'Cuti',
-                    'date' => "{$item->start_date->format('d M')} - {$item->end_date->format('d M Y')} ({$item->total_days} hari)",
-                    'amount' => null,
+                    'date' => $item->start_date->format('Y-m-d'),
+                    'amount' => (float) $item->total_days,
                     'status' => $item->status->value,
                     'status_label' => $item->status->label(),
                     'status_color' => $item->status->colorClass(),
                     'created_at' => $item->created_at->format('Y-m-d H:i'),
+                ]);
+            }
+        }
+
+        // 4. Perjalanan Dinas
+        if (!$typeFilter || $typeFilter === 'perjalanan-dinas') {
+            $query = \App\Models\BusinessTripRequest::with(['user.division', 'settlement'])
+                ->where('user_id', $user->id);
+
+            if ($statusFilter) {
+                $query->where('status', $statusFilter);
+            }
+            if ($search) {
+                $query->where(function($q) use ($search) {
+                    $q->where('request_number', 'like', "%{$search}%")
+                      ->orWhere('destination', 'like', "%{$search}%")
+                      ->orWhere('purpose', 'like', "%{$search}%");
+                });
+            }
+
+            foreach ($query->get() as $item) {
+                $requestsCollection->push([
+                    'id' => $item->id,
+                    'type' => 'perjalanan-dinas',
+                    'type_label' => 'Perjalanan Dinas',
+                    'request_number' => $item->request_number,
+                    'category' => 'Dinas Ke ' . $item->destination,
+                    'date' => $item->start_date->format('Y-m-d'),
+                    'amount' => (float) $item->estimated_budget,
+                    'status' => $item->status->value,
+                    'status_label' => $item->status->label(),
+                    'status_color' => $item->status->colorClass(),
+                    'created_at' => $item->created_at->format('Y-m-d H:i'),
+                    'has_settlement' => (bool) $item->settlement,
                 ]);
             }
         }
@@ -233,6 +267,49 @@ class RequestHistoryController extends Controller
                 'status_histories' => $item->statusHistories,
                 'created_at' => $item->created_at->translatedFormat('d F Y H:i'),
             ];
+        } elseif ($type === 'perjalanan-dinas') {
+            $item = \App\Models\BusinessTripRequest::with(['user.division', 'attachments', 'approvals.approver', 'statusHistories.changedBy', 'settlement.expenseItems'])
+                ->findOrFail($id);
+            $requestData = [
+                'id' => $item->id,
+                'type' => 'perjalanan-dinas',
+                'type_label' => 'Perjalanan Dinas',
+                'request_number' => $item->request_number,
+                'applicant' => [
+                    'name' => $item->user->name,
+                    'nik' => $item->user->nik,
+                    'division' => $item->user->division?->name ?? '-',
+                    'position' => $item->user->position ?? '-',
+                ],
+                'details' => [
+                    'Kota / Tujuan' => $item->destination,
+                    'Tujuan Kegiatan' => $item->purpose,
+                    'Tanggal Berangkat' => $item->start_date->translatedFormat('d F Y'),
+                    'Tanggal Kembali' => $item->end_date->translatedFormat('d F Y'),
+                    'Moda Transportasi' => $item->transportation_type ?? 'Pesawat / Kendaraan Umum',
+                    'No. Surat Tugas' => $item->assignment_letter_number ?? '-',
+                    'Estimasi Uang Muka' => 'Rp ' . number_format($item->estimated_budget, 0, ',', '.'),
+                ],
+                'settlement' => $item->settlement ? [
+                    'id' => $item->settlement->id,
+                    'settlement_number' => $item->settlement->settlement_number,
+                    'total_actual_cost' => 'Rp ' . number_format($item->settlement->total_actual_cost, 0, ',', '.'),
+                    'advance_amount' => 'Rp ' . number_format($item->settlement->advance_amount, 0, ',', '.'),
+                    'difference_amount' => ($item->settlement->difference_amount >= 0 ? '+ Rp ' : '- Rp ') . number_format(abs($item->settlement->difference_amount), 0, ',', '.'),
+                    'difference_raw' => $item->settlement->difference_amount,
+                    'trip_report' => $item->settlement->trip_report,
+                    'status' => $item->settlement->status,
+                    'expense_items' => $item->settlement->expenseItems,
+                ] : null,
+                'status' => $item->status->value,
+                'status_label' => $item->status->label(),
+                'status_color' => $item->status->colorClass(),
+                'rejected_reason' => $item->rejected_reason,
+                'attachments' => $item->attachments,
+                'approvals' => $item->approvals,
+                'status_histories' => $item->statusHistories,
+                'created_at' => $item->created_at->translatedFormat('d F Y H:i'),
+            ];
         }
 
         $currentUser = request()->user();
@@ -271,6 +348,7 @@ class RequestHistoryController extends Controller
             'reimbursement' => ReimbursementRequest::findOrFail($id),
             'operasional' => OperationalRequest::findOrFail($id),
             'cuti' => LeaveRequest::findOrFail($id),
+            'perjalanan-dinas' => \App\Models\BusinessTripRequest::findOrFail($id),
             default => abort(404),
         };
 

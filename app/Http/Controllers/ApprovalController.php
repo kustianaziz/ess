@@ -70,6 +70,7 @@ class ApprovalController extends Controller
                 ReimbursementRequest::class => 'reimbursement',
                 OperationalRequest::class => 'operasional',
                 LeaveRequest::class => 'cuti',
+                \App\Models\BusinessTripRequest::class => 'perjalanan-dinas',
                 default => 'unknown',
             };
 
@@ -77,6 +78,7 @@ class ApprovalController extends Controller
                 'reimbursement' => 'Reimbursement Karyawan',
                 'operasional' => 'Konsumsi / Operasional',
                 'cuti' => 'Cuti Karyawan',
+                'perjalanan-dinas' => 'Perjalanan Dinas',
                 default => 'Pengajuan',
             };
 
@@ -266,6 +268,7 @@ class ApprovalController extends Controller
                 'reimbursement' => ReimbursementRequest::class,
                 'operasional' => OperationalRequest::class,
                 'cuti' => LeaveRequest::class,
+                'perjalanan-dinas' => \App\Models\BusinessTripRequest::class,
                 default => null,
             };
             if ($modelClass) {
@@ -292,7 +295,7 @@ class ApprovalController extends Controller
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
-                $q->whereHasMorph('approvable', [ReimbursementRequest::class, OperationalRequest::class, LeaveRequest::class], function($mq) use ($search) {
+                $q->whereHasMorph('approvable', [ReimbursementRequest::class, OperationalRequest::class, LeaveRequest::class, \App\Models\BusinessTripRequest::class], function($mq) use ($search) {
                     $mq->where('request_number', 'like', "%{$search}%")
                        ->orWhereHas('user', function($uq) use ($search) {
                            $uq->where('name', 'like', "%{$search}%");
@@ -319,6 +322,7 @@ class ApprovalController extends Controller
                 ReimbursementRequest::class => 'reimbursement',
                 OperationalRequest::class => 'operasional',
                 LeaveRequest::class => 'cuti',
+                \App\Models\BusinessTripRequest::class => 'perjalanan-dinas',
                 default => 'unknown',
             };
 
@@ -326,6 +330,7 @@ class ApprovalController extends Controller
                 'reimbursement' => 'Reimbursement',
                 'operasional' => 'Konsumsi / Operasional',
                 'cuti' => 'Cuti Karyawan',
+                'perjalanan-dinas' => 'Perjalanan Dinas',
                 default => 'Pengajuan',
             };
 
@@ -478,6 +483,7 @@ class ApprovalController extends Controller
             'reimbursement' => ReimbursementRequest::findOrFail($id),
             'operasional' => OperationalRequest::findOrFail($id),
             'cuti' => LeaveRequest::findOrFail($id),
+            'perjalanan-dinas' => \App\Models\BusinessTripRequest::findOrFail($id),
             default => abort(404),
         };
     }
