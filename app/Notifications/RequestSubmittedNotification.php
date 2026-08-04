@@ -33,6 +33,7 @@ class RequestSubmittedNotification extends Notification
             'reimbursement' => 'Reimbursement',
             'operasional' => 'Konsumsi / Operasional',
             'cuti' => 'Cuti',
+            'perjalanan-dinas' => 'Perjalanan Dinas',
             default => 'Pengajuan',
         };
 

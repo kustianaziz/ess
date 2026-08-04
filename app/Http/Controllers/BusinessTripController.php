@@ -110,18 +110,18 @@ class BusinessTripController extends Controller
             if ($isSubmit) {
                 if ($user->manager) {
                     $user->manager->notify(new RequestSubmittedNotification(
-                        $trip->request_number,
                         'perjalanan-dinas',
-                        $user->name,
-                        $trip->id
+                        $trip->id,
+                        $trip->request_number,
+                        $user->name
                     ));
                 } else {
                     $hrdUsers = User::role('hrd_finance')->get();
                     Notification::send($hrdUsers, new RequestSubmittedNotification(
-                        $trip->request_number,
                         'perjalanan-dinas',
-                        $user->name,
-                        $trip->id
+                        $trip->id,
+                        $trip->request_number,
+                        $user->name
                     ));
                 }
             }
