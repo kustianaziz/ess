@@ -65,7 +65,7 @@ class BusinessTripController extends Controller
             $generateRequestNumber,
             $recordStatusHistory
         ) {
-            $requestNumber = $generateRequestNumber->execute('PD');
+            $requestNumber = $generateRequestNumber->execute('PD', 'business_trip_requests');
 
             $trip = BusinessTripRequest::create([
                 'request_number' => $requestNumber,
@@ -197,7 +197,7 @@ class BusinessTripController extends Controller
             $differenceAmount,
             $generateRequestNumber
         ) {
-            $settlementNumber = $generateRequestNumber->execute('PD-SL');
+            $settlementNumber = $generateRequestNumber->execute('PD-SL', 'business_trip_settlements');
 
             $settlement = BusinessTripSettlement::create([
                 'settlement_number' => $settlementNumber,
