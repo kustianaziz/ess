@@ -21,7 +21,7 @@ const rejectForm = useForm({
 });
 
 const goToDetail = (item) => {
-  router.visit(route('riwayat-pengajuan.show', { type: item.type, id: item.id }));
+  router.visit(route('riwayat-pengajuan.show', { type: item.type, id: item.id, from: 'approval' }));
 };
 
 const openApproveModal = (item) => {
@@ -138,7 +138,7 @@ const submitApproval = () => {
                 <td class="px-6 py-4 text-right" @click.stop>
                   <div class="flex items-center justify-end gap-2">
                     <Link
-                      :href="route('riwayat-pengajuan.show', { type: item.type, id: item.id })"
+                      :href="route('riwayat-pengajuan.show', { type: item.type, id: item.id, from: 'approval' })"
                       @click.stop
                       class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-900 text-slate-600 hover:text-white text-xs font-semibold flex items-center gap-1 transition-all"
                       title="Lihat Detail Rincian"

@@ -20,7 +20,7 @@ const endDate = ref(props.filters?.end_date || '');
 const unapproveItem = ref(null);
 
 const goToDetail = (item) => {
-  router.visit(route('riwayat-pengajuan.show', { type: item.type, id: item.id }));
+  router.visit(route('riwayat-pengajuan.show', { type: item.type, id: item.id, from: 'approval_history' }));
 };
 
 const applyFilters = () => {
@@ -276,7 +276,7 @@ watch(search, () => {
                 <td class="py-3.5 px-4 text-center" @click.stop>
                   <div class="flex items-center justify-center gap-1.5">
                     <Link
-                      :href="route('riwayat-pengajuan.show', { type: item.type, id: item.id })"
+                      :href="route('riwayat-pengajuan.show', { type: item.type, id: item.id, from: 'approval_history' })"
                       @click.stop
                       class="p-2 rounded-xl bg-slate-100 hover:bg-slate-900 text-slate-600 hover:text-white transition-all inline-flex items-center justify-center"
                       title="Lihat Detail Transaksi"

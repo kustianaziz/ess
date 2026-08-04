@@ -235,6 +235,29 @@ class RequestHistoryController extends Controller
             ];
         }
 
+        $currentUser = request()->user();
+        $canApprove = false;
+        $pendingApprovalLevel = null;
+
+        if ($currentUser && $requestData && $currentUser->id !== $item->user_id) {
+            if ($item->status->value === 'submitted') {
+                if ($item->user->manager_id === $currentUser->id || $currentUser->hasRole('admin') || $currentUser->hasRole('manager')) {
+                    $canApprove = true;
+                    $pendingApprovalLevel = 1;
+                }
+            } elseif ($item->status->value === 'level_1_approved') {
+                if ($currentUser->hasRole('hrd_finance') || $currentUser->hasRole('admin')) {
+                    $canApprove = true;
+                    $pendingApprovalLevel = 2;
+                }
+            }
+        }
+
+        if ($requestData) {
+            $requestData['can_approve'] = $canApprove;
+            $requestData['pending_approval_level'] = $pendingApprovalLevel;
+        }
+
         return Inertia::render('RiwayatPengajuan/Show', [
             'requestData' => $requestData,
         ]);
