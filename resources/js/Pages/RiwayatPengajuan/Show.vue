@@ -109,48 +109,44 @@ const submitApproval = () => {
         </div>
       </div>
 
-      <!-- APPROVAL ACTION CARD (Soft & Elegant Theme Matching Application Aesthetics) -->
+      <!-- APPROVAL ACTION CARD (Soft & Compact Light Indigo Logo Theme) -->
       <div
         v-if="requestData.can_approve"
-        class="bg-[#0F172A] border border-indigo-500/20 p-5 sm:p-6 rounded-2xl text-white shadow-xl shadow-slate-950/20 relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in"
+        class="bg-gradient-to-r from-indigo-50/90 via-slate-50 to-purple-50/80 border border-indigo-100 p-3.5 sm:p-5 rounded-2xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 animate-in fade-in"
       >
-        <!-- Subtle Decorative Ambient Glowing Orbs -->
-        <div class="absolute -top-12 -right-12 w-48 h-48 bg-indigo-600/15 rounded-full blur-2xl pointer-events-none"></div>
-        <div class="absolute -bottom-12 -left-12 w-48 h-48 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
-
-        <div class="relative z-10 flex items-start gap-3.5">
-          <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
-            <CheckSquare class="w-5 h-5 stroke-[2]" />
+        <div class="flex items-start gap-2.5 sm:gap-3.5">
+          <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-600/10 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5">
+            <CheckSquare class="w-4 h-4 sm:w-5 sm:h-5 stroke-[2]" />
           </div>
           <div>
             <div class="flex items-center gap-2 flex-wrap">
-              <h3 class="font-bold text-sm sm:text-base text-white tracking-tight">
+              <h3 class="font-bold text-xs sm:text-sm text-slate-900 tracking-tight">
                 Membutuhkan Persetujuan Anda
               </h3>
-              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wider">
                 Level {{ requestData.pending_approval_level }}
               </span>
             </div>
-            <p class="text-xs text-slate-400 mt-1 leading-relaxed">
-              Silakan periksa rincian pengajuan ini dan berikan keputusan persetujuan Anda.
+            <p class="text-[11px] sm:text-xs text-slate-500 mt-0.5 leading-snug">
+              Silakan periksa rincian pengajuan ini dan berikan keputusan Anda.
             </p>
           </div>
         </div>
 
-        <div class="relative z-10 flex items-center gap-2.5 self-stretch sm:self-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800/80">
+        <div class="flex items-center gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-indigo-100/70">
           <button
             @click="openApproveModal"
-            class="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white text-xs font-bold shadow-lg shadow-emerald-950/30 transition-all duration-200 flex items-center justify-center gap-1.5"
+            class="flex-1 sm:flex-initial px-4 py-2 sm:py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition-all flex items-center justify-center gap-1.5"
           >
-            <CheckCircle2 class="w-4 h-4" />
+            <CheckCircle2 class="w-3.5 h-3.5" />
             <span>Setujui</span>
           </button>
 
           <button
             @click="openRejectModal"
-            class="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-rose-950/60 text-rose-400 hover:text-rose-300 border border-slate-700 hover:border-rose-500/40 text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5"
+            class="flex-1 sm:flex-initial px-4 py-2 sm:py-2.5 rounded-xl bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-rose-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5"
           >
-            <XCircle class="w-4 h-4" />
+            <XCircle class="w-3.5 h-3.5" />
             <span>Tolak</span>
           </button>
         </div>
