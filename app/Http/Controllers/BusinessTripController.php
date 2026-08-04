@@ -42,6 +42,7 @@ class BusinessTripController extends Controller
     ): RedirectResponse {
         $validated = $request->validate([
             'destination' => 'required|string|max:255',
+            'target_institution' => 'nullable|string|max:255',
             'purpose' => 'required|string',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
@@ -71,6 +72,7 @@ class BusinessTripController extends Controller
                 'user_id' => $user->id,
                 'assignment_letter_number' => $validated['assignment_letter_number'] ?? null,
                 'destination' => $validated['destination'],
+                'target_institution' => $validated['target_institution'] ?? null,
                 'purpose' => $validated['purpose'],
                 'start_date' => $validated['start_date'],
                 'end_date' => $validated['end_date'],

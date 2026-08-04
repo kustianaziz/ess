@@ -283,6 +283,7 @@ class RequestHistoryController extends Controller
                 ],
                 'details' => [
                     'Kota / Tujuan' => $item->destination,
+                    'Instansi / Perusahaan Tujuan' => $item->target_institution ?? '-',
                     'Tujuan Kegiatan' => $item->purpose,
                     'Tanggal Berangkat' => $item->start_date->translatedFormat('d F Y'),
                     'Tanggal Kembali' => $item->end_date->translatedFormat('d F Y'),

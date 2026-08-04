@@ -19,6 +19,7 @@ class BusinessTripRequest extends Model
         'user_id',
         'assignment_letter_number',
         'destination',
+        'target_institution',
         'purpose',
         'start_date',
         'end_date',
