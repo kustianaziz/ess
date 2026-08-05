@@ -25,13 +25,63 @@ const form = useForm({
   description: ''
 });
 
-// Watch for type changes to automate normal_balance
+const generateCode = (type, parent_id) => {
+  const prefixMap = { aset: '1', hutang: '2', modal: '3', pendapatan: '4', beban: '5' };
+  
+  if (!parent_id) {
+    const roots = props.coas.filter(c => c.type === type && !c.parent_id);
+    if (roots.length === 0) return `${prefixMap[type]}.01`;
+    
+    let max = 0;
+    roots.forEach(r => {
+      const parts = r.code.split('.');
+      if (parts.length > 1) {
+        const num = parseInt(parts[1]);
+        if (!isNaN(num) && num > max) max = num;
+      }
+    });
+    return `${prefixMap[type]}.${String(max + 1).padStart(2, '0')}`;
+  } else {
+    const parent = props.coas.find(c => c.id === parent_id);
+    if (!parent) return '';
+    
+    const children = props.coas.filter(c => c.parent_id === parent_id);
+    if (children.length === 0) {
+      const parts = parent.code.split('.');
+      if (parts.length <= 2) {
+        return `${parent.code}.01`;
+      } else {
+        return `${parent.code}.001`;
+      }
+    } else {
+      let max = 0;
+      children.forEach(c => {
+        const parts = c.code.split('.');
+        const lastPart = parts[parts.length - 1];
+        const num = parseInt(lastPart);
+        if (!isNaN(num) && num > max) max = num;
+      });
+      
+      const parentParts = parent.code.split('.');
+      if (parentParts.length <= 2) {
+        return `${parent.code}.${String(max + 1).padStart(2, '0')}`;
+      } else {
+        return `${parent.code}.${String(max + 1).padStart(3, '0')}`;
+      }
+    }
+  }
+};
+
 import { watch } from 'vue';
-watch(() => form.type, (newType) => {
+watch([() => form.type, () => form.parent_id], ([newType, newParent]) => {
   if (['aset', 'beban'].includes(newType)) {
     form.normal_balance = 'debit';
   } else if (['hutang', 'modal', 'pendapatan'].includes(newType)) {
     form.normal_balance = 'credit';
+  }
+
+  if (!editingId.value) {
+    form.code = generateCode(newType, newParent);
   }
 });
 
@@ -49,6 +99,7 @@ const openModal = (coa = null) => {
   } else {
     editingId.value = null;
     form.reset();
+    form.code = generateCode(form.type, form.parent_id);
   }
   isModalOpen.value = true;
 };
@@ -58,11 +109,7 @@ const addSubCoa = (parentCoa) => {
   form.reset();
   form.parent_id = parentCoa.id;
   form.type = parentCoa.type;
-  if (['aset', 'beban'].includes(parentCoa.type)) {
-    form.normal_balance = 'debit';
-  } else {
-    form.normal_balance = 'credit';
-  }
+  // Watcher will automatically set code and normal_balance
   isModalOpen.value = true;
 };
 
@@ -193,7 +240,7 @@ const getParentOptions = computed(() => {
                       </span>
                     </td>
                     <td class="px-6 py-4">
-                      <div class="flex items-center justify-end gap-2 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                      <div class="flex items-center justify-end gap-2">
                         <button 
                           v-if="coa.is_header"
                           @click="addSubCoa(coa)"
