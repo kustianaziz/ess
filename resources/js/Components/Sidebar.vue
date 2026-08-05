@@ -25,7 +25,8 @@ import {
   Globe,
   Store,
   LineChart,
-  Archive
+  Archive,
+  CalendarClock
 } from 'lucide-vue-next';
 
 const page = usePage();
@@ -246,6 +247,22 @@ const isHrdOrAdmin = computed(() => {
             >
               <Archive class="w-4 h-4 text-emerald-400" />
               <span>Master Aset</span>
+            </Link>
+            <Link
+              :href="route('accounting.periods.index')"
+              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="isCurrentRoute('accounting.periods') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+            >
+              <CalendarClock class="w-4 h-4 text-amber-400" />
+              <span>Master Periode</span>
+            </Link>
+            <Link
+              :href="route('accounting.beginning-balances.index')"
+              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="isCurrentRoute('accounting.beginning-balances') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+            >
+              <Scale class="w-4 h-4 text-blue-400" />
+              <span>Neraca Awal</span>
             </Link>
           </div>
         </div>

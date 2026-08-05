@@ -102,6 +102,10 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('role:admin|hrd_finance')->prefix('accounting')->name('accounting.')->group(function () {
         Route::resource('coas', \App\Http\Controllers\Accounting\CoaController::class)->except(['create', 'show', 'edit']);
         Route::resource('assets', \App\Http\Controllers\Accounting\AssetController::class)->except(['create', 'show', 'edit']);
+        Route::resource('periods', \App\Http\Controllers\Accounting\AccountingPeriodController::class)->except(['create', 'show', 'edit']);
+        Route::post('periods/{period}/close', [\App\Http\Controllers\Accounting\AccountingPeriodController::class, 'closePeriod'])->name('periods.close');
+        Route::get('beginning-balances', [\App\Http\Controllers\Accounting\BeginningBalanceController::class, 'index'])->name('beginning-balances.index');
+        Route::post('beginning-balances', [\App\Http\Controllers\Accounting\BeginningBalanceController::class, 'store'])->name('beginning-balances.store');
     });
 
     // Executive dashboard route protected by role
