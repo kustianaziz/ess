@@ -93,6 +93,46 @@ const submitPayment = () => {
     }
   })
 }
+// Add Bill Type Modal
+const showAddTypeModal = ref(false)
+
+const typeForm = useForm({
+  name: '',
+  vendor_name: '',
+  default_amount: 0,
+  billing_day: 10,
+  cash_account_id: props.cashAccounts[0]?.id || ''
+})
+
+const rawTypeAmountInput = ref('')
+
+const handleTypeAmountInput = (e) => {
+  const value = e.target.value.replace(/\D/g, '')
+  typeForm.default_amount = value ? parseInt(value, 10) : 0
+  rawTypeAmountInput.value = value ? new Intl.NumberFormat('id-ID').format(value) : ''
+}
+
+const openAddTypeModal = () => {
+  typeForm.name = ''
+  typeForm.vendor_name = ''
+  typeForm.default_amount = 0
+  rawTypeAmountInput.value = ''
+  typeForm.billing_day = 10
+  typeForm.cash_account_id = props.cashAccounts[0]?.id || ''
+  showAddTypeModal.value = true
+}
+
+const submitBillType = () => {
+  if (!typeForm.name || !typeForm.default_amount || !typeForm.cash_account_id) {
+    alert('Mohon isi nama tagihan, estimasi nominal, dan akun kas pembayar.')
+    return
+  }
+  typeForm.post(route('keuangan.tagihan-bulanan.types.store'), {
+    onSuccess: () => {
+      showAddTypeModal.value = false
+    }
+  })
+}
 </script>
 
 <template>
@@ -100,7 +140,7 @@ const submitPayment = () => {
 
   <AuthenticatedLayout>
     <div class="py-6 sm:py-8 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-6">
-      <!-- HEADER & PERIOD FILTER -->
+      <!-- HEADER & PERIOD FILTER & ADD BUTTON -->
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div class="flex items-center gap-2">
@@ -116,23 +156,33 @@ const submitPayment = () => {
           </p>
         </div>
 
-        <!-- PERIOD SELECTOR -->
-        <div class="flex items-center gap-2 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
-          <Calendar class="w-4 h-4 text-slate-400 ml-1" />
-          <select
-            v-model="selectedMonth"
-            @change="changePeriod"
-            class="px-2 py-1 border-0 text-xs font-bold text-slate-800 focus:ring-0"
+        <div class="flex items-center gap-2 flex-wrap">
+          <!-- BUTTON ADD BILL TYPE -->
+          <button
+            @click="openAddTypeModal"
+            class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition-all flex items-center gap-1.5"
           >
-            <option v-for="m in monthsList" :key="m.value" :value="m.value">{{ m.label }}</option>
-          </select>
-          <select
-            v-model="selectedYear"
-            @change="changePeriod"
-            class="px-2 py-1 border-0 text-xs font-bold text-slate-800 focus:ring-0"
-          >
-            <option v-for="y in yearsList" :key="y" :value="y">{{ y }}</option>
-          </select>
+            <span>+ Tambah Jenis Tagihan</span>
+          </button>
+
+          <!-- PERIOD SELECTOR -->
+          <div class="flex items-center gap-2 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
+            <Calendar class="w-4 h-4 text-slate-400 ml-1" />
+            <select
+              v-model="selectedMonth"
+              @change="changePeriod"
+              class="px-2 py-1 border-0 text-xs font-bold text-slate-800 focus:ring-0"
+            >
+              <option v-for="m in monthsList" :key="m.value" :value="m.value">{{ m.label }}</option>
+            </select>
+            <select
+              v-model="selectedYear"
+              @change="changePeriod"
+              class="px-2 py-1 border-0 text-xs font-bold text-slate-800 focus:ring-0"
+            >
+              <option v-for="y in yearsList" :key="y" :value="y">{{ y }}</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -276,6 +326,76 @@ const submitPayment = () => {
               class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md transition-all"
             >
               Konfirmasi & Bayar Tagihan
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL ADD BILL TYPE -->
+    <div v-if="showAddTypeModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h3 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+            <span class="p-1.5 rounded-lg bg-indigo-100 text-indigo-600">
+              <Zap class="w-4 h-4" />
+            </span>
+            <span>Tambah Jenis Tagihan Bulanan Baru</span>
+          </h3>
+          <button @click="showAddTypeModal = false" class="text-slate-400 hover:text-slate-600 text-sm font-bold">✕</button>
+        </div>
+
+        <form @submit.prevent="submitBillType" class="space-y-4 text-xs">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Nama Tagihan <span class="text-rose-500">*</span></label>
+            <input v-model="typeForm.name" type="text" placeholder="Contoh: Sewa Server AWS Cloud / Zoom Meeting" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 font-semibold" />
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Nama Vendor / Penyedia (Opsional)</label>
+            <input v-model="typeForm.vendor_name" type="text" placeholder="Contoh: Amazon Web Services / Telkom / Gedung" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 font-medium" />
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Estimasi Nominal Tagihan (Rp) <span class="text-rose-500">*</span></label>
+            <div class="relative">
+              <span class="absolute left-3 top-2 font-bold text-slate-400">Rp</span>
+              <input
+                :value="rawTypeAmountInput"
+                @input="handleTypeAmountInput"
+                type="text"
+                placeholder="0"
+                class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 font-bold text-slate-900"
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Jatuh Tempo Tanggal <span class="text-rose-500">*</span></label>
+              <select v-model="typeForm.billing_day" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 font-semibold">
+                <option v-for="day in 28" :key="day" :value="day">Setiap Tgl {{ day }}</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Default Akun Kas <span class="text-rose-500">*</span></label>
+              <select v-model="typeForm.cash_account_id" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 font-semibold">
+                <option v-for="acc in cashAccounts" :key="acc.id" :value="acc.id">
+                  {{ acc.name }}
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+            <button type="button" @click="showAddTypeModal = false" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold">Batal</button>
+            <button
+              type="submit"
+              :disabled="typeForm.processing"
+              class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md transition-all"
+            >
+              Simpan Jenis Tagihan
             </button>
           </div>
         </form>

@@ -89,6 +89,7 @@ Route::middleware(['auth'])->group(function () {
 
         // Tagihan Bulanan Rutin
         Route::get('/tagihan-bulanan', [\App\Http\Controllers\MonthlyBillController::class, 'index'])->name('tagihan-bulanan.index');
+        Route::post('/tagihan-bulanan/types', [\App\Http\Controllers\MonthlyBillController::class, 'storeBillType'])->name('tagihan-bulanan.types.store');
         Route::post('/tagihan-bulanan/{id}/pay', [\App\Http\Controllers\MonthlyBillController::class, 'pay'])->name('tagihan-bulanan.pay');
     });
 
