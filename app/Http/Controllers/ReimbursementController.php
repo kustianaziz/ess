@@ -91,21 +91,9 @@ class ReimbursementController extends Controller
                 $isDraft ? 'Pengajuan disimpan sebagai draf.' : 'Pengajuan dikirim untuk persetujuan.'
             );
 
-            // Create initial Level 1 approval record if submitted
+            // Create initial approval records if submitted
             if (!$isDraft) {
-                $approverId = $user->manager_id ?? User::role('hrd_finance')->first()?->id ?? $user->id;
-                Approval::create([
-                    'approvable_type' => ReimbursementRequest::class,
-                    'approvable_id' => $reimbursement->id,
-                    'approver_id' => $approverId,
-                    'level' => 1,
-                    'status' => 'pending',
-                ]);
-
-                $approver = User::find($approverId);
-                if ($approver) {
-                    $approver->notify(new \App\Notifications\RequestSubmittedNotification('reimbursement', $reimbursement->id, $reimbursement->request_number, $user->name));
-                }
+                app(\App\Actions\Shared\CreateInitialApprovalAction::class)->execute($reimbursement, $user, 'reimbursement');
             }
 
             $message = $isDraft ? 'Pengajuan reimbursement berhasil disimpan sebagai draft.' : 'Pengajuan reimbursement berhasil dikirim!';

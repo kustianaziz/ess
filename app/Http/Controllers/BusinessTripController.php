@@ -106,24 +106,9 @@ class BusinessTripController extends Controller
                 $isSubmit ? 'Pengajuan perjalanan dinas disubmit.' : 'Pengajuan perjalanan dinas disimpan sebagai draft.'
             );
 
-            // Send notification to manager if submitted
+            // Create initial approval records if submitted
             if ($isSubmit) {
-                if ($user->manager) {
-                    $user->manager->notify(new RequestSubmittedNotification(
-                        'perjalanan-dinas',
-                        $trip->id,
-                        $trip->request_number,
-                        $user->name
-                    ));
-                } else {
-                    $hrdUsers = User::role('hrd_finance')->get();
-                    Notification::send($hrdUsers, new RequestSubmittedNotification(
-                        'perjalanan-dinas',
-                        $trip->id,
-                        $trip->request_number,
-                        $user->name
-                    ));
-                }
+                app(\App\Actions\Shared\CreateInitialApprovalAction::class)->execute($trip, $user, 'perjalanan-dinas');
             }
 
             return $trip;

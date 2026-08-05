@@ -144,21 +144,9 @@ class LeaveController extends Controller
                 $isDraft ? 'Pengajuan cuti disimpan sebagai draf.' : 'Pengajuan cuti dikirim untuk persetujuan.'
             );
 
-            // Create initial Level 1 approval record if submitted
+            // Create initial approval records if submitted
             if (!$isDraft) {
-                $approverId = $user->manager_id ?? User::role('hrd_finance')->first()?->id ?? $user->id;
-                Approval::create([
-                    'approvable_type' => LeaveRequest::class,
-                    'approvable_id' => $leaveRequest->id,
-                    'approver_id' => $approverId,
-                    'level' => 1,
-                    'status' => 'pending',
-                ]);
-
-                $approver = User::find($approverId);
-                if ($approver) {
-                    $approver->notify(new \App\Notifications\RequestSubmittedNotification('cuti', $leaveRequest->id, $leaveRequest->request_number, $user->name));
-                }
+                app(\App\Actions\Shared\CreateInitialApprovalAction::class)->execute($leaveRequest, $user, 'cuti');
             }
 
             $message = $isDraft ? 'Pengajuan cuti berhasil disimpan sebagai draft.' : 'Pengajuan cuti berhasil dikirim!';

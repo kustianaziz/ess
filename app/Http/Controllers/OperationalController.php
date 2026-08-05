@@ -96,21 +96,9 @@ class OperationalController extends Controller
                 $isDraft ? 'Pengajuan disimpan sebagai draf.' : 'Pengajuan dikirim untuk persetujuan.'
             );
 
-            // Create initial Level 1 approval record if submitted
+            // Create initial approval records if submitted
             if (!$isDraft) {
-                $approverId = $user->manager_id ?? User::role('hrd_finance')->first()?->id ?? $user->id;
-                Approval::create([
-                    'approvable_type' => OperationalRequest::class,
-                    'approvable_id' => $operational->id,
-                    'approver_id' => $approverId,
-                    'level' => 1,
-                    'status' => 'pending',
-                ]);
-
-                $approver = User::find($approverId);
-                if ($approver) {
-                    $approver->notify(new \App\Notifications\RequestSubmittedNotification('operasional', $operational->id, $operational->request_number, $user->name));
-                }
+                app(\App\Actions\Shared\CreateInitialApprovalAction::class)->execute($operational, $user, 'operasional');
             }
 
             $message = $isDraft ? 'Pengajuan konsumsi/operasional disimpan sebagai draft.' : 'Pengajuan konsumsi/operasional berhasil dikirim!';
