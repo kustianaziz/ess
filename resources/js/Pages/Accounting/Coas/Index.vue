@@ -146,10 +146,20 @@ const groupedCoas = computed(() => {
     beban: { label: 'Beban (Pengeluaran)', color: 'text-orange-600 bg-orange-50 border-orange-200', items: [] }
   };
   
-  props.coas.forEach(coa => {
-    if (groups[coa.type]) {
-      groups[coa.type].items.push(coa);
-    }
+  const buildTree = (items, parentId = null, depth = 0) => {
+    let result = [];
+    const children = items.filter(c => c.parent_id === parentId);
+    children.forEach(child => {
+      result.push({ ...child, depth });
+      result = result.concat(buildTree(items, child.id, depth + 1));
+    });
+    return result;
+  };
+
+  const types = Object.keys(groups);
+  types.forEach(type => {
+    const itemsOfType = props.coas.filter(c => c.type === type);
+    groups[type].items = buildTree(itemsOfType);
   });
   
   return groups;
@@ -215,12 +225,10 @@ const getParentOptions = computed(() => {
                   <tr v-for="coa in group.items" :key="coa.id" class="hover:bg-slate-50/80 transition-colors group/row">
                     <td class="px-6 py-4 font-mono font-bold text-slate-900">{{ coa.code }}</td>
                     <td class="px-6 py-4">
-                      <div class="font-semibold text-slate-800 flex items-center gap-2">
-                        {{ coa.name }}
-                        <span v-if="coa.is_header" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-500 border border-slate-200 uppercase">Header</span>
-                      </div>
-                      <div v-if="coa.parent" class="text-[10px] text-slate-500 mt-0.5 font-medium">
-                        Sub dari: {{ coa.parent.code }} - {{ coa.parent.name }}
+                      <div class="text-slate-800 flex items-center gap-2" :style="{ paddingLeft: (coa.depth * 1.5) + 'rem' }">
+                        <div v-if="coa.depth > 0" class="w-3 h-3 border-b-2 border-l-2 border-slate-300 rounded-bl-sm opacity-60 -mt-2 shrink-0"></div>
+                        <span :class="coa.is_header ? 'font-bold text-slate-900' : 'font-medium text-slate-700'">{{ coa.name }}</span>
+                        <span v-if="coa.is_header" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-500 border border-slate-200 uppercase shrink-0">Header</span>
                       </div>
                     </td>
                     <td class="px-6 py-4">
