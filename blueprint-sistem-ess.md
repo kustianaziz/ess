@@ -1595,3 +1595,59 @@ Tabel berikut merangkum seluruh modul tambahan sebagai referensi cepat (detail t
 - Prioritaskan **Policy & role middleware** sejak awal (jangan ditunda ke akhir) untuk menghindari refactor besar terkait otorisasi.
 - **Urutan pengerjaan modul tambahan yang disarankan:** (1) Kas Operasional dasar (`cash_accounts`, `cash_transactions`) dibangun **lebih dulu** karena menjadi tempat pencatatan otomatis dari 3 sub-modul lain; (2) Reimburse Meeting (reuse modul existing, tambah verifikasi) → paling cepat; (3) Pembayaran Bulanan Rutin; (4) Perjalanan Dinas (paling kompleks karena 2 tahap + kalkulasi selisih); (5) Invoicing; (6) Renewal Webpraktis (paling kompleks karena melibatkan 2 arah transaksi — customer & vendor).
 - Modul **Invoicing** dan **Renewal Webpraktis** adalah modul **pendapatan**, secara konsep terpisah dari modul pengeluaran (ESS + Kas Operasional) — pastikan role & menu navigasi di sidebar dikelompokkan terpisah (mis. grup menu "Keuangan - Pengeluaran" vs "Keuangan - Pendapatan") agar tidak membingungkan pengguna non-finance.
+
+## 18. Modul Akuntansi & Laporan Keuangan (Accounting)
+
+Modul ini merupakan *core accounting* (buku besar / general ledger) yang akan mengonsolidasikan semua transaksi finansial dari modul-modul lain (Kas Operasional, Invoicing, Renewal, dsb) maupun entri jurnal manual, menjadi laporan keuangan standar.
+
+### 18.1 Master Data Aset (Manajemen Aset Tetap)
+Mencatat daftar aset tetap perusahaan beserta informasi nilai, umur ekonomis, dan histori penyusutannya.
+- **Tabel `assets`**:
+  - `id`, `asset_number` (unique), `name`, `purchase_date`, `purchase_price`, `salvage_value` (nilai residu), `useful_life_years` (umur ekonomis).
+  - `depreciation_method` (enum: `straight_line`, `declining_balance`).
+  - `accumulated_depreciation`, `book_value`.
+  - `coa_asset_id`, `coa_depreciation_expense_id`, `coa_accumulated_depreciation_id`.
+- **Tabel `asset_depreciations`** (Jadwal/Log Penyusutan):
+  - `id`, `asset_id`, `period_month`, `period_year`, `depreciation_amount`, `journal_entry_id` (relasi ke jurnal jika sudah diposting).
+
+### 18.2 Master COA (Chart of Accounts)
+Master akun dengan hierarki tidak terbatas (infinite sub-levels) namun memiliki kategori *root* (tipe akun) yang fix/paten.
+- **Tabel `coas`** (Chart of Accounts):
+  - `id`
+  - `parent_id` (foreignId -> `coas`, nullable) - untuk sub-akun.
+  - `code` (string, unique) - misal: 1000, 1100, 1110.
+  - `name` (string) - Nama akun (Kas, Piutang, dsb).
+  - `type` (enum) - Fix Root Kategori: `aset`, `hutang`, `modal`, `pendapatan`, `beban`.
+  - `normal_balance` (enum: `debit`, `credit`).
+  - `is_active` (boolean).
+  - `description` (text).
+
+### 18.3 Transaksi Jurnal (Journal Entries)
+Mencatat seluruh transaksi finansial (jurnal umum). Dapat diinput manual atau *auto-generated* dari transaksi modul lain (pembayaran invoice, pencairan kas, penyusutan aset).
+- **Tabel `journal_entries`** (Header Jurnal):
+  - `id`
+  - `journal_number` (string, unique)
+  - `date` (date) - Tanggal transaksi.
+  - `description` (text) - Keterangan jurnal.
+  - `reference_type` (string, nullable) - Polymorphic referensi (mis: `InvoicePayment`, `CashTransaction`).
+  - `reference_id` (bigInteger, nullable).
+  - `status` (enum: `draft`, `posted`, `void`) - Hanya `posted` yang masuk ke laporan.
+  - `created_by`, `posted_by`.
+- **Tabel `journal_items`** (Detail Debit/Kredit):
+  - `id`
+  - `journal_entry_id`
+  - `coa_id`
+  - `description` (string, nullable)
+  - `debit` (decimal 15,2)
+  - `credit` (decimal 15,2)
+
+### 18.4 Laporan Keuangan (Financial Reports)
+Laporan-laporan ini adalah hasil *query/agregasi* dari data jurnal (`journal_entries` & `journal_items`) yang berstatus `posted`. Tidak ada tabel khusus untuk laporan, melainkan query langsung atau disiapkan via *service class/repository*.
+1. **Jurnal Harian**: Menampilkan list header & detail jurnal untuk rentang tanggal tertentu.
+2. **Laporan Buku Besar (General Ledger)**: Menampilkan mutasi (saldo awal, pergerakan debit-kredit, saldo akhir) untuk satu atau beberapa COA spesifik.
+3. **Laporan Penyusutan Aset**: Hasil agregasi tabel `asset_depreciations` & nilai buku dari `assets`.
+4. **Laporan Arus Kas (Cash Flow)**: Difilter berdasarkan pergerakan akun-akun COA dengan type `aset` -> khusus kas & setara kas (aktivitas operasi, investasi, pendanaan).
+5. **Laporan Laba Rugi (Profit & Loss)**: Konsolidasi total COA `pendapatan` dikurangi total COA `beban` dalam satu periode.
+6. **Laporan Neraca (Balance Sheet)**: Menampilkan posisi saldo akhir periode untuk `aset`, `hutang`, dan `modal`. Memastikan `Aset = Hutang + Modal`.
+7. **Laporan Laba Rugi Setelah & Sebelum Pajak**: Mengelompokkan komponen Laba Rugi operasional (sebelum pajak) dikurangi estimasi/pembayaran pajak untuk mendapat EAT (Earnings After Tax).
+8. **Catatan Atas Laporan Keuangan (CALK)**: Catatan kualitatif atau penjelasan naratif yang bisa dikaitkan dengan periode pelaporan (Bisa dibuatkan tabel `financial_report_notes` yang berisi `period_month`, `period_year`, `title`, dan `content`).

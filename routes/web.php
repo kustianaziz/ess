@@ -98,6 +98,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/pencairan', [\App\Http\Controllers\FinanceDisbursementController::class, 'index'])->name('pencairan.index');
     });
 
+    // Modul Akuntansi
+    Route::middleware('role:admin|hrd_finance')->prefix('accounting')->name('accounting.')->group(function () {
+        Route::resource('coas', \App\Http\Controllers\Accounting\CoaController::class)->except(['create', 'show', 'edit']);
+    });
+
     // Executive dashboard route protected by role
     Route::middleware('role:admin|manager|hrd_finance')->group(function () {
         Route::get('/executive/dashboard/breakdown', [ExecutiveDashboardController::class, 'breakdown'])->name('executive.dashboard.breakdown');

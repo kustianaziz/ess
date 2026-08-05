@@ -406,6 +406,26 @@ const isCurrentRoute = (routeName) => {
           </Link>
         </div>
 
+        <!-- SECTION 9: AKUNTANSI (HRD & ADMIN) -->
+        <div v-if="isHrdOrAdmin" class="space-y-2 pt-2 border-t border-slate-100">
+          <span class="text-[11px] font-bold text-indigo-600 uppercase tracking-wider block">5. Akuntansi</span>
+          <div class="grid grid-cols-2 gap-2">
+            <Link
+              :href="route('accounting.coas.index')"
+              @click="showQuickMenu = false"
+              class="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center gap-3 hover:bg-indigo-100/70 transition-all"
+            >
+              <div class="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                <FileText class="w-3.5 h-3.5" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-900 truncate">Master COA</p>
+                <p class="text-[10px] text-indigo-700 font-medium truncate">Chart of Accounts</p>
+              </div>
+            </Link>
+          </div>
+        </div>
+
         <!-- SECTION 7: ADMIN PANEL (KHUSUS ROLE ADMIN) -->
         <div v-if="isAdmin" class="space-y-2 pt-2 border-t border-slate-100">
           <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">7. Admin Panel (Master Data)</span>
