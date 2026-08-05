@@ -16,24 +16,27 @@ import {
   Zap,
   History,
   Users,
-  Settings
+  Settings,
+  BarChart3,
+  UserCheck,
+  User
 } from 'lucide-vue-next';
 
 const page = usePage();
 const showQuickMenu = ref(false);
 
-const user = computed(() => page.props.auth.user);
+const currentUser = computed(() => page.props.auth.user);
 
 const isLevel1OrAbove = computed(() => {
-  return user.value?.roles?.some(r => ['manager', 'admin', 'hrd_finance'].includes(r.name));
+  return currentUser.value?.roles?.some(r => ['manager', 'admin', 'hrd_finance'].includes(r.name));
 });
 
 const isHrdOrAdmin = computed(() => {
-  return user.value?.roles?.some(r => ['admin', 'hrd_finance'].includes(r.name));
+  return currentUser.value?.roles?.some(r => ['admin', 'hrd_finance'].includes(r.name));
 });
 
 const isAdmin = computed(() => {
-  return user.value?.roles?.some(r => r.name === 'admin');
+  return currentUser.value?.roles?.some(r => r.name === 'admin');
 });
 
 const isCurrentRoute = (routeName) => {
@@ -92,84 +95,84 @@ const isCurrentRoute = (routeName) => {
       <button
         @click="showQuickMenu = !showQuickMenu"
         class="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-lg shadow-slate-900/30 hover:scale-105 transition-all shrink-0"
-        title="Buka Menu Akses Cepat"
+        title="Buka Menu Seluruh Fitur Aplikasi"
       >
         <X v-if="showQuickMenu" class="w-5 h-5" />
         <Plus v-else class="w-5 h-5" />
       </button>
     </nav>
 
-    <!-- Quick Action Sheet / Drawer when FAB '+' clicked -->
+    <!-- Full Mobile Menu Drawer when FAB '+' clicked -->
     <div v-if="showQuickMenu" class="lg:hidden fixed inset-0 z-50 flex items-end">
       <div @click="showQuickMenu = false" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
 
-      <div class="relative w-full bg-white rounded-t-3xl p-5 sm:p-6 shadow-2xl z-10 animate-in slide-in-from-bottom duration-200 max-h-[85vh] overflow-y-auto space-y-4">
-        <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-2"></div>
+      <div class="relative w-full bg-white rounded-t-3xl p-5 sm:p-6 shadow-2xl z-10 animate-in slide-in-from-bottom duration-200 max-h-[85vh] overflow-y-auto space-y-5">
+        <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-1"></div>
         <div class="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>
-            <h3 class="text-base font-bold text-slate-900">Menu Akses Cepat</h3>
-            <p class="text-xs text-slate-500">Layanan sesuai wewenang akun Anda</p>
+            <h3 class="text-base font-bold text-slate-900">Seluruh Fitur & Layanan ESS</h3>
+            <p class="text-xs text-slate-500">Akun: {{ currentUser?.name }} ({{ currentUser?.roles?.[0]?.name?.toUpperCase() || 'USER' }})</p>
           </div>
           <button @click="showQuickMenu = false" class="p-1 rounded-lg text-slate-400 hover:text-slate-600 font-bold">✕</button>
         </div>
 
         <!-- SECTION 1: FORM PENGAJUAN BARU -->
         <div class="space-y-2">
-          <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Buat Pengajuan Baru</span>
-          <div class="grid grid-cols-2 gap-2.5">
+          <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">1. Layanan & Form Pengajuan Saya</span>
+          <div class="grid grid-cols-2 gap-2">
             <Link
               :href="route('pengajuan.reimbursement.create')"
               @click="showQuickMenu = false"
-              class="p-3 rounded-2xl bg-purple-50/70 border border-purple-100 flex items-center gap-3 hover:bg-purple-100/70 transition-all"
+              class="p-3 rounded-2xl bg-purple-50/70 border border-purple-100 flex items-center gap-2.5 hover:bg-purple-100/70 transition-all"
             >
-              <div class="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0">
-                <FileText class="w-4 h-4" />
+              <div class="w-7 h-7 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0">
+                <FileText class="w-3.5 h-3.5" />
               </div>
               <div class="min-w-0">
-                <p class="text-xs font-bold text-slate-900 truncate">Reimburse</p>
-                <p class="text-[10px] text-slate-500 truncate">Klaim nota</p>
+                <p class="text-xs font-bold text-slate-900 truncate">Reimbursement</p>
+                <p class="text-[9px] text-slate-500 truncate">Klaim biaya nota</p>
               </div>
             </Link>
 
             <Link
               :href="route('pengajuan.operasional.create')"
               @click="showQuickMenu = false"
-              class="p-3 rounded-2xl bg-orange-50/70 border border-orange-100 flex items-center gap-3 hover:bg-orange-100/70 transition-all"
+              class="p-3 rounded-2xl bg-orange-50/70 border border-orange-100 flex items-center gap-2.5 hover:bg-orange-100/70 transition-all"
             >
-              <div class="w-8 h-8 rounded-xl bg-orange-500 text-white flex items-center justify-center shrink-0">
-                <Utensils class="w-4 h-4" />
+              <div class="w-7 h-7 rounded-xl bg-orange-500 text-white flex items-center justify-center shrink-0">
+                <Utensils class="w-3.5 h-3.5" />
               </div>
               <div class="min-w-0">
                 <p class="text-xs font-bold text-slate-900 truncate">Operasional</p>
-                <p class="text-[10px] text-slate-500 truncate">Konsumsi/kegiatan</p>
+                <p class="text-[9px] text-slate-500 truncate">Konsumsi/kegiatan</p>
               </div>
             </Link>
 
             <Link
               :href="route('pengajuan.perjalanan-dinas.create')"
               @click="showQuickMenu = false"
-              class="p-3 rounded-2xl bg-sky-50/70 border border-sky-100 flex items-center gap-3 hover:bg-sky-100/70 transition-all"
+              class="p-3 rounded-2xl bg-sky-50/70 border border-sky-100 flex items-center gap-2.5 hover:bg-sky-100/70 transition-all"
             >
-              <div class="w-8 h-8 rounded-xl bg-sky-600 text-white flex items-center justify-center shrink-0">
-                <Plane class="w-4 h-4" />
+              <div class="w-7 h-7 rounded-xl bg-sky-600 text-white flex items-center justify-center shrink-0">
+                <Plane class="w-3.5 h-3.5" />
               </div>
               <div class="min-w-0">
                 <p class="text-xs font-bold text-slate-900 truncate">Dinas Office</p>
-                <p class="text-[10px] text-slate-500 truncate">Perjalanan dinas</p>
+                <p class="text-[9px] text-slate-500 truncate">Perjalanan dinas</p>
               </div>
             </Link>
 
             <Link
               :href="route('pengajuan.cuti.create')"
               @click="showQuickMenu = false"
-              class="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-100 flex items-center gap-3 hover:bg-emerald-100/70 transition-all"
+              class="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-100 flex items-center gap-2.5 hover:bg-emerald-100/70 transition-all"
             >
-              <div class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                <Calendar class="w-4 h-4" />
+              <div class="w-7 h-7 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                <Calendar class="w-3.5 h-3.5" />
               </div>
               <div class="min-w-0">
                 <p class="text-xs font-bold text-slate-900 truncate">Cuti Karyawan</p>
-                <p class="text-[10px] text-slate-500 truncate">Izin & cuti</p>
+                <p class="text-[9px] text-slate-500 truncate">Pengajuan izin/cuti</p>
               </div>
             </Link>
           </div>
@@ -177,115 +180,149 @@ const isCurrentRoute = (routeName) => {
 
         <!-- SECTION 2: PERSETUJUAN (MANAGER LEVEL 1 & HRD LEVEL 2) -->
         <div v-if="isLevel1OrAbove" class="space-y-2 pt-2 border-t border-slate-100">
-          <span class="text-[11px] font-bold text-amber-700 uppercase tracking-wider block">Wewenang Persetujuan (Approval)</span>
-          <div class="grid grid-cols-2 gap-2.5">
+          <span class="text-[11px] font-bold text-amber-700 uppercase tracking-wider block">2. Wewenang Persetujuan (Approval)</span>
+          <div class="grid grid-cols-2 gap-2">
             <Link
               :href="route('approval.index')"
               @click="showQuickMenu = false"
-              class="p-3 rounded-2xl bg-amber-50/80 border border-amber-200 flex items-center gap-3 hover:bg-amber-100/80 transition-all"
+              class="p-3 rounded-2xl bg-amber-50/80 border border-amber-200 flex items-center gap-2.5 hover:bg-amber-100/80 transition-all"
             >
-              <div class="w-8 h-8 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-                <CheckSquare class="w-4 h-4" />
+              <div class="w-7 h-7 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <CheckSquare class="w-3.5 h-3.5" />
               </div>
               <div class="min-w-0">
                 <p class="text-xs font-bold text-slate-900 truncate">Antrean Approval</p>
-                <p class="text-[10px] text-amber-700 font-semibold truncate">Verifikasi ajuan</p>
+                <p class="text-[9px] text-amber-700 font-semibold truncate">Verifikasi ajuan</p>
               </div>
             </Link>
 
             <Link
               :href="route('approval.history')"
               @click="showQuickMenu = false"
-              class="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-3 hover:bg-slate-100 transition-all"
+              class="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2.5 hover:bg-slate-100 transition-all"
             >
-              <div class="w-8 h-8 rounded-xl bg-slate-800 text-white flex items-center justify-center shrink-0">
-                <History class="w-4 h-4" />
+              <div class="w-7 h-7 rounded-xl bg-slate-800 text-white flex items-center justify-center shrink-0">
+                <History class="w-3.5 h-3.5" />
               </div>
               <div class="min-w-0">
                 <p class="text-xs font-bold text-slate-900 truncate">Riwayat Approval</p>
-                <p class="text-[10px] text-slate-500 truncate">Histori persetujuan</p>
+                <p class="text-[9px] text-slate-500 truncate">Histori keputusan</p>
               </div>
             </Link>
           </div>
         </div>
 
-        <!-- SECTION 3: MODUL KEUANGAN & PENCAIRAN (HRD & FINANCE LEVEL 2) -->
+        <!-- SECTION 3: MODUL KEUANGAN & KAS (HRD & FINANCE LEVEL 2) -->
         <div v-if="isHrdOrAdmin" class="space-y-2 pt-2 border-t border-slate-100">
-          <span class="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">Modul Keuangan & Pencairan Kas</span>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <span class="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">3. Modul Keuangan & Pencairan Kas</span>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
             <Link
               :href="route('keuangan.pencairan.index')"
               @click="showQuickMenu = false"
-              class="p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 flex items-center gap-3 hover:bg-emerald-100/80 transition-all"
+              class="p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 flex items-center gap-2.5 hover:bg-emerald-100/80 transition-all"
             >
-              <div class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-                <CreditCard class="w-4 h-4" />
+              <div class="w-7 h-7 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <CreditCard class="w-3.5 h-3.5" />
               </div>
               <div class="min-w-0">
-                <p class="text-xs font-bold text-slate-900 truncate">Pencairan & Bayar</p>
-                <p class="text-[10px] text-emerald-700 font-semibold truncate">Eksekusi dana disetujui</p>
+                <p class="text-xs font-bold text-slate-900 truncate">Pencairan Kas</p>
+                <p class="text-[9px] text-emerald-700 font-semibold truncate">Eksekusi bayar</p>
               </div>
             </Link>
 
             <Link
               :href="route('keuangan.kas-operasional.dashboard')"
               @click="showQuickMenu = false"
-              class="p-3 rounded-2xl bg-sky-50/80 border border-sky-200 flex items-center gap-3 hover:bg-sky-100/80 transition-all"
+              class="p-3 rounded-2xl bg-sky-50/80 border border-sky-200 flex items-center gap-2.5 hover:bg-sky-100/80 transition-all"
             >
-              <div class="w-8 h-8 rounded-xl bg-sky-600 text-white flex items-center justify-center shrink-0">
-                <Wallet class="w-4 h-4" />
+              <div class="w-7 h-7 rounded-xl bg-sky-600 text-white flex items-center justify-center shrink-0">
+                <Wallet class="w-3.5 h-3.5" />
               </div>
               <div class="min-w-0">
                 <p class="text-xs font-bold text-slate-900 truncate">Buku Kas & Saldo</p>
-                <p class="text-[10px] text-slate-500 truncate">Master akun kas/bank</p>
+                <p class="text-[9px] text-slate-500 truncate">Kas & bank</p>
               </div>
             </Link>
 
             <Link
               :href="route('keuangan.tagihan-bulanan.index')"
               @click="showQuickMenu = false"
-              class="p-3 rounded-2xl bg-amber-50/80 border border-amber-200 flex items-center gap-3 hover:bg-amber-100/80 transition-all"
+              class="p-3 rounded-2xl bg-amber-50/80 border border-amber-200 flex items-center gap-2.5 hover:bg-amber-100/80 transition-all col-span-2 sm:col-span-1"
             >
-              <div class="w-8 h-8 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0">
-                <Zap class="w-4 h-4" />
+              <div class="w-7 h-7 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0">
+                <Zap class="w-3.5 h-3.5" />
               </div>
               <div class="min-w-0">
                 <p class="text-xs font-bold text-slate-900 truncate">Tagihan Bulanan</p>
-                <p class="text-[10px] text-slate-500 truncate">Listrik, internet, sewa</p>
+                <p class="text-[9px] text-slate-500 truncate">Listrik, internet, sewa</p>
               </div>
             </Link>
           </div>
         </div>
 
-        <!-- SECTION 4: ADMINISTRASI SYSTEM (ADMINISTRATOR) -->
-        <div v-if="isAdmin" class="space-y-2 pt-2 border-t border-slate-100">
-          <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Panel Pengelola Admin</span>
-          <div class="grid grid-cols-2 gap-2.5">
+        <!-- SECTION 4: REKAPITULASI & LAPORAN (HRD & ADMIN) -->
+        <div v-if="isHrdOrAdmin" class="space-y-2 pt-2 border-t border-slate-100">
+          <span class="text-[11px] font-bold text-indigo-600 uppercase tracking-wider block">4. Rekapitulasi & Laporan Perusahaan</span>
+          <Link
+            :href="route('admin.reports.index')"
+            @click="showQuickMenu = false"
+            class="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center gap-3 hover:bg-indigo-100/70 transition-all"
+          >
+            <div class="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
+              <BarChart3 class="w-4 h-4" />
+            </div>
+            <div class="min-w-0">
+              <p class="text-xs font-bold text-slate-900 truncate">Laporan & Rekapitulasi Lengkap</p>
+              <p class="text-[10px] text-indigo-700 font-medium truncate">Export Excel & Word seluruh pengajuan</p>
+            </div>
+          </Link>
+        </div>
+
+        <!-- SECTION 5: PENGATURAN & AKUN -->
+        <div class="space-y-2 pt-2 border-t border-slate-100">
+          <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">5. Akun & Pengaturan System</span>
+          <div class="grid grid-cols-2 gap-2">
             <Link
-              :href="route('admin.users.index')"
+              :href="route('profile.edit')"
               @click="showQuickMenu = false"
-              class="p-3 rounded-2xl bg-slate-100 border border-slate-200 flex items-center gap-3 hover:bg-slate-200 transition-all"
+              class="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2.5 hover:bg-slate-100 transition-all"
             >
-              <div class="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
-                <Users class="w-4 h-4" />
+              <div class="w-7 h-7 rounded-xl bg-slate-800 text-white flex items-center justify-center shrink-0">
+                <User class="w-3.5 h-3.5" />
               </div>
               <div class="min-w-0">
-                <p class="text-xs font-bold text-slate-900 truncate">Kelola Pengguna</p>
-                <p class="text-[10px] text-slate-500 truncate">Data user & role</p>
+                <p class="text-xs font-bold text-slate-900 truncate">Profil Saya</p>
+                <p class="text-[9px] text-slate-500 truncate">Ubah password & foto</p>
               </div>
             </Link>
 
             <Link
-              :href="route('admin.master-data.index')"
+              v-if="isAdmin"
+              :href="route('admin.users.index')"
               @click="showQuickMenu = false"
-              class="p-3 rounded-2xl bg-slate-100 border border-slate-200 flex items-center gap-3 hover:bg-slate-200 transition-all"
+              class="p-3 rounded-2xl bg-slate-100 border border-slate-200 flex items-center gap-2.5 hover:bg-slate-200 transition-all"
             >
-              <div class="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
-                <Settings class="w-4 h-4" />
+              <div class="w-7 h-7 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
+                <Users class="w-3.5 h-3.5" />
               </div>
               <div class="min-w-0">
-                <p class="text-xs font-bold text-slate-900 truncate">Master Data</p>
-                <p class="text-[10px] text-slate-500 truncate">Divisi & kategori</p>
+                <p class="text-xs font-bold text-slate-900 truncate">Kelola User</p>
+                <p class="text-[9px] text-slate-500 truncate">Pengguna & role</p>
+              </div>
+            </Link>
+
+            <Link
+              v-if="isAdmin"
+              :href="route('admin.divisions.index')"
+              @click="showQuickMenu = false"
+              class="p-3 rounded-2xl bg-slate-100 border border-slate-200 flex items-center gap-2.5 hover:bg-slate-200 transition-all col-span-2"
+            >
+              <div class="w-7 h-7 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
+                <Settings class="w-3.5 h-3.5" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-900 truncate">Pengaturan Master Data</p>
+                <p class="text-[9px] text-slate-500 truncate">Divisi, jenis kegiatan, & saldo cuti</p>
               </div>
             </Link>
           </div>
