@@ -8,13 +8,15 @@ import TextInput from '@/Components/TextInput.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import { Plus, Trash2, FileText } from 'lucide-vue-next';
+import { Plus, Trash2, FileText, CheckCircle2 } from 'lucide-vue-next';
 
 const props = defineProps({
     journals: Array,
+    pendingTransactions: Array,
     coas: Array
 });
 
+const activeTab = ref('pending'); // 'pending' or 'journals'
 const isModalOpen = ref(false);
 
 const form = useForm({
@@ -78,6 +80,37 @@ const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     return new Date(dateString).toLocaleDateString('id-ID', options);
 };
+
+// Auto Journal Form
+const autoJournalForm = useForm({
+    source_type: '',
+    source_id: '',
+    date: '',
+    description: '',
+    amount: 0,
+    debit_coa_id: '',
+    credit_coa_id: '',
+});
+
+const submitAutoJournal = (trx) => {
+    if (!trx.debit_coa_id || !trx.credit_coa_id) {
+        alert("Silakan pilih akun Debit dan Kredit terlebih dahulu!");
+        return;
+    }
+    autoJournalForm.source_type = trx.source_type;
+    autoJournalForm.source_id = trx.source_id;
+    autoJournalForm.date = trx.date;
+    autoJournalForm.description = trx.description;
+    autoJournalForm.amount = trx.amount;
+    autoJournalForm.debit_coa_id = trx.debit_coa_id;
+    autoJournalForm.credit_coa_id = trx.credit_coa_id;
+    
+    autoJournalForm.post(route('accounting.journals.store'), {
+        preserveScroll: true,
+        onSuccess: () => alert('Berhasil dijurnal!'),
+    });
+};
+
 </script>
 
 <template>
@@ -85,9 +118,9 @@ const formatDate = (dateString) => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex items-center justify-between">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <h2 class="text-xl font-bold leading-tight text-gray-800">Transaksi Jurnal</h2>
-                <PrimaryButton @click="openModal" class="gap-2">
+                <PrimaryButton @click="openModal" class="gap-2 shrink-0 self-start sm:self-auto">
                     <Plus class="w-4 h-4" />
                     Tambah Jurnal Manual
                 </PrimaryButton>
@@ -95,17 +128,91 @@ const formatDate = (dateString) => {
         </template>
 
         <div class="py-12">
-            <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
+            <div class="mx-auto max-w-7xl sm:px-6 lg:px-8 space-y-6">
+                
+                <!-- Tabs -->
+                <div class="border-b border-gray-200">
+                    <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                        <button 
+                            @click="activeTab = 'pending'"
+                            :class="activeTab === 'pending' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2"
+                        >
+                            Transaksi Belum Dijurnal
+                            <span v-if="pendingTransactions.length > 0" class="bg-rose-100 text-rose-600 py-0.5 px-2.5 rounded-full text-xs font-bold">
+                                {{ pendingTransactions.length }}
+                            </span>
+                        </button>
+                        <button 
+                            @click="activeTab = 'journals'"
+                            :class="activeTab === 'journals' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
+                        >
+                            Buku Jurnal Umum (Semua)
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Tab: Pending Transactions -->
+                <div v-if="activeTab === 'pending'" class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                     <div class="p-6 text-gray-900 overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
+                        <table class="w-full text-left border-collapse min-w-[800px]">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-200 text-sm">
+                                    <th class="p-4 font-semibold text-slate-600">Tanggal</th>
+                                    <th class="p-4 font-semibold text-slate-600">No. Referensi</th>
+                                    <th class="p-4 font-semibold text-slate-600">Keterangan</th>
+                                    <th class="p-4 font-semibold text-slate-600 text-right">Nominal</th>
+                                    <th class="p-4 font-semibold text-slate-600">Debit</th>
+                                    <th class="p-4 font-semibold text-slate-600">Kredit</th>
+                                    <th class="p-4 font-semibold text-slate-600 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="trx in pendingTransactions" :key="trx.id" class="border-b border-slate-100 hover:bg-slate-50/50">
+                                    <td class="p-4 text-sm">{{ formatDate(trx.date) }}</td>
+                                    <td class="p-4 text-sm font-medium text-slate-700">{{ trx.reference_number }}</td>
+                                    <td class="p-4 text-sm">{{ trx.description }}</td>
+                                    <td class="p-4 text-sm font-bold text-slate-800 text-right">{{ formatRupiah(trx.amount) }}</td>
+                                    <td class="p-4 text-sm">
+                                        <select v-model="trx.debit_coa_id" class="border-gray-300 rounded-md text-sm w-full md:w-48 shadow-sm">
+                                            <option value="" disabled>Pilih Akun Debit...</option>
+                                            <option v-for="c in coas" :key="c.id" :value="c.id">{{ c.code }} - {{ c.name }}</option>
+                                        </select>
+                                    </td>
+                                    <td class="p-4 text-sm">
+                                        <select v-model="trx.credit_coa_id" class="border-gray-300 rounded-md text-sm w-full md:w-48 shadow-sm">
+                                            <option value="" disabled>Pilih Akun Kredit...</option>
+                                            <option v-for="c in coas" :key="c.id" :value="c.id">{{ c.code }} - {{ c.name }}</option>
+                                        </select>
+                                    </td>
+                                    <td class="p-4 text-sm text-center">
+                                        <PrimaryButton @click="submitAutoJournal(trx)" class="!px-3 !py-1.5" :disabled="autoJournalForm.processing">
+                                            Jurnalkan
+                                        </PrimaryButton>
+                                    </td>
+                                </tr>
+                                <tr v-if="pendingTransactions.length === 0">
+                                    <td colspan="7" class="p-12 text-center">
+                                        <CheckCircle2 class="w-12 h-12 text-emerald-400 mx-auto mb-3" />
+                                        <p class="text-slate-500 font-medium">Mantap! Semua transaksi otomatis sudah dijurnal.</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tab: All Journals -->
+                <div v-if="activeTab === 'journals'" class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
+                    <div class="p-6 text-gray-900 overflow-x-auto">
+                        <table class="w-full text-left border-collapse min-w-[800px]">
                             <thead>
                                 <tr class="bg-slate-50 border-b border-slate-200 text-sm">
                                     <th class="p-4 font-semibold text-slate-600">Tanggal</th>
                                     <th class="p-4 font-semibold text-slate-600">Nomor Jurnal</th>
                                     <th class="p-4 font-semibold text-slate-600">Keterangan</th>
-                                    <th class="p-4 font-semibold text-slate-600 text-right">Total Debit</th>
-                                    <th class="p-4 font-semibold text-slate-600 text-right">Total Kredit</th>
+                                    <th class="p-4 font-semibold text-slate-600 text-right">Nominal</th>
                                     <th class="p-4 font-semibold text-slate-600">Status</th>
                                     <th class="p-4 font-semibold text-slate-600 text-center">Aksi</th>
                                 </tr>
@@ -116,20 +223,19 @@ const formatDate = (dateString) => {
                                     <td class="p-4 text-sm font-medium text-indigo-600">{{ journal.journal_number }}</td>
                                     <td class="p-4 text-sm">{{ journal.description }}</td>
                                     <td class="p-4 text-sm text-right font-medium text-emerald-600">{{ formatRupiah(journal.amount) }}</td>
-                                    <td class="p-4 text-sm text-right font-medium text-emerald-600">{{ formatRupiah(journal.amount) }}</td>
                                     <td class="p-4 text-sm">
                                         <span class="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700">
                                             {{ journal.status.toUpperCase() }}
                                         </span>
                                     </td>
                                     <td class="p-4 text-sm text-center">
-                                        <Link :href="route('accounting.journals.show', journal.id)" class="text-indigo-600 hover:text-indigo-900" title="Detail">
-                                            <FileText class="w-5 h-5 mx-auto" />
+                                        <Link :href="route('accounting.journals.show', journal.id)" class="text-indigo-600 hover:text-indigo-900 flex items-center justify-center gap-1" title="Detail">
+                                            <FileText class="w-4 h-4" /> Lihat
                                         </Link>
                                     </td>
                                 </tr>
                                 <tr v-if="journals.length === 0">
-                                    <td colspan="7" class="p-8 text-center text-slate-500">
+                                    <td colspan="6" class="p-8 text-center text-slate-500">
                                         Belum ada data jurnal.
                                     </td>
                                 </tr>
@@ -137,6 +243,7 @@ const formatDate = (dateString) => {
                         </table>
                     </div>
                 </div>
+
             </div>
         </div>
 
@@ -180,8 +287,8 @@ const formatDate = (dateString) => {
                         </div>
                         
                         <div class="space-y-3">
-                            <div v-for="(item, index) in form.items" :key="index" class="flex items-start gap-3">
-                                <div class="w-1/3">
+                            <div v-for="(item, index) in form.items" :key="index" class="flex flex-wrap md:flex-nowrap items-start gap-3">
+                                <div class="w-full md:w-1/3">
                                     <select
                                         v-model="item.coa_id"
                                         class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm w-full text-sm"
@@ -189,14 +296,14 @@ const formatDate = (dateString) => {
                                     >
                                         <option value="" disabled>Pilih Akun</option>
                                         <template v-for="coa in coas" :key="coa.id">
-                                            <option v-if="!coa.is_header" :value="coa.id">
+                                            <option :value="coa.id">
                                                 {{ coa.code }} - {{ coa.name }}
                                             </option>
                                         </template>
                                     </select>
                                     <InputError class="mt-1" :message="form.errors[`items.${index}.coa_id`]" />
                                 </div>
-                                <div class="w-1/3">
+                                <div class="w-full md:w-1/3">
                                     <TextInput
                                         type="text"
                                         class="block w-full text-sm"
@@ -204,7 +311,7 @@ const formatDate = (dateString) => {
                                         placeholder="Catatan (opsional)"
                                     />
                                 </div>
-                                <div class="w-1/6">
+                                <div class="w-[45%] md:w-1/6">
                                     <TextInput
                                         type="number"
                                         class="block w-full text-sm text-right"
@@ -216,7 +323,7 @@ const formatDate = (dateString) => {
                                     />
                                     <InputError class="mt-1" :message="form.errors[`items.${index}.debit`]" />
                                 </div>
-                                <div class="w-1/6">
+                                <div class="w-[45%] md:w-1/6">
                                     <TextInput
                                         type="number"
                                         class="block w-full text-sm text-right"
@@ -228,7 +335,7 @@ const formatDate = (dateString) => {
                                     />
                                     <InputError class="mt-1" :message="form.errors[`items.${index}.credit`]" />
                                 </div>
-                                <div>
+                                <div class="w-[10%] md:w-auto">
                                     <button 
                                         @click="removeItem(index)" 
                                         type="button"
@@ -247,7 +354,7 @@ const formatDate = (dateString) => {
                 </div>
 
                 <div class="mt-6 border-t border-slate-200 pt-4">
-                    <div class="flex justify-end gap-8 mb-6 mr-12">
+                    <div class="flex flex-col sm:flex-row justify-end gap-4 sm:gap-8 mb-6 sm:mr-12">
                         <div class="text-right">
                             <span class="text-xs font-semibold text-slate-500 uppercase">Total Debit</span>
                             <p class="text-lg font-bold" :class="isBalanced ? 'text-emerald-600' : 'text-rose-600'">
