@@ -53,6 +53,19 @@ const openModal = (coa = null) => {
   isModalOpen.value = true;
 };
 
+const addSubCoa = (parentCoa) => {
+  editingId.value = null;
+  form.reset();
+  form.parent_id = parentCoa.id;
+  form.type = parentCoa.type;
+  if (['aset', 'beban'].includes(parentCoa.type)) {
+    form.normal_balance = 'debit';
+  } else {
+    form.normal_balance = 'credit';
+  }
+  isModalOpen.value = true;
+};
+
 const closeModal = () => {
   isModalOpen.value = false;
   form.reset();
@@ -181,6 +194,14 @@ const getParentOptions = computed(() => {
                     </td>
                     <td class="px-6 py-4">
                       <div class="flex items-center justify-end gap-2 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                        <button 
+                          v-if="coa.is_header"
+                          @click="addSubCoa(coa)"
+                          class="p-2 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                          title="Tambah Sub Akun"
+                        >
+                          <Plus class="w-4 h-4" />
+                        </button>
                         <button 
                           @click="openModal(coa)"
                           class="p-2 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
