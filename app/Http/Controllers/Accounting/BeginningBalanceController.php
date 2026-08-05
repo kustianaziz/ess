@@ -16,13 +16,13 @@ class BeginningBalanceController extends Controller
     {
         $coas = Coa::orderBy('code')->get();
         
-        $openingBalanceEntry = JournalEntry::with('journalItems')
+        $openingBalanceEntry = JournalEntry::with('items')
             ->where('is_opening_balance', true)
             ->first();
 
         $balances = [];
         if ($openingBalanceEntry) {
-            foreach ($openingBalanceEntry->journalItems as $item) {
+            foreach ($openingBalanceEntry->items as $item) {
                 $balances[$item->coa_id] = [
                     'debit' => $item->debit,
                     'credit' => $item->credit,
@@ -64,7 +64,7 @@ class BeginningBalanceController extends Controller
         try {
             $existingEntry = JournalEntry::where('is_opening_balance', true)->first();
             if ($existingEntry) {
-                $existingEntry->journalItems()->delete();
+                $existingEntry->items()->delete();
                 $existingEntry->delete();
             }
 

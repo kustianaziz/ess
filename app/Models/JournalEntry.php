@@ -15,6 +15,13 @@ class JournalEntry extends Model
         'date' => 'date',
     ];
 
+    protected $appends = ['amount'];
+
+    public function getAmountAttribute()
+    {
+        return $this->items()->sum('debit');
+    }
+
     public function items()
     {
         return $this->hasMany(JournalItem::class);

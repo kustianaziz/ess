@@ -65,7 +65,6 @@ class JournalEntryController extends Controller
                 'journal_number' => $journalNumber,
                 'date' => $request->date,
                 'description' => $request->description,
-                'amount' => $totalDebit,
                 'status' => 'posted',
                 'created_by' => auth()->id(),
             ]);
