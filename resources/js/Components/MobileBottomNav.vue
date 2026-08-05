@@ -6,7 +6,7 @@ import {
   FileText,
   Utensils,
   Calendar,
-  Plus,
+  LayoutGrid,
   X,
   Clock,
   CheckSquare,
@@ -66,12 +66,12 @@ const isCurrentRoute = (routeName) => {
 <template>
   <div>
     <!-- Floating Bottom Navigation Bar (Mobile Native App Style) -->
-    <nav class="lg:hidden fixed bottom-4 left-3 right-3 z-40 bg-white/95 backdrop-blur-xl border border-slate-200/80 rounded-2xl shadow-2xl px-3 py-2 flex items-center justify-around">
+    <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-100 shadow-[0_-4px_15px_rgba(0,0,0,0.05)] h-16 px-2 sm:px-6 flex items-center justify-around pb-safe">
       <!-- Home Link -->
       <Link
         :href="route('dashboard')"
-        class="flex flex-col items-center gap-1 p-1 rounded-xl transition-all"
-        :class="isCurrentRoute('dashboard') ? 'text-indigo-600 font-bold scale-105' : 'text-slate-400 hover:text-slate-600'"
+        class="flex flex-col items-center gap-1 p-2 rounded-xl transition-all"
+        :class="isCurrentRoute('dashboard') ? 'text-indigo-600 font-bold' : 'text-slate-400 hover:text-slate-600'"
       >
         <Home class="w-5 h-5" />
         <span class="text-[10px] font-semibold">Beranda</span>
@@ -81,8 +81,8 @@ const isCurrentRoute = (routeName) => {
       <Link
         v-if="isLevel1OrAbove"
         :href="route('approval.index')"
-        class="flex flex-col items-center gap-1 p-1 rounded-xl transition-all relative"
-        :class="isCurrentRoute('approval') ? 'text-amber-600 font-bold scale-105' : 'text-slate-400 hover:text-slate-600'"
+        class="flex flex-col items-center gap-1 p-2 rounded-xl transition-all relative"
+        :class="isCurrentRoute('approval') ? 'text-amber-600 font-bold' : 'text-slate-400 hover:text-slate-600'"
       >
         <CheckSquare class="w-5 h-5" />
         <span class="text-[10px] font-semibold">Approval</span>
@@ -92,8 +92,8 @@ const isCurrentRoute = (routeName) => {
       <Link
         v-if="isHrdOrAdmin"
         :href="route('keuangan.pencairan.index')"
-        class="flex flex-col items-center gap-1 p-1 rounded-xl transition-all"
-        :class="isCurrentRoute('keuangan.pencairan') ? 'text-emerald-600 font-bold scale-105' : 'text-slate-400 hover:text-slate-600'"
+        class="flex flex-col items-center gap-1 p-2 rounded-xl transition-all"
+        :class="isCurrentRoute('keuangan.pencairan') ? 'text-emerald-600 font-bold' : 'text-slate-400 hover:text-slate-600'"
       >
         <CreditCard class="w-5 h-5" />
         <span class="text-[10px] font-semibold">Pencairan</span>
@@ -102,21 +102,20 @@ const isCurrentRoute = (routeName) => {
       <!-- History Link -->
       <Link
         :href="route('riwayat-pengajuan.index')"
-        class="flex flex-col items-center gap-1 p-1 rounded-xl transition-all"
-        :class="isCurrentRoute('riwayat-pengajuan') ? 'text-indigo-600 font-bold scale-105' : 'text-slate-400 hover:text-slate-600'"
+        class="flex flex-col items-center gap-1 p-2 rounded-xl transition-all"
+        :class="isCurrentRoute('riwayat-pengajuan') ? 'text-indigo-600 font-bold' : 'text-slate-400 hover:text-slate-600'"
       >
         <Clock class="w-5 h-5" />
         <span class="text-[10px] font-semibold">Riwayat</span>
       </Link>
 
-      <!-- FAB Plus Action Button -->
       <button
         @click="showQuickMenu = !showQuickMenu"
-        class="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-lg shadow-slate-900/30 hover:scale-105 transition-all shrink-0"
+        class="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg hover:scale-105 transition-transform shrink-0 mt-[-20px] ring-4 ring-white"
         title="Buka Menu Seluruh Fitur Aplikasi"
       >
         <X v-if="showQuickMenu" class="w-5 h-5" />
-        <Plus v-else class="w-5 h-5" />
+        <LayoutGrid v-else class="w-5 h-5" />
       </button>
     </nav>
 

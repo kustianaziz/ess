@@ -53,7 +53,7 @@ const closeModal = () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50 flex text-slate-800 font-sans antialiased relative">
+  <div class="min-h-screen bg-page flex text-slate-800 font-sans antialiased relative">
     <!-- Desktop Docked Sidebar -->
     <div class="hidden lg:block">
       <Sidebar />
@@ -104,7 +104,7 @@ const closeModal = () => {
       </Modal>
 
       <!-- Page Content -->
-      <main class="flex-1 p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8 overflow-y-auto">
+      <main class="flex-1 px-page-x py-section-gap pb-24 lg:pb-8 overflow-y-auto">
         <slot />
       </main>
 

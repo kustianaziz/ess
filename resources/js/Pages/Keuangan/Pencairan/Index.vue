@@ -121,7 +121,7 @@ const getBadgeColor = (type) => {
   <Head title="Pencairan & Pembayaran Keuangan" />
 
   <AuthenticatedLayout>
-    <div class="py-6 sm:py-8 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-6">
+    <div class="max-w-7xl mx-auto space-y-6">
       <!-- HEADER -->
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -167,7 +167,7 @@ const getBadgeColor = (type) => {
       </div>
 
       <!-- TAB NAVIGATION -->
-      <div class="flex items-center gap-2 border-b border-slate-200 pb-1">
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 border-b border-slate-200 pb-3 sm:pb-1">
         <button
           @click="activeTab = 'unpaid'"
           class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
@@ -220,7 +220,7 @@ const getBadgeColor = (type) => {
               </div>
             </div>
 
-            <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+            <div class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <span class="text-[10px] text-slate-400 block uppercase font-bold">Nominal Dicairkan</span>
                 <span class="font-black text-lg text-emerald-700">{{ item.amount_formatted }}</span>
@@ -271,12 +271,12 @@ const getBadgeColor = (type) => {
               </p>
             </div>
 
-            <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-3 text-xs">
+            <div class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
               <div>
                 <span class="text-[10px] text-slate-400 block uppercase font-bold">Nominal</span>
                 <span class="font-bold text-slate-900">{{ item.amount_formatted }}</span>
               </div>
-              <div class="text-right">
+              <div class="sm:text-right">
                 <span class="text-[10px] text-slate-400 block uppercase font-bold">Ref: {{ item.payment_reference }}</span>
                 <span class="text-[11px] text-slate-500 font-medium">{{ item.paid_at }}</span>
               </div>
@@ -408,15 +408,15 @@ const getBadgeColor = (type) => {
             </div>
           </div>
 
-          <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
-            <button type="button" @click="showPayModal = false" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold">Batal</button>
+          <div class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row justify-end gap-2">
+            <button type="button" @click="showPayModal = false" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all text-center">Batal</button>
             <button
               type="submit"
               :disabled="payForm.processing"
               class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md transition-all flex items-center gap-1.5"
             >
               <CheckCircle2 class="w-4 h-4" />
-              <span>Konfirmasi & Process Pembayaran Kas</span>
+              <span class="w-full text-center">Proses Pembayaran</span>
             </button>
           </div>
         </form>

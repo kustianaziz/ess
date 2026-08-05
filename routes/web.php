@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ExecutiveDashboardController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OperationalController;
@@ -97,6 +98,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/pencairan', [\App\Http\Controllers\FinanceDisbursementController::class, 'index'])->name('pencairan.index');
     });
 
+    // Executive dashboard route protected by role
+    Route::middleware('role:admin|manager|hrd_finance')->group(function () {
+        Route::get('/executive/dashboard/breakdown', [ExecutiveDashboardController::class, 'breakdown'])->name('executive.dashboard.breakdown');
+        Route::get('/executive/dashboard', [ExecutiveDashboardController::class, 'index'])->name('executive.dashboard');
+    });
+
     // Admin Panel (Middleware role: admin)
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
         Route::resource('users', \App\Http\Controllers\Admin\UserController::class)->except(['create', 'show', 'edit']);
@@ -105,6 +112,29 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('activity-types', \App\Http\Controllers\Admin\ActivityTypeController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('leave-types', \App\Http\Controllers\Admin\LeaveTypeController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('leave-balances', \App\Http\Controllers\Admin\LeaveBalanceController::class)->only(['index', 'store', 'update']);
+        Route::resource('services', \App\Http\Controllers\Admin\ServiceController::class)->only(['index', 'store', 'update', 'destroy']);
+    });
+
+    // Invoicing Module
+    Route::prefix('invoicing')->name('invoicing.')->group(function () {
+        Route::resource('customers', \App\Http\Controllers\Invoicing\CustomerController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::post('invoices/{invoice}/duplicate', [\App\Http\Controllers\Invoicing\InvoiceController::class, 'duplicate'])->name('invoices.duplicate');
+        Route::resource('invoices', \App\Http\Controllers\Invoicing\InvoiceController::class)->except(['edit', 'update']);
+        Route::get('invoices/{invoice}/pdf', [\App\Http\Controllers\Invoicing\InvoiceController::class, 'downloadPdf'])->name('invoices.pdf');
+        Route::post('invoices/{invoice}/payments', [\App\Http\Controllers\Invoicing\InvoicePaymentController::class, 'store'])->name('invoices.payments.store');
+    });
+
+    // Renewal Webpraktis Module
+    Route::middleware('role:admin|hrd_finance')->prefix('renewal')->name('renewal.')->group(function () {
+        Route::resource('vendors', \App\Http\Controllers\Renewal\VendorController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::resource('domains', \App\Http\Controllers\Renewal\DomainController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::get('renewals', [\App\Http\Controllers\Renewal\RenewalRequestController::class, 'index'])->name('renewals.index');
+        Route::post('renewals', [\App\Http\Controllers\Renewal\RenewalRequestController::class, 'store'])->name('renewals.store');
+        Route::get('renewals/{renewalRequest}', [\App\Http\Controllers\Renewal\RenewalRequestController::class, 'show'])->name('renewals.show');
+        Route::post('renewals/{renewalRequest}/generate-invoice', [\App\Http\Controllers\Renewal\RenewalRequestController::class, 'generateInvoice'])->name('renewals.generate-invoice');
+        Route::post('renewals/{renewalRequest}/mark-paid-customer', [\App\Http\Controllers\Renewal\RenewalRequestController::class, 'markPaidCustomer'])->name('renewals.mark-paid-customer');
+        Route::post('renewals/{renewalRequest}/vendor-payment', [\App\Http\Controllers\Renewal\VendorPaymentController::class, 'store'])->name('renewals.vendor-payment.store');
+        Route::post('renewals/{renewalRequest}/complete', [\App\Http\Controllers\Renewal\RenewalRequestController::class, 'complete'])->name('renewals.complete');
     });
 });
 

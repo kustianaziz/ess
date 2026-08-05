@@ -421,6 +421,7 @@ const submitAccount = () => {
           <div>
             <label class="block font-bold text-slate-700 mb-1">Kategori Transaksi <span class="text-rose-500">*</span></label>
             <select v-model="form.category" class="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold text-slate-800">
+              <option value="mutasi">Mutasi Dana (Pindah Buku / Internal)</option>
               <option v-if="modalType === 'in'" value="setoran_kas">Setoran Kas / Modal</option>
               <option v-if="modalType === 'in'" value="lainnya">Kas Masuk Lainnya</option>
               <option v-if="modalType === 'out'" value="operasional_lain">Pengeluaran Operasional</option>

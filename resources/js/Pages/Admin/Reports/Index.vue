@@ -84,23 +84,23 @@ const exportWordUrl = computed(() => {
         </div>
 
         <!-- Export Buttons -->
-        <div class="flex items-center gap-3 self-stretch md:self-auto">
+        <div class="flex flex-col sm:flex-row items-stretch gap-3 w-full md:w-auto mt-4 md:mt-0">
           <a
             :href="exportExcelUrl"
             target="_blank"
-            class="flex-1 md:flex-none px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center gap-2"
+            class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center gap-2"
           >
             <FileSpreadsheet class="w-4 h-4" />
-            <span>Export Excel (.xls)</span>
+            <span>Export Excel</span>
           </a>
 
           <a
             :href="exportWordUrl"
             target="_blank"
-            class="flex-1 md:flex-none px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2"
+            class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2"
           >
             <FileText class="w-4 h-4" />
-            <span>Export Word (.doc)</span>
+            <span>Export Word</span>
           </a>
         </div>
       </div>
@@ -259,14 +259,14 @@ const exportWordUrl = computed(() => {
       </div>
 
       <!-- Tab View Selection (Rekap & Detail List) -->
-      <div class="bg-white p-2 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-2">
+      <div class="bg-white p-2 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row items-stretch md:items-center gap-2">
         <button
           @click="activeTab = 'all'"
           class="flex-1 py-2 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
           :class="activeTab === 'all' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'"
         >
           <Layers class="w-4 h-4" />
-          <span>Tampilkan Semua (Rekap & List Detail)</span>
+          <span>Semua (Rekap & List)</span>
         </button>
 
         <button
@@ -275,7 +275,7 @@ const exportWordUrl = computed(() => {
           :class="activeTab === 'rekap' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'"
         >
           <Building2 class="w-4 h-4" />
-          <span>Tabel Rekapitulasi Per Divisi</span>
+          <span>Tabel Divisi</span>
         </button>
 
         <button
@@ -284,7 +284,7 @@ const exportWordUrl = computed(() => {
           :class="activeTab === 'list' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'"
         >
           <ListFilter class="w-4 h-4" />
-          <span>Tabel List Detail Pengajuan</span>
+          <span>List Detail</span>
         </button>
       </div>
 

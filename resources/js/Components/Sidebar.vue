@@ -19,7 +19,12 @@ import {
   BarChart3,
   Plane,
   Wallet,
-  Zap
+  Zap,
+  Layers,
+  RefreshCw,
+  Globe,
+  Store,
+  LineChart
 } from 'lucide-vue-next';
 
 const page = usePage();
@@ -61,14 +66,23 @@ const isHrdOrAdmin = computed(() => {
       <!-- Navigation List -->
       <nav class="p-4 space-y-6 overflow-y-auto max-h-[calc(100vh-160px)] custom-scrollbar">
         <!-- Main Beranda -->
-        <div>
+        <div class="space-y-1">
           <Link
             :href="route('dashboard')"
             class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
             :class="isCurrentRoute('dashboard') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
           >
             <Home class="w-4 h-4" />
-            <span>Beranda</span>
+            <span>Beranda ESS</span>
+          </Link>
+          <Link
+            v-if="isHrdOrAdmin"
+            :href="route('executive.dashboard')"
+            class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+            :class="isCurrentRoute('executive.dashboard') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+          >
+            <LineChart class="w-4 h-4 text-emerald-400" />
+            <span>Dashboard Eksekutif</span>
           </Link>
         </div>
 
@@ -147,6 +161,65 @@ const isHrdOrAdmin = computed(() => {
             >
               <Zap class="w-4 h-4 text-amber-400" />
               <span>Tagihan Bulanan Rutin</span>
+            </Link>
+          </div>
+        </div>
+
+        <!-- Section: PENDAPATAN / INVOICING -->
+        <div v-if="isHrdOrAdmin">
+          <p class="px-3.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2 mt-4">
+            PENDAPATAN
+          </p>
+          <div class="space-y-1">
+            <Link
+              :href="route('invoicing.customers.index')"
+              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="isCurrentRoute('invoicing.customers') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+            >
+              <Users class="w-4 h-4 text-emerald-400" />
+              <span>Klien / Customer</span>
+            </Link>
+
+            <Link
+              :href="route('invoicing.invoices.index')"
+              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="isCurrentRoute('invoicing.invoices') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+            >
+              <FileText class="w-4 h-4 text-sky-400" />
+              <span>Invoice Tagihan</span>
+            </Link>
+          </div>
+        </div>
+
+        <!-- Section: RENEWAL WEBPRAKTIS -->
+        <div v-if="isHrdOrAdmin">
+          <p class="px-3.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2 mt-4">
+            RENEWAL
+          </p>
+          <div class="space-y-1">
+            <Link
+              :href="route('renewal.vendors.index')"
+              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="isCurrentRoute('renewal.vendors') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+            >
+              <Store class="w-4 h-4 text-violet-400" />
+              <span>Master Vendor</span>
+            </Link>
+            <Link
+              :href="route('renewal.domains.index')"
+              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="isCurrentRoute('renewal.domains') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+            >
+              <Globe class="w-4 h-4 text-cyan-400" />
+              <span>Domain & Hosting</span>
+            </Link>
+            <Link
+              :href="route('renewal.renewals.index')"
+              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="isCurrentRoute('renewal.renewals') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+            >
+              <RefreshCw class="w-4 h-4 text-emerald-400" />
+              <span>Proses Renewal</span>
             </Link>
           </div>
         </div>
@@ -271,6 +344,15 @@ const isHrdOrAdmin = computed(() => {
             >
               <Scale class="w-4 h-4 text-amber-400" />
               <span>Kuota Cuti Karyawan</span>
+            </Link>
+
+            <Link
+              :href="route('admin.services.index')"
+              class="flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition-all duration-200"
+              :class="isCurrentRoute('admin.services') ? 'bg-indigo-600 text-white font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+            >
+              <Layers class="w-4 h-4 text-teal-400" />
+              <span>Master Layanan</span>
             </Link>
 
             <Link
