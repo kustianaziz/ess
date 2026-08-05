@@ -59,26 +59,6 @@ const closeModal = () => {
       <Sidebar />
     </div>
 
-    <!-- Mobile Slide-over Sidebar Drawer -->
-    <div v-if="showMobileSidebar" class="fixed inset-0 z-50 lg:hidden flex">
-      <!-- Dark Backdrop Overlay -->
-      <div
-        @click="showMobileSidebar = false"
-        class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity"
-      ></div>
-
-      <!-- Slide Drawer -->
-      <div class="relative flex-1 max-w-xs w-full bg-[#0F172A] z-10 shadow-2xl flex flex-col h-full">
-        <button
-          @click="showMobileSidebar = false"
-          class="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-xl bg-slate-800/80 z-20"
-        >
-          <X class="w-5 h-5" />
-        </button>
-        <Sidebar />
-      </div>
-    </div>
-
     <!-- Main Content Area -->
     <div class="flex-1 flex flex-col min-w-0">
       <!-- Topbar -->

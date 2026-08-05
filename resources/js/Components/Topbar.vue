@@ -105,15 +105,8 @@ const markReadAndNavigate = (notification) => {
 
 <template>
   <header class="h-16 sm:h-20 bg-white border-b border-slate-100 px-3 sm:px-8 flex items-center justify-between sticky top-0 z-20 shadow-sm/50">
-    <!-- Left: Hamburger Button (Mobile) & Welcome Message -->
+    <!-- Left: Welcome Message -->
     <div class="flex items-center gap-2 sm:gap-3 min-w-0 pr-2">
-      <button
-        @click="$emit('toggleSidebar')"
-        class="lg:hidden p-1.5 sm:p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors shrink-0"
-        title="Buka Menu"
-      >
-        <Menu class="w-5 h-5 sm:w-6 sm:h-6" />
-      </button>
 
       <div class="min-w-0">
         <h2 class="text-xs sm:text-lg md:text-xl font-bold text-slate-800 tracking-tight truncate max-w-[130px] xs:max-w-[190px] sm:max-w-none">
