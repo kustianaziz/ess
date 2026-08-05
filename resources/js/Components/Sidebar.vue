@@ -17,7 +17,9 @@ import {
   Building2,
   Scale,
   BarChart3,
-  Plane
+  Plane,
+  Wallet,
+  Zap
 } from 'lucide-vue-next';
 
 const page = usePage();
@@ -114,7 +116,31 @@ const isHrdOrAdmin = computed(() => {
           </div>
         </div>
 
-        <!-- Section: RIWAYAT & STATUS -->
+        <!-- Section: KEUANGAN (OPERASIONAL & TAGIHAN) -->
+        <div v-if="isHrdOrAdmin">
+          <p class="px-3.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">
+            KEUANGAN
+          </p>
+          <div class="space-y-1">
+            <Link
+              :href="route('keuangan.kas-operasional.dashboard')"
+              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="isCurrentRoute('keuangan.kas-operasional') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+            >
+              <Wallet class="w-4 h-4 text-emerald-400" />
+              <span>Kas Operasional & Saldo</span>
+            </Link>
+
+            <Link
+              :href="route('keuangan.tagihan-bulanan.index')"
+              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="isCurrentRoute('keuangan.tagihan-bulanan') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+            >
+              <Zap class="w-4 h-4 text-amber-400" />
+              <span>Tagihan Bulanan Rutin</span>
+            </Link>
+          </div>
+        </div>
         <div>
           <p class="px-3.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">
             RIWAYAT & STATUS

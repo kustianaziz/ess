@@ -81,6 +81,17 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/export-word', [\App\Http\Controllers\Admin\ReportController::class, 'exportWord'])->name('export-word');
     });
 
+    // Modul Keuangan (Kas Operasional & Tagihan Bulanan)
+    Route::middleware('role:admin|hrd_finance')->prefix('keuangan')->name('keuangan.')->group(function () {
+        // Kas Operasional
+        Route::get('/kas-operasional', [\App\Http\Controllers\CashOperationalController::class, 'dashboard'])->name('kas-operasional.dashboard');
+        Route::post('/kas-operasional/transaksi', [\App\Http\Controllers\CashOperationalController::class, 'storeTransaction'])->name('kas-operasional.transaksi.store');
+
+        // Tagihan Bulanan Rutin
+        Route::get('/tagihan-bulanan', [\App\Http\Controllers\MonthlyBillController::class, 'index'])->name('tagihan-bulanan.index');
+        Route::post('/tagihan-bulanan/{id}/pay', [\App\Http\Controllers\MonthlyBillController::class, 'pay'])->name('tagihan-bulanan.pay');
+    });
+
     // Admin Panel (Middleware role: admin)
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
         Route::resource('users', \App\Http\Controllers\Admin\UserController::class)->except(['create', 'show', 'edit']);

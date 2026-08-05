@@ -12,8 +12,13 @@ use Illuminate\Support\Facades\DB;
 
 class PaymentController extends Controller
 {
-    public function process(Request $request, string $type, int $id, RecordStatusHistoryAction $recordHistory): RedirectResponse
-    {
+    public function process(
+        Request $request,
+        string $type,
+        int $id,
+        RecordStatusHistoryAction $recordHistory,
+        \App\Actions\CashOperational\RecordCashTransactionAction $recordCashTransaction
+    ): RedirectResponse {
         $validated = $request->validate([
             'payment_reference' => 'required|string|max:100',
             'disbursed_budget' => 'nullable|numeric|min:0',
@@ -23,7 +28,7 @@ class PaymentController extends Controller
         $user = $request->user();
         $reference = $validated['payment_reference'];
 
-        return DB::transaction(function() use ($type, $id, $user, $reference, $validated, $recordHistory) {
+        return DB::transaction(function() use ($type, $id, $user, $reference, $validated, $recordHistory, $recordCashTransaction) {
             $model = match($type) {
                 'reimbursement' => ReimbursementRequest::findOrFail($id),
                 'operasional' => OperationalRequest::findOrFail($id),
@@ -39,8 +44,22 @@ class PaymentController extends Controller
                 'payment_reference' => $reference,
             ];
 
+            $amount = match($type) {
+                'reimbursement' => (float)$model->amount,
+                'operasional' => (float)$model->estimated_cost,
+                'perjalanan-dinas' => (float)($validated['disbursed_budget'] ?? $model->estimated_budget),
+                default => 0,
+            };
+
+            $category = match($type) {
+                'reimbursement' => 'reimburse',
+                'operasional' => 'operasional_lain',
+                'perjalanan-dinas' => 'perjalanan_dinas',
+                default => 'lainnya',
+            };
+
             if ($type === 'perjalanan-dinas') {
-                $updateData['disbursed_budget'] = $validated['disbursed_budget'] ?? $model->estimated_budget;
+                $updateData['disbursed_budget'] = $amount;
                 if (!empty($validated['allowance_breakdown'])) {
                     $updateData['allowance_breakdown'] = $validated['allowance_breakdown'];
                 }
@@ -48,12 +67,26 @@ class PaymentController extends Controller
 
             $model->update($updateData);
 
-            $recordHistory->execute($model, $oldStatus, RequestStatus::PAID->value, $user->id, "Pencairan Uang Muka berhasil diproses dengan No. Referensi Transfer: {$reference}");
+            // Record cash out transaction automatically
+            $primaryAccount = \App\Models\CashAccount::where('is_active', true)->first();
+            if ($primaryAccount && $amount > 0) {
+                $recordCashTransaction->execute(
+                    $primaryAccount->id,
+                    'out',
+                    $category,
+                    $amount,
+                    "Pencairan {$model->request_number} (Ref: {$reference})",
+                    $user->id,
+                    $model
+                );
+            }
+
+            $recordHistory->execute($model, $oldStatus, RequestStatus::PAID->value, $user->id, "Pembayaran berhasil diproses dengan No. Referensi Transfer: {$reference}");
 
             // Notify applicant
             $model->user?->notify(new \App\Notifications\PaymentProcessedNotification($type, $model->id, $model->request_number, $reference));
 
-            return back()->with('success', 'Pencairan uang muka berhasil diproses dan status diperbarui menjadi Sudah Dibayarkan.');
+            return back()->with('success', 'Pembayaran berhasil diproses dan mutasi kas berhasil dicatat!');
         });
     }
 }
