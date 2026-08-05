@@ -10,7 +10,8 @@ import {
   DollarSign,
   Building2,
   FileText,
-  CreditCard
+  CreditCard,
+  Pen
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -93,8 +94,10 @@ const submitPayment = () => {
     }
   })
 }
-// Add Bill Type Modal
+// Add / Edit Bill Type Modal
 const showAddTypeModal = ref(false)
+const isEditType = ref(false)
+const selectedTypeId = ref(null)
 
 const typeForm = useForm({
   name: '',
@@ -113,6 +116,8 @@ const handleTypeAmountInput = (e) => {
 }
 
 const openAddTypeModal = () => {
+  isEditType.value = false
+  selectedTypeId.value = null
   typeForm.name = ''
   typeForm.vendor_name = ''
   typeForm.default_amount = 0
@@ -122,16 +127,37 @@ const openAddTypeModal = () => {
   showAddTypeModal.value = true
 }
 
+const openEditTypeModal = (item) => {
+  isEditType.value = true
+  selectedTypeId.value = item.bill_type_id
+  typeForm.name = item.bill_type_name
+  typeForm.vendor_name = (item.vendor_name !== '-') ? item.vendor_name : ''
+  typeForm.default_amount = item.bill_amount
+  rawTypeAmountInput.value = item.bill_amount ? new Intl.NumberFormat('id-ID').format(item.bill_amount) : '0'
+  typeForm.due_date = item.due_date_raw || new Date().toISOString().split('T')[0]
+  typeForm.cash_account_id = item.cash_account_id || props.cashAccounts[0]?.id || ''
+  showAddTypeModal.value = true
+}
+
 const submitBillType = () => {
   if (!typeForm.name || !typeForm.default_amount || !typeForm.cash_account_id) {
     alert('Mohon isi nama tagihan, estimasi nominal, dan akun kas pembayar.')
     return
   }
-  typeForm.post(route('keuangan.tagihan-bulanan.types.store'), {
-    onSuccess: () => {
-      showAddTypeModal.value = false
-    }
-  })
+
+  if (isEditType.value) {
+    typeForm.put(route('keuangan.tagihan-bulanan.types.update', selectedTypeId.value), {
+      onSuccess: () => {
+        showAddTypeModal.value = false
+      }
+    })
+  } else {
+    typeForm.post(route('keuangan.tagihan-bulanan.types.store'), {
+      onSuccess: () => {
+        showAddTypeModal.value = false
+      }
+    })
+  }
 }
 </script>
 
@@ -235,7 +261,16 @@ const submitBillType = () => {
             </div>
 
             <div>
-              <h3 class="font-bold text-base text-slate-900 tracking-tight">{{ item.bill_type_name }}</h3>
+              <div class="flex items-center justify-between gap-2">
+                <h3 class="font-bold text-base text-slate-900 tracking-tight">{{ item.bill_type_name }}</h3>
+                <button
+                  @click="openEditTypeModal(item)"
+                  class="p-1 text-slate-400 hover:text-indigo-600 rounded transition-colors"
+                  title="Edit Jenis Tagihan"
+                >
+                  <Pen class="w-4 h-4" />
+                </button>
+              </div>
               <p class="text-xs text-slate-500 mt-0.5">Vendor: {{ item.vendor_name }}</p>
             </div>
           </div>
@@ -340,7 +375,7 @@ const submitBillType = () => {
             <span class="p-1.5 rounded-lg bg-indigo-100 text-indigo-600">
               <Zap class="w-4 h-4" />
             </span>
-            <span>Tambah Jenis Tagihan Bulanan Baru</span>
+            <span>{{ isEditType ? 'Edit Jenis Tagihan Bulanan' : 'Tambah Jenis Tagihan Bulanan Baru' }}</span>
           </h3>
           <button @click="showAddTypeModal = false" class="text-slate-400 hover:text-slate-600 text-sm font-bold">✕</button>
         </div>
@@ -393,7 +428,7 @@ const submitBillType = () => {
               :disabled="typeForm.processing"
               class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md transition-all"
             >
-              Simpan Jenis Tagihan
+              {{ isEditType ? 'Simpan Perubahan' : 'Simpan Jenis Tagihan' }}
             </button>
           </div>
         </form>

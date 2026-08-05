@@ -54,13 +54,16 @@ class MonthlyBillController extends Controller
             ->map(fn($p) => [
                 'id' => $p->id,
                 'payment_number' => $p->payment_number,
+                'bill_type_id' => $p->bill_type_id,
                 'bill_type_name' => $p->billType?->name ?? '-',
                 'vendor_name' => $p->billType?->vendor_name ?? '-',
+                'billing_day' => $p->billType?->billing_day ?? 10,
                 'cash_account_id' => $p->billType?->cash_account_id,
                 'cash_account_name' => $p->billType?->cashAccount?->name ?? 'Kas Operasional Pusat',
                 'bill_amount' => (float)$p->bill_amount,
                 'bill_amount_formatted' => 'Rp ' . number_format($p->bill_amount, 0, ',', '.'),
                 'due_date' => $p->due_date->translatedFormat('d M Y'),
+                'due_date_raw' => $p->due_date->toDateString(),
                 'payment_date' => $p->payment_date ? $p->payment_date->translatedFormat('d M Y') : '-',
                 'status' => $p->status,
                 'payment_reference' => $p->payment_reference,
@@ -177,6 +180,51 @@ class MonthlyBillController extends Controller
         return redirect()->back()->with(
             'success',
             "Jenis tagihan '{$billType->name}' berhasil ditambahkan untuk periode " . date('F Y', $time) . "!"
+        );
+    }
+
+    public function updateBillType(Request $request, int $id): RedirectResponse
+    {
+        $billType = MonthlyBillType::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'vendor_name' => 'nullable|string|max:255',
+            'default_amount' => 'required|numeric|min:0',
+            'due_date' => 'nullable|date',
+            'cash_account_id' => 'required|exists:cash_accounts,id',
+        ]);
+
+        $updateData = [
+            'name' => $validated['name'],
+            'vendor_name' => $validated['vendor_name'] ?? null,
+            'default_amount' => $validated['default_amount'],
+            'cash_account_id' => $validated['cash_account_id'],
+        ];
+
+        if (!empty($validated['due_date'])) {
+            $time = strtotime($validated['due_date']);
+            $updateData['billing_day'] = min((int) date('j', $time), 28);
+        }
+
+        $billType->update($updateData);
+
+        // Update active unpaid payment for current month if exists
+        $currentMonthPayment = MonthlyBillPayment::where('bill_type_id', $billType->id)
+            ->where('status', 'unpaid')
+            ->latest('id')
+            ->first();
+
+        if ($currentMonthPayment) {
+            $currentMonthPayment->update([
+                'bill_amount' => $billType->default_amount,
+                'due_date' => $validated['due_date'] ?? $currentMonthPayment->due_date,
+            ]);
+        }
+
+        return redirect()->back()->with(
+            'success',
+            "Jenis tagihan '{$billType->name}' berhasil diperbarui!"
         );
     }
 }
