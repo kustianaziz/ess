@@ -191,6 +191,13 @@ class ApprovalController extends Controller
 
                 // Notify applicant
                 $model->user?->notify(new \App\Notifications\RequestApprovedNotification($type, $model->id, $model->request_number, 2));
+
+                if (in_array($type, ['reimbursement', 'operasional', 'perjalanan-dinas']) && ($user->hasRole('admin') || $user->hasRole('hrd_finance'))) {
+                    return redirect()->route('keuangan.pencairan.index')->with(
+                        'success',
+                        "Pengajuan {$model->request_number} berhasil disetujui! Pengajuan kini berada di antrean Pencairan & Pembayaran Kas."
+                    );
+                }
             }
 
             return redirect()->route('approval.index')->with('success', 'Pengajuan berhasil disetujui.');

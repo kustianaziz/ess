@@ -123,11 +123,20 @@ const isHrdOrAdmin = computed(() => {
           </p>
           <div class="space-y-1">
             <Link
+              :href="route('keuangan.pencairan.index')"
+              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="isCurrentRoute('keuangan.pencairan') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+            >
+              <CreditCard class="w-4 h-4 text-emerald-400" />
+              <span>Pencairan & Pembayaran</span>
+            </Link>
+
+            <Link
               :href="route('keuangan.kas-operasional.dashboard')"
               class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
               :class="isCurrentRoute('keuangan.kas-operasional') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
             >
-              <Wallet class="w-4 h-4 text-emerald-400" />
+              <Wallet class="w-4 h-4 text-sky-400" />
               <span>Kas Operasional & Saldo</span>
             </Link>
 
