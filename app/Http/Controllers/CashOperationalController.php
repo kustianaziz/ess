@@ -18,7 +18,7 @@ class CashOperationalController extends Controller
 
         // 1. Cash Accounts List
         $cashAccounts = CashAccount::with('picUser:id,name')
-            ->where('is_active', true)
+            ->orderBy('id')
             ->get()
             ->map(fn($acc) => [
                 'id' => $acc->id,
@@ -32,6 +32,7 @@ class CashOperationalController extends Controller
                 'current_balance_formatted' => 'Rp ' . number_format($acc->current_balance, 0, ',', '.'),
                 'pic_name' => $acc->picUser?->name ?? 'Admin Keuangan',
                 'pic_user_id' => $acc->pic_user_id,
+                'is_active' => (bool)$acc->is_active,
             ]);
 
         $totalBalance = $cashAccounts->sum('current_balance');

@@ -26,11 +26,13 @@ const props = defineProps({
   usersList: Array
 })
 
+const activeCashAccounts = computed(() => props.cashAccounts.filter(acc => acc.is_active !== false))
+
 const showModal = ref(false)
 const modalType = ref('in') // 'in' or 'out'
 
 const form = useForm({
-  cash_account_id: props.cashAccounts[0]?.id || '',
+  cash_account_id: activeCashAccounts.value[0]?.id || props.cashAccounts[0]?.id || '',
   type: 'in',
   category: 'setoran_kas',
   amount: 0,
@@ -264,7 +266,8 @@ const submitAccount = () => {
           <div
             v-for="acc in cashAccounts"
             :key="acc.id"
-            class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex items-center justify-between hover:border-indigo-300 transition-all group"
+            class="p-4 rounded-xl border shadow-sm flex items-center justify-between transition-all group"
+            :class="acc.is_active ? 'bg-white border-slate-200/80 hover:border-indigo-300' : 'bg-slate-50 border-slate-200 opacity-75'"
           >
             <div>
               <div class="flex items-center gap-1.5 flex-wrap">
@@ -279,22 +282,28 @@ const submitAccount = () => {
                   <Wallet v-else class="w-3 h-3" />
                   <span>{{ acc.type_label }}</span>
                 </span>
+                <span
+                  v-if="!acc.is_active"
+                  class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700 uppercase tracking-wider"
+                >
+                  Non-Aktif
+                </span>
                 <button
                   @click="openEditAccountModal(acc)"
                   class="p-1 text-slate-400 hover:text-indigo-600 rounded transition-colors ml-auto sm:ml-0"
-                  title="Edit Akun Kas"
+                  title="Edit & Aktifkan Kembali Akun Kas"
                 >
                   <Pen class="w-3.5 h-3.5" />
                 </button>
               </div>
-              <h4 class="font-bold text-sm text-slate-900 mt-1">{{ acc.name }}</h4>
+              <h4 class="font-bold text-sm text-slate-900 mt-1" :class="{ 'line-through text-slate-400': !acc.is_active }">{{ acc.name }}</h4>
               <span v-if="acc.type === 'bank' && acc.bank_name" class="text-[11px] text-slate-500 font-medium block">
                 {{ acc.bank_name }} <span v-if="acc.account_number">• {{ acc.account_number }}</span>
               </span>
               <span class="text-[11px] text-slate-400 block mt-0.5">PIC: {{ acc.pic_name }}</span>
             </div>
             <div class="text-right">
-              <span class="font-bold text-sm text-slate-900 block">{{ acc.current_balance_formatted }}</span>
+              <span class="font-bold text-sm text-slate-900 block" :class="{ 'text-slate-400': !acc.is_active }">{{ acc.current_balance_formatted }}</span>
             </div>
           </div>
         </div>
