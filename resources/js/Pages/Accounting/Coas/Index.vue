@@ -21,7 +21,18 @@ const form = useForm({
   normal_balance: 'debit',
   parent_id: '',
   is_active: true,
+  is_header: false,
   description: ''
+});
+
+// Watch for type changes to automate normal_balance
+import { watch } from 'vue';
+watch(() => form.type, (newType) => {
+  if (['aset', 'beban'].includes(newType)) {
+    form.normal_balance = 'debit';
+  } else if (['hutang', 'modal', 'pendapatan'].includes(newType)) {
+    form.normal_balance = 'credit';
+  }
 });
 
 const openModal = (coa = null) => {
@@ -33,6 +44,7 @@ const openModal = (coa = null) => {
     form.normal_balance = coa.normal_balance;
     form.parent_id = coa.parent_id || '';
     form.is_active = !!coa.is_active;
+    form.is_header = !!coa.is_header;
     form.description = coa.description || '';
   } else {
     editingId.value = null;
@@ -143,7 +155,10 @@ const getParentOptions = computed(() => {
                   <tr v-for="coa in group.items" :key="coa.id" class="hover:bg-slate-50/80 transition-colors group/row">
                     <td class="px-6 py-4 font-mono font-bold text-slate-900">{{ coa.code }}</td>
                     <td class="px-6 py-4">
-                      <div class="font-semibold text-slate-800">{{ coa.name }}</div>
+                      <div class="font-semibold text-slate-800 flex items-center gap-2">
+                        {{ coa.name }}
+                        <span v-if="coa.is_header" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-500 border border-slate-200 uppercase">Header</span>
+                      </div>
                       <div v-if="coa.parent" class="text-[10px] text-slate-500 mt-0.5 font-medium">
                         Sub dari: {{ coa.parent.code }} - {{ coa.parent.name }}
                       </div>
@@ -269,12 +284,14 @@ const getParentOptions = computed(() => {
               <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Saldo Normal <span class="text-rose-500">*</span></label>
               <select 
                 v-model="form.normal_balance"
-                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 transition-all"
+                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 transition-all bg-slate-100 cursor-not-allowed"
                 required
+                disabled
               >
                 <option value="debit">Debit</option>
                 <option value="credit">Kredit</option>
               </select>
+              <p class="text-[9px] text-slate-500 mt-1">Otomatis menyesuaikan tipe akun.</p>
               <span v-if="form.errors.normal_balance" class="text-[10px] font-medium text-rose-500 mt-1 block">{{ form.errors.normal_balance }}</span>
             </div>
 
@@ -304,12 +321,22 @@ const getParentOptions = computed(() => {
             <span v-if="form.errors.description" class="text-[10px] font-medium text-rose-500 mt-1 block">{{ form.errors.description }}</span>
           </div>
 
-          <div class="flex items-center gap-3 py-2">
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" v-model="form.is_active" class="sr-only peer">
-              <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-            </label>
-            <span class="text-sm font-semibold text-slate-700">Akun Aktif</span>
+          <div class="flex items-center gap-6 py-2">
+            <div class="flex items-center gap-3">
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" v-model="form.is_active" class="sr-only peer">
+                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+              <span class="text-sm font-semibold text-slate-700">Akun Aktif</span>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" v-model="form.is_header" class="sr-only peer">
+                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+              <span class="text-sm font-semibold text-slate-700">Akun Header</span>
+            </div>
           </div>
 
           <div class="pt-4 border-t border-slate-100 flex justify-end gap-3">

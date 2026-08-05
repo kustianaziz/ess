@@ -27,10 +27,12 @@ class CoaController extends Controller
             'normal_balance' => 'required|in:debit,credit',
             'parent_id' => 'nullable|exists:coas,id',
             'is_active' => 'boolean',
+            'is_header' => 'boolean',
             'description' => 'nullable|string'
         ]);
 
         $validated['is_active'] = $request->input('is_active', true);
+        $validated['is_header'] = $request->input('is_header', false);
 
         Coa::create($validated);
 
@@ -48,10 +50,12 @@ class CoaController extends Controller
             'normal_balance' => 'required|in:debit,credit',
             'parent_id' => 'nullable|exists:coas,id',
             'is_active' => 'boolean',
+            'is_header' => 'boolean',
             'description' => 'nullable|string'
         ]);
 
         $validated['is_active'] = $request->input('is_active', $coa->is_active);
+        $validated['is_header'] = $request->input('is_header', $coa->is_header);
 
         $coa->update($validated);
 

@@ -11,6 +11,11 @@ class Coa extends Model
 
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'is_active' => 'boolean',
+        'is_header' => 'boolean',
+    ];
+
     public function parent()
     {
         return $this->belongsTo(Coa::class, 'parent_id');
