@@ -17,7 +17,7 @@ class FinanceDisbursementController extends Controller
     {
         // 1. Fetch Reimbursement Requests
         $reimbursements = ReimbursementRequest::with(['user.division', 'expenseType', 'paidBy', 'attachments'])
-            ->whereIn('status', [RequestStatus::APPROVED->value, RequestStatus::LEVEL_1_APPROVED->value, RequestStatus::PAID->value])
+            ->whereIn('status', [RequestStatus::APPROVED->value, RequestStatus::PAID->value])
             ->latest()
             ->get()
             ->map(fn($item) => [
@@ -41,7 +41,7 @@ class FinanceDisbursementController extends Controller
 
         // 2. Fetch Operational Requests
         $operationals = OperationalRequest::with(['user.division', 'activityType', 'paidBy', 'attachments'])
-            ->whereIn('status', [RequestStatus::APPROVED->value, RequestStatus::LEVEL_1_APPROVED->value, RequestStatus::PAID->value])
+            ->whereIn('status', [RequestStatus::APPROVED->value, RequestStatus::PAID->value])
             ->latest()
             ->get()
             ->map(fn($item) => [
@@ -65,7 +65,7 @@ class FinanceDisbursementController extends Controller
 
         // 3. Fetch Business Trip Requests
         $businessTrips = BusinessTripRequest::with(['user.division', 'paidBy', 'attachments'])
-            ->whereIn('status', [RequestStatus::APPROVED->value, RequestStatus::LEVEL_1_APPROVED->value, RequestStatus::PAID->value])
+            ->whereIn('status', [RequestStatus::APPROVED->value, RequestStatus::PAID->value])
             ->latest()
             ->get()
             ->map(fn($item) => [
