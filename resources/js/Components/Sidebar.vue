@@ -264,6 +264,14 @@ const isHrdOrAdmin = computed(() => {
               <Scale class="w-4 h-4 text-blue-400" />
               <span>Neraca Awal</span>
             </Link>
+            <Link
+              :href="route('accounting.journals.index')"
+              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="isCurrentRoute('accounting.journals') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+            >
+              <FileText class="w-4 h-4 text-orange-400" />
+              <span>Transaksi Jurnal</span>
+            </Link>
           </div>
         </div>
         <div>

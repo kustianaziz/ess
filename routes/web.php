@@ -100,6 +100,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Modul Akuntansi
     Route::middleware('role:admin|hrd_finance')->prefix('accounting')->name('accounting.')->group(function () {
+        Route::resource('journals', \App\Http\Controllers\Accounting\JournalEntryController::class)->only(['index', 'store', 'show']);
         Route::resource('coas', \App\Http\Controllers\Accounting\CoaController::class)->except(['create', 'show', 'edit']);
         Route::resource('assets', \App\Http\Controllers\Accounting\AssetController::class)->except(['create', 'show', 'edit']);
         Route::resource('periods', \App\Http\Controllers\Accounting\AccountingPeriodController::class)->except(['create', 'show', 'edit']);
