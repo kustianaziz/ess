@@ -214,21 +214,21 @@ const fetchBreakdownDetails = (category) => {
   <Head title="Executive Dashboard" />
 
   <AuthenticatedLayout>
-    <div class="max-w-7xl mx-auto">
-        <div class="space-y-6 bg-white rounded-3xl p-8 shadow-sm border border-slate-200/80 relative overflow-hidden">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="space-y-6 bg-white rounded-3xl p-4 sm:p-6 lg:p-8 shadow-sm border border-slate-200/80 relative overflow-hidden">
           <!-- Background decoration -->
           <div class="absolute -top-24 -right-24 w-96 h-96 bg-indigo-50 rounded-full blur-3xl"></div>
           <div class="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
           
           <div class="relative z-10">
-            <div class="flex justify-between items-end mb-8">
-                <div>
-                    <h2 class="text-2xl font-bold text-slate-900 tracking-tight mb-1">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-6 sm:mb-8">
+                <div class="w-full sm:w-auto">
+                    <h2 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight mb-1">
                         Executive Dashboard
                     </h2>
-                    <p class="text-sm text-slate-500">Ringkasan performa finansial dan operasional perusahaan.</p>
+                    <p class="text-xs sm:text-sm text-slate-500">Ringkasan performa finansial dan operasional perusahaan.</p>
                 </div>
-                <div>
+                <div class="w-full sm:w-auto">
                     <select :value="period" @change="updatePeriod" class="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 shadow-sm">
                         <option value="daily">Harian (7 Hari Terakhir)</option>
                         <option value="weekly">Mingguan (4 Minggu Terakhir)</option>
@@ -238,7 +238,7 @@ const fetchBreakdownDetails = (category) => {
             </div>
 
             <!-- 4 Financial KPI Cards -->
-            <div class="grid grid-cols-4 gap-4 mb-8">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               <div class="bg-white border border-slate-200 p-5 rounded-2xl hover:border-emerald-500/50 hover:shadow-md transition-all">
                 <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Pendapatan</p>
                 <h3 class="text-2xl font-black text-emerald-600">{{ formatRupiah(revenue_total) }}</h3>
@@ -274,11 +274,11 @@ const fetchBreakdownDetails = (category) => {
               </div>
               
               <!-- Category Donut Charts -->
-              <div class="flex flex-col gap-6">
+              <div class="flex flex-col gap-6 lg:col-span-1">
                 <!-- Header for Selected Period -->
-                <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex justify-between items-center">
+                <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                     <span class="text-xs font-semibold text-indigo-800">Rincian Periode: <span class="font-black text-indigo-600 ml-1">{{ selectedLabel }}</span></span>
-                    <button v-if="selectedLabel !== 'Keseluruhan Waktu'" @click="resetSelection" class="text-[10px] bg-white text-indigo-600 px-2 py-1 rounded shadow-sm border border-indigo-200 hover:bg-indigo-600 hover:text-white transition-colors">Reset</button>
+                    <button v-if="selectedLabel !== 'Keseluruhan Waktu'" @click="resetSelection" class="text-[10px] bg-white text-indigo-600 px-3 py-1.5 sm:px-2 sm:py-1 rounded shadow-sm border border-indigo-200 hover:bg-indigo-600 hover:text-white transition-colors">Reset Pilihan</button>
                 </div>
 
                 <!-- Revenue by Category -->
@@ -301,13 +301,13 @@ const fetchBreakdownDetails = (category) => {
             </div>
 
             <!-- Two Columns for Insights -->
-            <div class="grid grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <!-- Left: Webpraktis Renewal -->
               <div class="space-y-6">
                 <!-- Renewal Info -->
                 <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl h-full flex flex-col">
                   <h4 class="text-sm font-bold text-slate-800 mb-4">Layanan & Renewal Webpraktis</h4>
-                  <div class="grid grid-cols-2 gap-4">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p class="text-xs text-slate-500">Total Aset Aktif</p>
                       <p class="text-xl font-bold text-indigo-600">{{ active_domains }} Layanan</p>
@@ -321,10 +321,10 @@ const fetchBreakdownDetails = (category) => {
                   <div class="mt-4 pt-4 border-t border-slate-200 flex-1">
                     <p class="text-xs font-bold text-slate-700 mb-3">Tagihan Jatuh Tempo Terdekat</p>
                     <div class="space-y-2">
-                      <div v-for="domain in upcoming_renewals" :key="domain.id" class="flex justify-between items-center text-xs p-2 rounded-lg bg-white border border-slate-100 hover:shadow-sm transition-all">
-                        <span class="text-slate-800 font-medium truncate w-32">{{ domain.name }}</span>
-                        <span class="text-slate-500 truncate w-24 text-right">{{ domain.customer?.name }}</span>
-                        <span class="text-rose-500 font-bold w-20 text-right">{{ formatDate(domain.expired_date) }}</span>
+                      <div v-for="domain in upcoming_renewals" :key="domain.id" class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2 text-xs p-3 sm:p-2 rounded-lg bg-white border border-slate-100 hover:shadow-sm transition-all">
+                        <span class="text-slate-800 font-bold sm:font-medium truncate sm:w-32">{{ domain.name }}</span>
+                        <span class="text-slate-500 truncate sm:w-24 sm:text-right text-[10px] sm:text-xs">{{ domain.customer?.name }}</span>
+                        <span class="text-rose-500 font-bold sm:w-20 sm:text-right mt-1 sm:mt-0">{{ formatDate(domain.expired_date) }}</span>
                       </div>
                       <div v-if="!upcoming_renewals.length" class="text-xs text-slate-500 italic p-4 text-center bg-white rounded-lg border border-slate-100">Tidak ada tagihan mendesak.</div>
                     </div>
