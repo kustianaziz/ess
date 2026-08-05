@@ -7,6 +7,14 @@ import { ArrowLeft, Clock, FileText, CheckCircle2, XCircle, User, Paperclip, Che
 
 const props = defineProps({
   requestData: Object,
+  cashAccounts: Array,
+});
+
+const page = usePage();
+
+const isHrdOrAdmin = computed(() => {
+  const user = page.props.auth.user;
+  return user?.roles?.some(r => ['admin', 'hrd_finance'].includes(r.name));
 });
 
 // Detect origin from URL query param ?from=approval or ?from=approval_history
@@ -37,6 +45,47 @@ const approveForm = useForm({
 const rejectForm = useForm({
   reason: '',
 });
+
+// Payment Modal State (For HRD/Finance/Admin)
+const showPayModal = ref(false);
+
+const paymentForm = useForm({
+  payment_reference: 'TRF-' + Math.floor(100000 + Math.random() * 900000),
+  cash_account_id: props.cashAccounts?.[0]?.id || '',
+  proof_of_payment: null,
+  disbursed_budget: 0,
+  allowance_breakdown: [
+    { item: 'Tiket Pesawat / Transport', amount: 0 },
+    { item: 'Uang Saku', amount: 0 },
+    { item: 'Uang Makan', amount: 0 },
+  ],
+});
+
+const openPaymentModal = () => {
+  paymentForm.payment_reference = 'TRF-' + Math.floor(100000 + Math.random() * 900000);
+  paymentForm.cash_account_id = props.cashAccounts?.[0]?.id || '';
+  paymentForm.proof_of_payment = null;
+  showPayModal.value = true;
+};
+
+const handleProofFileChange = (e) => {
+  if (e.target.files && e.target.files[0]) {
+    paymentForm.proof_of_payment = e.target.files[0];
+  }
+};
+
+const submitPayment = () => {
+  if (!paymentForm.payment_reference || !paymentForm.cash_account_id) {
+    alert('Mohon isi nomor referensi transfer dan pilih pos akun kas pembayar.');
+    return;
+  }
+
+  paymentForm.post(route('payment.process', { type: props.requestData.type, id: props.requestData.id }), {
+    onSuccess: () => {
+      showPayModal.value = false;
+    },
+  });
+};
 
 const openApproveModal = () => {
   actionType.value = 'approve';
@@ -144,12 +193,38 @@ const submitApproval = () => {
 
           <button
             @click="openRejectModal"
-            class="flex-1 sm:flex-initial px-4 py-2 sm:py-2.5 rounded-xl bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-rose-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+            class="flex-1 sm:flex-initial px-4 py-2 sm:py-2.5 rounded-xl bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all flex items-center justify-center gap-1.5"
           >
             <XCircle class="w-3.5 h-3.5" />
             <span>Tolak</span>
           </button>
         </div>
+      </div>
+
+      <!-- HRD / FINANCE PAYMENT DISBURSEMENT BANNER (WHEN APPROVED BUT NOT YET PAID) -->
+      <div
+        v-if="isHrdOrAdmin && ['approved', 'level_1_approved'].includes(requestData.status) && requestData.status !== 'paid'"
+        class="bg-gradient-to-r from-emerald-600 to-teal-700 p-4 sm:p-5 rounded-2xl text-white shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in"
+      >
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 uppercase tracking-wider">
+              Keuangan & Kas
+            </span>
+            <h4 class="font-bold text-sm sm:text-base">Pengajuan Siap Dicairkan / Dibayarkan</h4>
+          </div>
+          <p class="text-xs text-emerald-100 leading-snug">
+            Pengajuan ini telah disetujui. Silakan pilih akun kas pembayar, input no. referensi transfer, & upload bukti transfer.
+          </p>
+        </div>
+
+        <button
+          @click="openPaymentModal"
+          class="px-5 py-2.5 rounded-xl bg-white hover:bg-emerald-50 text-emerald-700 font-bold text-xs shadow transition-all shrink-0 w-full sm:w-auto text-center flex items-center justify-center gap-1.5"
+        >
+          <CheckCircle2 class="w-4 h-4" />
+          <span>Proses Pencairan & Pembayaran Kas →</span>
+        </button>
       </div>
 
       <!-- SETTLEMENT ACTION BANNER FOR APPLICANT (IF PERJALANAN DINAS & APPROVED/PAID) -->
@@ -329,6 +404,78 @@ const submitApproval = () => {
             {{ actionType === 'approve' ? 'Ya, Setujui' : 'Ya, Tolak' }}
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- MODAL PROCESS PAYMENT (FOR HRD / FINANCE) -->
+    <div v-if="showPayModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
+      <div class="bg-white w-full max-w-lg rounded-2xl p-6 shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h3 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+            <span class="p-1.5 rounded-lg bg-emerald-100 text-emerald-600">
+              <CheckCircle2 class="w-4 h-4" />
+            </span>
+            <span>Proses Pencairan & Pembayaran Kas</span>
+          </h3>
+          <button @click="showPayModal = false" class="text-slate-400 hover:text-slate-600 text-sm font-bold">✕</button>
+        </div>
+
+        <form @submit.prevent="submitPayment" class="space-y-4 text-xs">
+          <!-- POS AKUN KAS / BANK PEMBAYAR -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Pilih Pos Akun Kas / Bank Pembayar <span class="text-rose-500">*</span></label>
+            <select v-model="paymentForm.cash_account_id" class="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold text-slate-800">
+              <option v-for="acc in cashAccounts" :key="acc.id" :value="acc.id">
+                {{ acc.name }} ({{ acc.type_label }}) - Saldo: {{ acc.current_balance_formatted }}
+              </option>
+            </select>
+          </div>
+
+          <!-- NOMOR REFERENSI TRANSFER -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">No. Referensi Transfer Bank / Struk <span class="text-rose-500">*</span></label>
+            <input
+              v-model="paymentForm.payment_reference"
+              type="text"
+              placeholder="Contoh: TRF-839120 / BCA-92810"
+              class="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 font-bold"
+            />
+          </div>
+
+          <!-- UPLOAD BUKTI TRANSFER FILE -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Upload Bukti Transfer / Struk Bank (JPG, PNG, PDF)</label>
+            <input
+              type="file"
+              @change="handleProofFileChange"
+              accept=".jpg,.jpeg,.png,.pdf"
+              class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+            />
+            <span class="text-[10px] text-slate-400 block mt-1">Maksimal ukuran file: 5MB</span>
+          </div>
+
+          <!-- OPTIONAL RINCIAN PERJALANAN DINAS -->
+          <div v-if="requestData.type === 'perjalanan-dinas'" class="space-y-3 p-3 rounded-xl bg-blue-50/70 border border-blue-100">
+            <label class="block font-bold text-blue-900 uppercase tracking-wider text-[11px]">Rincian Komponen Uang Muka Dicairkan</label>
+
+            <div v-for="(item, idx) in paymentForm.allowance_breakdown" :key="idx" class="grid grid-cols-2 gap-2">
+              <input v-model="item.item" type="text" placeholder="Nama Komponen" class="px-2.5 py-1.5 rounded-lg border border-blue-200 font-medium" />
+              <input v-model.number="item.amount" type="number" placeholder="Nominal Rp" class="px-2.5 py-1.5 rounded-lg border border-blue-200 font-bold" />
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+            <button type="button" @click="showPayModal = false" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold">Batal</button>
+            <button
+              type="submit"
+              :disabled="paymentForm.processing"
+              class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md transition-all flex items-center gap-1.5"
+            >
+              <CheckCircle2 class="w-4 h-4" />
+              <span>Konfirmasi & Process Pembayaran Kas</span>
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </AuthenticatedLayout>

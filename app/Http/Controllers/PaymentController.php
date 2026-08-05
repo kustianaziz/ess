@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Actions\Shared\RecordStatusHistoryAction;
 use App\Enums\RequestStatus;
+use App\Models\CashAccount;
 use App\Models\OperationalRequest;
 use App\Models\ReimbursementRequest;
+use App\Models\BusinessTripRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,18 +23,21 @@ class PaymentController extends Controller
     ): RedirectResponse {
         $validated = $request->validate([
             'payment_reference' => 'required|string|max:100',
+            'cash_account_id' => 'required|exists:cash_accounts,id',
             'disbursed_budget' => 'nullable|numeric|min:0',
             'allowance_breakdown' => 'nullable|array',
+            'proof_of_payment' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
 
         $user = $request->user();
         $reference = $validated['payment_reference'];
+        $cashAccountId = (int) $validated['cash_account_id'];
 
-        return DB::transaction(function() use ($type, $id, $user, $reference, $validated, $recordHistory, $recordCashTransaction) {
+        return DB::transaction(function() use ($type, $id, $user, $reference, $cashAccountId, $validated, $request, $recordHistory, $recordCashTransaction) {
             $model = match($type) {
                 'reimbursement' => ReimbursementRequest::findOrFail($id),
                 'operasional' => OperationalRequest::findOrFail($id),
-                'perjalanan-dinas' => \App\Models\BusinessTripRequest::findOrFail($id),
+                'perjalanan-dinas' => BusinessTripRequest::findOrFail($id),
                 default => abort(404),
             };
 
@@ -67,26 +72,38 @@ class PaymentController extends Controller
 
             $model->update($updateData);
 
-            // Record cash out transaction automatically
-            $primaryAccount = \App\Models\CashAccount::where('is_active', true)->first();
-            if ($primaryAccount && $amount > 0) {
+            // Handle Proof of Payment Upload if uploaded
+            if ($request->hasFile('proof_of_payment')) {
+                $file = $request->file('proof_of_payment');
+                $path = $file->store('proofs', 'public');
+                $model->attachments()->create([
+                    'file_path' => $path,
+                    'file_name' => 'Bukti_Transfer_' . $reference . '.' . $file->getClientOriginalExtension(),
+                    'file_size' => $file->getSize(),
+                    'mime_type' => $file->getClientMimeType(),
+                ]);
+            }
+
+            // Record cash out transaction automatically for selected cash account
+            $account = CashAccount::lockForUpdate()->findOrFail($cashAccountId);
+            if ($amount > 0) {
                 $recordCashTransaction->execute(
-                    $primaryAccount->id,
+                    $account->id,
                     'out',
                     $category,
                     $amount,
-                    "Pencairan {$model->request_number} (Ref: {$reference})",
+                    "Pencairan {$model->request_number} via {$account->name} (Ref: {$reference})",
                     $user->id,
                     $model
                 );
             }
 
-            $recordHistory->execute($model, $oldStatus, RequestStatus::PAID->value, $user->id, "Pembayaran berhasil diproses dengan No. Referensi Transfer: {$reference}");
+            $recordHistory->execute($model, $oldStatus, RequestStatus::PAID->value, $user->id, "Pembayaran berhasil diproses via {$account->name} dengan No. Referensi Transfer: {$reference}");
 
             // Notify applicant
             $model->user?->notify(new \App\Notifications\PaymentProcessedNotification($type, $model->id, $model->request_number, $reference));
 
-            return back()->with('success', 'Pembayaran berhasil diproses dan mutasi kas berhasil dicatat!');
+            return back()->with('success', "Pembayaran berhasil diproses via {$account->name} dan mutasi kas berhasil dicatat!");
         });
     }
 }

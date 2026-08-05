@@ -342,8 +342,22 @@ class RequestHistoryController extends Controller
             $requestData['pending_approval_level'] = $pendingApprovalLevel;
         }
 
+        $cashAccounts = \App\Models\CashAccount::where('is_active', true)
+            ->get()
+            ->map(fn($acc) => [
+                'id' => $acc->id,
+                'name' => $acc->name,
+                'code' => $acc->code,
+                'type' => $acc->type,
+                'type_label' => ($acc->type === 'bank') ? 'Rekening Bank' : 'Kas Tunai',
+                'bank_name' => $acc->bank_name,
+                'account_number' => $acc->account_number,
+                'current_balance_formatted' => 'Rp ' . number_format($acc->current_balance, 0, ',', '.'),
+            ]);
+
         return Inertia::render('RiwayatPengajuan/Show', [
             'requestData' => $requestData,
+            'cashAccounts' => $cashAccounts,
         ]);
     }
 
