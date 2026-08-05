@@ -33,9 +33,10 @@ const payForm = useForm({
   proof_of_payment: null,
   disbursed_budget: 0,
   allowance_breakdown: [
-    { item: 'Tiket Pesawat / Transport', amount: 0 },
     { item: 'Uang Saku', amount: 0 },
-    { item: 'Uang Makan', amount: 0 }
+    { item: 'Uang Makan', amount: 0 },
+    { item: 'Tiket Transportasi', amount: 0 },
+    { item: 'Akomodasi Hotel', amount: 0 }
   ]
 })
 
@@ -48,7 +49,23 @@ const openPayModal = (item) => {
   payForm.proof_of_payment = []
   selectedProofFiles.value = []
   payForm.disbursed_budget = item.amount
+  payForm.allowance_breakdown = [
+    { item: 'Uang Saku', amount: 0 },
+    { item: 'Uang Makan', amount: 0 },
+    { item: 'Tiket Transportasi', amount: 0 },
+    { item: 'Akomodasi Hotel', amount: 0 }
+  ]
   showPayModal.value = true
+}
+
+const addBreakdownRow = () => {
+  payForm.allowance_breakdown.push({ item: '', amount: 0 })
+}
+
+const removeBreakdownRow = (index) => {
+  if (payForm.allowance_breakdown.length > 1) {
+    payForm.allowance_breakdown.splice(index, 1)
+  }
 }
 
 const handleProofFilesChange = (e) => {
@@ -348,13 +365,46 @@ const getBadgeColor = (type) => {
             </div>
           </div>
 
-          <!-- OPTIONAL RINCIAN PERJALANAN DINAS -->
-          <div v-if="selectedItem.type === 'perjalanan-dinas'" class="space-y-3 p-3 rounded-xl bg-blue-50/70 border border-blue-100">
-            <label class="block font-bold text-blue-900 uppercase tracking-wider text-[11px]">Rincian Komponen Uang Muka Dicairkan</label>
+          <!-- DYNAMIC RINCIAN PERJALANAN DINAS -->
+          <div v-if="selectedItem.type === 'perjalanan-dinas'" class="space-y-3 p-3.5 rounded-xl bg-blue-50/70 border border-blue-100">
+            <div class="flex items-center justify-between">
+              <label class="block font-bold text-blue-900 uppercase tracking-wider text-[11px]">Rincian Komponen Uang Muka Dicairkan</label>
+              <button
+                type="button"
+                @click="addBreakdownRow"
+                class="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold transition-all flex items-center gap-1 shadow-xs"
+              >
+                <span>+ Tambah Komponen</span>
+              </button>
+            </div>
 
-            <div v-for="(item, idx) in payForm.allowance_breakdown" :key="idx" class="grid grid-cols-2 gap-2">
-              <input v-model="item.item" type="text" placeholder="Nama Komponen" class="px-2.5 py-1.5 rounded-lg border border-blue-200 font-medium" />
-              <input v-model.number="item.amount" type="number" placeholder="Nominal Rp" class="px-2.5 py-1.5 rounded-lg border border-blue-200 font-bold" />
+            <div class="space-y-2">
+              <div v-for="(item, idx) in payForm.allowance_breakdown" :key="idx" class="flex items-center gap-2">
+                <input
+                  v-model="item.item"
+                  type="text"
+                  placeholder="Nama Komponen (Contoh: Uang Saku)"
+                  class="flex-1 px-2.5 py-1.5 rounded-lg border border-blue-200 font-semibold text-slate-800 text-xs"
+                />
+                <div class="relative w-36 sm:w-44">
+                  <span class="absolute left-2.5 top-1.5 font-bold text-slate-400 text-[11px]">Rp</span>
+                  <input
+                    v-model.number="item.amount"
+                    type="number"
+                    placeholder="0"
+                    class="w-full pl-8 pr-2 py-1.5 rounded-lg border border-blue-200 font-bold text-slate-900 text-xs"
+                  />
+                </div>
+                <button
+                  type="button"
+                  @click="removeBreakdownRow(idx)"
+                  :disabled="payForm.allowance_breakdown.length <= 1"
+                  class="p-1.5 text-slate-400 hover:text-rose-600 disabled:opacity-30 rounded transition-colors"
+                  title="Hapus komponen ini"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
           </div>
 
