@@ -14,7 +14,7 @@ class BeginningBalanceController extends Controller
 {
     public function index()
     {
-        $coas = Coa::where('is_header', false)->orderBy('code')->get();
+        $coas = Coa::orderBy('code')->get();
         
         $openingBalanceEntry = JournalEntry::with('journalItems')
             ->where('is_opening_balance', true)

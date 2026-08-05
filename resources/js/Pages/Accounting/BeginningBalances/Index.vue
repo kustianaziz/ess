@@ -15,17 +15,41 @@ const form = useForm({
         code: coa.code,
         name: coa.name,
         normal_balance: coa.normal_balance,
+        is_header: coa.is_header,
         debit: parseFloat(coa.debit) || 0,
         credit: parseFloat(coa.credit) || 0,
     })),
 });
 
+import { watch } from 'vue';
+
+watch(
+    () => form.balances,
+    (newBalances) => {
+        newBalances.forEach(header => {
+            if (header.is_header) {
+                let sumDebit = 0;
+                let sumCredit = 0;
+                newBalances.forEach(detail => {
+                    if (!detail.is_header && detail.code.startsWith(header.code + '.')) {
+                        sumDebit += parseFloat(detail.debit) || 0;
+                        sumCredit += parseFloat(detail.credit) || 0;
+                    }
+                });
+                if (header.debit !== sumDebit) header.debit = sumDebit;
+                if (header.credit !== sumCredit) header.credit = sumCredit;
+            }
+        });
+    },
+    { deep: true }
+);
+
 const totalDebit = computed(() => {
-    return form.balances.reduce((sum, item) => sum + (parseFloat(item.debit) || 0), 0);
+    return form.balances.reduce((sum, item) => sum + (item.is_header ? 0 : (parseFloat(item.debit) || 0)), 0);
 });
 
 const totalCredit = computed(() => {
-    return form.balances.reduce((sum, item) => sum + (parseFloat(item.credit) || 0), 0);
+    return form.balances.reduce((sum, item) => sum + (item.is_header ? 0 : (parseFloat(item.credit) || 0)), 0);
 });
 
 const difference = computed(() => {
@@ -42,7 +66,10 @@ const submit = () => {
         return;
     }
 
-    form.post(route('accounting.beginning-balances.store'), {
+    form.transform((data) => ({
+        ...data,
+        balances: data.balances.filter(item => !item.is_header)
+    })).post(route('accounting.beginning-balances.store'), {
         preserveScroll: true,
         onSuccess: () => alert('Neraca Awal berhasil disimpan.'),
         onError: () => alert('Terjadi kesalahan. Silakan periksa kembali.'),
@@ -79,15 +106,19 @@ const submit = () => {
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
-                                    <tr v-for="(item, index) in form.balances" :key="item.coa_id">
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.code }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.name }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">{{ item.normal_balance }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <input type="number" v-model="item.debit" min="0" step="0.01" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" :disabled="item.credit > 0">
+                                    <tr v-for="(item, index) in form.balances" :key="item.coa_id" :class="{'bg-slate-50/50': item.is_header}">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono" :class="{'font-bold text-indigo-700': item.is_header}">{{ item.code }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" :style="{ paddingLeft: 1.5 + (item.code.split('.').length - 1) * 1.5 + 'rem' }">
+                                            <span :class="{'font-bold text-slate-800': item.is_header}">{{ item.name }}</span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">
+                                            <span :class="{'font-bold': item.is_header}">{{ item.normal_balance }}</span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <input type="number" v-model="item.credit" min="0" step="0.01" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" :disabled="item.debit > 0">
+                                            <input type="number" v-model="item.debit" min="0" step="0.01" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" :disabled="item.credit > 0 || item.is_header" :class="{'bg-gray-100 font-bold text-gray-600': item.is_header}">
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            <input type="number" v-model="item.credit" min="0" step="0.01" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" :disabled="item.debit > 0 || item.is_header" :class="{'bg-gray-100 font-bold text-gray-600': item.is_header}">
                                         </td>
                                     </tr>
                                 </tbody>
