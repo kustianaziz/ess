@@ -53,10 +53,23 @@ const openPayModal = (item) => {
 
 const handleProofFilesChange = (e) => {
   if (e.target.files && e.target.files.length > 0) {
-    const files = Array.from(e.target.files)
-    selectedProofFiles.value = files
-    payForm.proof_of_payment = files
+    const newFiles = Array.from(e.target.files)
+    const existing = selectedProofFiles.value
+    const combined = [...existing]
+    newFiles.forEach((nf) => {
+      if (!combined.some(f => f.name === nf.name && f.size === nf.size)) {
+        combined.push(nf)
+      }
+    })
+    selectedProofFiles.value = combined
+    payForm.proof_of_payment = combined
+    e.target.value = ''
   }
+}
+
+const removeProofFile = (index) => {
+  selectedProofFiles.value.splice(index, 1)
+  payForm.proof_of_payment = selectedProofFiles.value
 }
 
 const submitPayment = () => {
@@ -313,13 +326,23 @@ const getBadgeColor = (type) => {
             <span class="text-[10px] text-slate-400 block mt-1">Dapat memilih lebih dari 1 file (Maks. 5MB per file)</span>
 
             <!-- PREVIEW TERPILIH -->
-            <div v-if="selectedProofFiles.length > 0" class="mt-2 space-y-1 p-2 rounded-xl bg-slate-50 border border-slate-200">
+            <div v-if="selectedProofFiles.length > 0" class="mt-2 space-y-1.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200">
               <span class="text-[10px] font-bold text-slate-500 block uppercase">File Terpilih ({{ selectedProofFiles.length }}):</span>
-              <ul class="space-y-0.5">
-                <li v-for="(f, i) in selectedProofFiles" :key="i" class="text-[11px] font-medium text-slate-700 flex items-center gap-1.5 truncate">
-                  <Upload class="w-3 h-3 text-emerald-600 shrink-0" />
-                  <span class="truncate">{{ f.name }}</span>
-                  <span class="text-[9px] text-slate-400 shrink-0">({{ Math.round(f.size / 1024) }} KB)</span>
+              <ul class="space-y-1">
+                <li v-for="(f, i) in selectedProofFiles" :key="i" class="text-[11px] font-medium text-slate-700 flex items-center justify-between gap-2 p-1.5 rounded-lg bg-white border border-slate-200 shadow-2xs">
+                  <div class="flex items-center gap-1.5 truncate">
+                    <Upload class="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span class="truncate font-semibold text-slate-800">{{ f.name }}</span>
+                    <span class="text-[9px] text-slate-400 shrink-0">({{ Math.round(f.size / 1024) }} KB)</span>
+                  </div>
+                  <button
+                    type="button"
+                    @click="removeProofFile(i)"
+                    class="p-0.5 text-slate-400 hover:text-rose-600 rounded transition-colors"
+                    title="Hapus file ini"
+                  >
+                    ✕
+                  </button>
                 </li>
               </ul>
             </div>
