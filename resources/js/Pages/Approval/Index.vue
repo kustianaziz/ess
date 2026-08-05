@@ -93,7 +93,60 @@ const submitApproval = () => {
         </div>
       </div>
 
-      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <!-- MOBILE CARDS VIEW (md:hidden) -->
+      <div class="block md:hidden space-y-3">
+        <div
+          v-for="item in pendingApprovals"
+          :key="'mobile_' + item.approval_id"
+          class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm space-y-3 hover:border-indigo-300 transition-all"
+        >
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-mono font-bold text-slate-800">{{ item.request_number }}</span>
+            <span class="px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 rounded-full">
+              Level {{ item.level }}
+            </span>
+          </div>
+
+          <div>
+            <h4 class="font-bold text-sm text-slate-900">{{ item.applicant_name }}</h4>
+            <p class="text-xs text-slate-500">{{ item.applicant_division }} • <span class="font-semibold text-slate-700">{{ item.type_label }}</span></p>
+            <span class="text-[10px] text-slate-400 block mt-1">Disubmit: {{ item.submitted_at }}</span>
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 flex items-center gap-2">
+            <Link
+              :href="route('riwayat-pengajuan.show', { type: item.type, id: item.id, from: 'approval' })"
+              class="px-3 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center gap-1 flex-1"
+            >
+              <Eye class="w-3.5 h-3.5" />
+              <span>Detail</span>
+            </Link>
+
+            <button
+              @click="openApproveModal(item)"
+              class="px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold flex items-center justify-center gap-1 flex-1 shadow-sm"
+            >
+              <CheckCircle2 class="w-3.5 h-3.5" />
+              <span>Setujui</span>
+            </button>
+
+            <button
+              @click="openRejectModal(item)"
+              class="px-3 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold flex items-center justify-center gap-1 flex-1 shadow-sm"
+            >
+              <XCircle class="w-3.5 h-3.5" />
+              <span>Tolak</span>
+            </button>
+          </div>
+        </div>
+
+        <div v-if="pendingApprovals.length === 0" class="bg-white p-8 rounded-2xl border border-slate-200 text-center text-slate-400 text-xs font-medium">
+          Tidak ada pengajuan yang membutuhkan persetujuan saat ini.
+        </div>
+      </div>
+
+      <!-- DESKTOP TABLE VIEW (hidden md:block) -->
+      <div class="hidden md:block bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm">
             <thead class="bg-slate-50 border-b border-slate-100 text-xs uppercase font-semibold text-slate-500 tracking-wider">
