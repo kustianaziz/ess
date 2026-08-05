@@ -21,6 +21,7 @@ const editingId = ref(null);
 const form = useForm({
   asset_number: '',
   name: '',
+  category: 'Peralatan Kantor',
   purchase_date: '',
   purchase_price: 0,
   salvage_value: 0,
@@ -36,6 +37,7 @@ const openModal = (asset = null) => {
     editingId.value = asset.id;
     form.asset_number = asset.asset_number;
     form.name = asset.name;
+    form.category = asset.category || 'Peralatan Kantor';
     form.purchase_date = asset.purchase_date;
     form.purchase_price = asset.purchase_price;
     form.salvage_value = asset.salvage_value;
@@ -96,6 +98,18 @@ const groupedCoas = computed(() => {
   
   return groups;
 });
+
+const groupedAssets = computed(() => {
+  const groups = {};
+  props.assets.forEach(asset => {
+    const cat = asset.category || 'Lainnya';
+    if (!groups[cat]) {
+      groups[cat] = [];
+    }
+    groups[cat].push(asset);
+  });
+  return groups;
+});
 </script>
 
 <template>
@@ -125,55 +139,76 @@ const groupedCoas = computed(() => {
       </div>
 
       <!-- Content -->
-      <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm text-left">
-            <thead class="text-xs text-slate-500 bg-slate-50/50 border-b border-slate-100 uppercase tracking-wider font-semibold">
-              <tr>
-                <th class="px-6 py-4">Nomor Aset</th>
-                <th class="px-6 py-4">Nama Aset</th>
-                <th class="px-6 py-4">Tgl Pembelian</th>
-                <th class="px-6 py-4">Harga Beli</th>
-                <th class="px-6 py-4">Nilai Buku</th>
-                <th class="px-6 py-4">Umur (Thn)</th>
-                <th class="px-6 py-4 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              <tr v-for="asset in assets" :key="asset.id" class="hover:bg-slate-50/80 transition-colors">
-                <td class="px-6 py-4 font-mono font-bold text-slate-900">{{ asset.asset_number }}</td>
-                <td class="px-6 py-4 font-medium text-slate-700">{{ asset.name }}</td>
-                <td class="px-6 py-4">{{ asset.purchase_date }}</td>
-                <td class="px-6 py-4">{{ formatCurrency(asset.purchase_price) }}</td>
-                <td class="px-6 py-4 text-emerald-600 font-semibold">{{ formatCurrency(asset.book_value) }}</td>
-                <td class="px-6 py-4">{{ asset.useful_life_years }}</td>
-                <td class="px-6 py-4">
-                  <div class="flex items-center justify-end gap-2">
-                    <button 
-                      @click="openModal(asset)"
-                      class="p-2 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-                      title="Edit"
-                    >
-                      <Edit2 class="w-4 h-4" />
-                    </button>
-                    <button 
-                      @click="deleteAsset(asset.id)"
-                      class="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                      title="Hapus"
-                    >
-                      <Trash2 class="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-              <tr v-if="assets.length === 0">
-                <td colspan="7" class="px-6 py-12 text-center text-slate-500">
-                  <Archive class="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                  <p class="font-medium">Belum ada data aset tetap.</p>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+      <div class="space-y-6">
+        <template v-for="(items, category) in groupedAssets" :key="category">
+          <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h2 class="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                <div class="w-2 h-6 rounded-full bg-indigo-500"></div>
+                {{ category }}
+              </h2>
+              <span class="px-3 py-1 rounded-full text-xs font-bold bg-white border border-slate-200 text-slate-600 shadow-sm">
+                {{ items.length }} Aset
+              </span>
+            </div>
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm text-left">
+                <thead class="text-xs text-slate-500 bg-white border-b border-slate-100 uppercase tracking-wider font-semibold">
+                  <tr>
+                    <th class="px-6 py-4">Nomor Aset</th>
+                    <th class="px-6 py-4">Nama Aset</th>
+                    <th class="px-6 py-4">Tgl Pembelian</th>
+                    <th class="px-6 py-4">Harga Beli</th>
+                    <th class="px-6 py-4">Nilai Buku</th>
+                    <th class="px-6 py-4">Umur (Thn)</th>
+                    <th class="px-6 py-4 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  <tr v-for="asset in items" :key="asset.id" class="hover:bg-slate-50/80 transition-colors">
+                    <td class="px-6 py-4 font-mono font-bold text-slate-900">{{ asset.asset_number }}</td>
+                    <td class="px-6 py-4 font-medium text-slate-700">{{ asset.name }}</td>
+                    <td class="px-6 py-4">{{ asset.purchase_date }}</td>
+                    <td class="px-6 py-4">{{ formatCurrency(asset.purchase_price) }}</td>
+                    <td class="px-6 py-4 text-emerald-600 font-semibold">{{ formatCurrency(asset.book_value) }}</td>
+                    <td class="px-6 py-4">{{ asset.useful_life_years }}</td>
+                    <td class="px-6 py-4">
+                      <div class="flex items-center justify-end gap-2">
+                        <button 
+                          @click="openModal(asset)"
+                          class="p-2 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                          title="Edit"
+                        >
+                          <Edit2 class="w-4 h-4" />
+                        </button>
+                        <button 
+                          @click="deleteAsset(asset.id)"
+                          class="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                          title="Hapus"
+                        >
+                          <Trash2 class="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </template>
+
+        <div v-if="assets.length === 0" class="bg-white rounded-3xl border border-slate-200/80 p-12 text-center shadow-sm">
+          <Archive class="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <h3 class="text-lg font-bold text-slate-900 mb-1">Belum ada data aset tetap</h3>
+          <p class="text-sm text-slate-500 mb-6">Mulai tambahkan aset tetap perusahaan Anda.</p>
+          <button 
+            @click="openModal()"
+            class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition-all hover:-translate-y-0.5"
+          >
+            <Plus class="w-4 h-4" />
+            <span>Tambah Aset</span>
+          </button>
         </div>
       </div>
 
@@ -217,6 +252,24 @@ const groupedCoas = computed(() => {
                 required
               />
               <span v-if="form.errors.name" class="text-[10px] font-medium text-rose-500 mt-1 block">{{ form.errors.name }}</span>
+            </div>
+            
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Kategori <span class="text-rose-500">*</span></label>
+              <select 
+                v-model="form.category"
+                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 transition-all"
+                required
+              >
+                <option value="Tanah">Tanah</option>
+                <option value="Gedung & Bangunan">Gedung & Bangunan</option>
+                <option value="Kendaraan">Kendaraan</option>
+                <option value="Peralatan Kantor">Peralatan Kantor</option>
+                <option value="Mesin">Mesin</option>
+                <option value="Perangkat IT & Elektronik">Perangkat IT & Elektronik</option>
+                <option value="Lainnya">Lainnya</option>
+              </select>
+              <span v-if="form.errors.category" class="text-[10px] font-medium text-rose-500 mt-1 block">{{ form.errors.category }}</span>
             </div>
           </div>
 
