@@ -16,10 +16,12 @@ import {
   Zap,
   History,
   Users,
-  Settings,
+  Building2,
+  Scale,
   BarChart3,
-  UserCheck,
-  User
+  Bell,
+  User,
+  LogOut
 } from 'lucide-vue-next';
 
 const page = usePage();
@@ -27,16 +29,32 @@ const showQuickMenu = ref(false);
 
 const currentUser = computed(() => page.props.auth.user);
 
-const isLevel1OrAbove = computed(() => {
-  return currentUser.value?.roles?.some(r => ['manager', 'admin', 'hrd_finance'].includes(r.name));
+const userRoles = computed(() => {
+  const roles = page.props.auth.user?.roles || [];
+  if (Array.isArray(roles)) {
+    return roles.map(r => (typeof r === 'string' ? r : (r.name || r)));
+  }
+  if (typeof roles === 'string') return [roles];
+  return [];
 });
+
+const isAdmin = computed(() => userRoles.value.includes('admin'));
 
 const isHrdOrAdmin = computed(() => {
-  return currentUser.value?.roles?.some(r => ['admin', 'hrd_finance'].includes(r.name));
+  return userRoles.value.includes('admin') || userRoles.value.includes('hrd_finance');
 });
 
-const isAdmin = computed(() => {
-  return currentUser.value?.roles?.some(r => r.name === 'admin');
+const isLevel1OrAbove = computed(() => {
+  return (
+    userRoles.value.includes('admin') ||
+    userRoles.value.includes('hrd_finance') ||
+    userRoles.value.includes('manager') ||
+    !page.props.auth.user?.manager_id
+  );
+});
+
+const unreadNotificationsCount = computed(() => {
+  return page.props.auth.user?.unread_notifications_count || 0;
 });
 
 const isCurrentRoute = (routeName) => {
@@ -111,7 +129,12 @@ const isCurrentRoute = (routeName) => {
         <div class="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>
             <h3 class="text-base font-bold text-slate-900">Seluruh Fitur & Layanan ESS</h3>
-            <p class="text-xs text-slate-500">Akun: {{ currentUser?.name }} ({{ currentUser?.roles?.[0]?.name?.toUpperCase() || 'USER' }})</p>
+            <p class="text-xs text-slate-500">
+              Akun: <span class="font-bold text-slate-800">{{ currentUser?.name }}</span>
+              <span class="ml-1 px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700 uppercase">
+                {{ userRoles.join(', ') || 'USER' }}
+              </span>
+            </p>
           </div>
           <button @click="showQuickMenu = false" class="p-1 rounded-lg text-slate-400 hover:text-slate-600 font-bold">✕</button>
         </div>
@@ -278,10 +301,122 @@ const isCurrentRoute = (routeName) => {
           </Link>
         </div>
 
-        <!-- SECTION 5: PENGATURAN & AKUN -->
-        <div class="space-y-2 pt-2 border-t border-slate-100">
-          <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">5. Akun & Pengaturan System</span>
+        <!-- SECTION 5: ADMIN PANEL (KHUSUS ROLE ADMIN) -->
+        <div v-if="isAdmin" class="space-y-2 pt-2 border-t border-slate-100">
+          <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">5. Admin Panel (Master Data)</span>
           <div class="grid grid-cols-2 gap-2">
+            <Link
+              :href="route('admin.users.index')"
+              @click="showQuickMenu = false"
+              class="p-3 rounded-2xl bg-slate-100 border border-slate-200 flex items-center gap-2.5 hover:bg-slate-200 transition-all"
+            >
+              <div class="w-7 h-7 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
+                <Users class="w-3.5 h-3.5 text-indigo-400" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-900 truncate">Kelola User</p>
+                <p class="text-[9px] text-slate-500 truncate">Pengguna & role</p>
+              </div>
+            </Link>
+
+            <Link
+              :href="route('admin.divisions.index')"
+              @click="showQuickMenu = false"
+              class="p-3 rounded-2xl bg-slate-100 border border-slate-200 flex items-center gap-2.5 hover:bg-slate-200 transition-all"
+            >
+              <div class="w-7 h-7 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
+                <Building2 class="w-3.5 h-3.5 text-blue-400" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-900 truncate">Kelola Divisi</p>
+                <p class="text-[9px] text-slate-500 truncate">Struktur divisi</p>
+              </div>
+            </Link>
+
+            <Link
+              :href="route('admin.expense-types.index')"
+              @click="showQuickMenu = false"
+              class="p-3 rounded-2xl bg-slate-100 border border-slate-200 flex items-center gap-2.5 hover:bg-slate-200 transition-all"
+            >
+              <div class="w-7 h-7 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
+                <FileText class="w-3.5 h-3.5 text-emerald-400" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-900 truncate">Jenis Pengeluaran</p>
+                <p class="text-[9px] text-slate-500 truncate">Kategori reimburse</p>
+              </div>
+            </Link>
+
+            <Link
+              :href="route('admin.activity-types.index')"
+              @click="showQuickMenu = false"
+              class="p-3 rounded-2xl bg-slate-100 border border-slate-200 flex items-center gap-2.5 hover:bg-slate-200 transition-all"
+            >
+              <div class="w-7 h-7 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
+                <Utensils class="w-3.5 h-3.5 text-orange-400" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-900 truncate">Jenis Kegiatan</p>
+                <p class="text-[9px] text-slate-500 truncate">Kategori operasional</p>
+              </div>
+            </Link>
+
+            <Link
+              :href="route('admin.leave-types.index')"
+              @click="showQuickMenu = false"
+              class="p-3 rounded-2xl bg-slate-100 border border-slate-200 flex items-center gap-2.5 hover:bg-slate-200 transition-all"
+            >
+              <div class="w-7 h-7 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
+                <Calendar class="w-3.5 h-3.5 text-purple-400" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-900 truncate">Jenis Cuti</p>
+                <p class="text-[9px] text-slate-500 truncate">Master tipe cuti</p>
+              </div>
+            </Link>
+
+            <Link
+              :href="route('admin.leave-balances.index')"
+              @click="showQuickMenu = false"
+              class="p-3 rounded-2xl bg-slate-100 border border-slate-200 flex items-center gap-2.5 hover:bg-slate-200 transition-all"
+            >
+              <div class="w-7 h-7 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
+                <Scale class="w-3.5 h-3.5 text-amber-400" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-900 truncate">Kuota Cuti</p>
+                <p class="text-[9px] text-slate-500 truncate">Saldo cuti karyawan</p>
+              </div>
+            </Link>
+          </div>
+        </div>
+
+        <!-- SECTION 6: NOTIFIKASI & AKUN SAYA -->
+        <div class="space-y-2 pt-2 border-t border-slate-100">
+          <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">6. Akun & Notifikasi</span>
+          <div class="grid grid-cols-2 gap-2">
+            <Link
+              :href="route('notifikasi.index')"
+              @click="showQuickMenu = false"
+              class="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between hover:bg-slate-100 transition-all"
+            >
+              <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-7 h-7 rounded-xl bg-slate-800 text-white flex items-center justify-center shrink-0">
+                  <Bell class="w-3.5 h-3.5 text-amber-400" />
+                </div>
+                <div class="min-w-0">
+                  <p class="text-xs font-bold text-slate-900 truncate">Notifikasi</p>
+                  <p class="text-[9px] text-slate-500 truncate">Pemberitahuan</p>
+                </div>
+              </div>
+              <span
+                v-if="unreadNotificationsCount > 0"
+                class="px-2 py-0.5 text-[10px] font-bold bg-rose-500 text-white rounded-full shrink-0"
+              >
+                {{ unreadNotificationsCount }}
+              </span>
+            </Link>
+
             <Link
               :href="route('profile.edit')"
               @click="showQuickMenu = false"
@@ -295,37 +430,21 @@ const isCurrentRoute = (routeName) => {
                 <p class="text-[9px] text-slate-500 truncate">Ubah password & foto</p>
               </div>
             </Link>
-
-            <Link
-              v-if="isAdmin"
-              :href="route('admin.users.index')"
-              @click="showQuickMenu = false"
-              class="p-3 rounded-2xl bg-slate-100 border border-slate-200 flex items-center gap-2.5 hover:bg-slate-200 transition-all"
-            >
-              <div class="w-7 h-7 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
-                <Users class="w-3.5 h-3.5" />
-              </div>
-              <div class="min-w-0">
-                <p class="text-xs font-bold text-slate-900 truncate">Kelola User</p>
-                <p class="text-[9px] text-slate-500 truncate">Pengguna & role</p>
-              </div>
-            </Link>
-
-            <Link
-              v-if="isAdmin"
-              :href="route('admin.divisions.index')"
-              @click="showQuickMenu = false"
-              class="p-3 rounded-2xl bg-slate-100 border border-slate-200 flex items-center gap-2.5 hover:bg-slate-200 transition-all col-span-2"
-            >
-              <div class="w-7 h-7 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
-                <Settings class="w-3.5 h-3.5" />
-              </div>
-              <div class="min-w-0">
-                <p class="text-xs font-bold text-slate-900 truncate">Pengaturan Master Data</p>
-                <p class="text-[9px] text-slate-500 truncate">Divisi, jenis kegiatan, & saldo cuti</p>
-              </div>
-            </Link>
           </div>
+        </div>
+
+        <!-- LOGOUT BUTTON -->
+        <div class="pt-2">
+          <Link
+            :href="route('logout')"
+            method="post"
+            as="button"
+            @click="showQuickMenu = false"
+            class="w-full py-3 px-4 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 flex items-center justify-center gap-2 transition-all"
+          >
+            <LogOut class="w-4 h-4" />
+            <span>Keluar Akun (Logout)</span>
+          </Link>
         </div>
       </div>
     </div>
