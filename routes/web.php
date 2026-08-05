@@ -101,6 +101,7 @@ Route::middleware(['auth'])->group(function () {
     // Modul Akuntansi
     Route::middleware('role:admin|hrd_finance')->prefix('accounting')->name('accounting.')->group(function () {
         Route::resource('coas', \App\Http\Controllers\Accounting\CoaController::class)->except(['create', 'show', 'edit']);
+        Route::resource('assets', \App\Http\Controllers\Accounting\AssetController::class)->except(['create', 'show', 'edit']);
     });
 
     // Executive dashboard route protected by role

@@ -26,7 +26,8 @@ import {
   Layers,
   Store,
   Globe,
-  RefreshCw
+  RefreshCw,
+  Archive
 } from 'lucide-vue-next';
 
 const page = usePage();
@@ -421,6 +422,20 @@ const isCurrentRoute = (routeName) => {
               <div class="min-w-0">
                 <p class="text-xs font-bold text-slate-900 truncate">Master COA</p>
                 <p class="text-[10px] text-indigo-700 font-medium truncate">Chart of Accounts</p>
+              </div>
+            </Link>
+            
+            <Link
+              :href="route('accounting.assets.index')"
+              @click="showQuickMenu = false"
+              class="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center gap-3 hover:bg-indigo-100/70 transition-all"
+            >
+              <div class="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                <Archive class="w-3.5 h-3.5" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-900 truncate">Master Aset</p>
+                <p class="text-[10px] text-indigo-700 font-medium truncate">Data Aset Tetap</p>
               </div>
             </Link>
           </div>

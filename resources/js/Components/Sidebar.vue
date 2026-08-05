@@ -24,7 +24,8 @@ import {
   RefreshCw,
   Globe,
   Store,
-  LineChart
+  LineChart,
+  Archive
 } from 'lucide-vue-next';
 
 const page = usePage();
@@ -237,6 +238,14 @@ const isHrdOrAdmin = computed(() => {
             >
               <FileText class="w-4 h-4 text-indigo-400" />
               <span>Master COA</span>
+            </Link>
+            <Link
+              :href="route('accounting.assets.index')"
+              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="isCurrentRoute('accounting.assets') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+            >
+              <Archive class="w-4 h-4 text-emerald-400" />
+              <span>Master Aset</span>
             </Link>
           </div>
         </div>
