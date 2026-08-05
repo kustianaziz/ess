@@ -144,24 +144,26 @@ class MonthlyBillController extends Controller
             'name' => 'required|string|max:255',
             'vendor_name' => 'nullable|string|max:255',
             'default_amount' => 'required|numeric|min:0',
-            'billing_day' => 'required|integer|between:1,28',
+            'due_date' => 'required|date',
             'cash_account_id' => 'required|exists:cash_accounts,id',
         ]);
+
+        $dueDate = $validated['due_date'];
+        $time = strtotime($dueDate);
+        $billingDay = (int) date('j', $time);
+        $month = (int) date('n', $time);
+        $year = (int) date('Y', $time);
 
         $billType = MonthlyBillType::create([
             'name' => $validated['name'],
             'vendor_name' => $validated['vendor_name'] ?? null,
             'default_amount' => $validated['default_amount'],
-            'billing_day' => $validated['billing_day'],
+            'billing_day' => min($billingDay, 28),
             'cash_account_id' => $validated['cash_account_id'],
             'is_active' => true,
         ]);
 
-        // Auto-generate payment for current month
-        $month = (int) date('n');
-        $year = (int) date('Y');
-        $dueDate = sprintf('%04d-%02d-%02d', $year, $month, min($billType->billing_day, 28));
-
+        // Auto-generate payment for specified month/year
         MonthlyBillPayment::create([
             'payment_number' => $generateRequestNumber->execute('TB', 'monthly_bill_payments', 'payment_number'),
             'bill_type_id' => $billType->id,
@@ -174,7 +176,7 @@ class MonthlyBillController extends Controller
 
         return redirect()->back()->with(
             'success',
-            "Jenis tagihan '{$billType->name}' berhasil ditambahkan!"
+            "Jenis tagihan '{$billType->name}' berhasil ditambahkan untuk periode " . date('F Y', $time) . "!"
         );
     }
 }

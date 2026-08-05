@@ -14,14 +14,16 @@ import {
   Calendar,
   CheckCircle2,
   XCircle,
-  FileText
+  FileText,
+  Pen
 } from 'lucide-vue-next'
 
 const props = defineProps({
   cashAccounts: Array,
   summary: Object,
   transactions: Object,
-  filters: Object
+  filters: Object,
+  usersList: Array
 })
 
 const showModal = ref(false)
@@ -81,6 +83,72 @@ const applyFilters = () => {
     },
     { preserveState: true }
   )
+}
+
+// Cash Account Modal State
+const showAccountModal = ref(false)
+const isEditAccount = ref(false)
+const selectedAccountId = ref(null)
+
+const accountForm = useForm({
+  name: '',
+  code: '',
+  current_balance: 0,
+  pic_user_id: '',
+  is_active: true
+})
+
+const rawAccountBalanceInput = ref('')
+
+const handleAccountBalanceInput = (e) => {
+  const value = e.target.value.replace(/\D/g, '')
+  accountForm.current_balance = value ? parseInt(value, 10) : 0
+  rawAccountBalanceInput.value = value ? new Intl.NumberFormat('id-ID').format(value) : ''
+}
+
+const openAddAccountModal = () => {
+  isEditAccount.value = false
+  selectedAccountId.value = null
+  accountForm.name = ''
+  accountForm.code = ''
+  accountForm.current_balance = 0
+  rawAccountBalanceInput.value = ''
+  accountForm.pic_user_id = props.usersList?.[0]?.id || ''
+  accountForm.is_active = true
+  showAccountModal.value = true
+}
+
+const openEditAccountModal = (acc) => {
+  isEditAccount.value = true
+  selectedAccountId.value = acc.id
+  accountForm.name = acc.name
+  accountForm.code = acc.code
+  accountForm.current_balance = acc.current_balance
+  rawAccountBalanceInput.value = acc.current_balance ? new Intl.NumberFormat('id-ID').format(acc.current_balance) : '0'
+  accountForm.pic_user_id = acc.pic_user_id || props.usersList?.[0]?.id || ''
+  accountForm.is_active = acc.is_active !== false
+  showAccountModal.value = true
+}
+
+const submitAccount = () => {
+  if (!accountForm.name || !accountForm.code) {
+    alert('Mohon isi nama akun dan kode akun kas.')
+    return
+  }
+
+  if (isEditAccount.value) {
+    accountForm.put(route('keuangan.kas-operasional.accounts.update', selectedAccountId.value), {
+      onSuccess: () => {
+        showAccountModal.value = false
+      }
+    })
+  } else {
+    accountForm.post(route('keuangan.kas-operasional.accounts.store'), {
+      onSuccess: () => {
+        showAccountModal.value = false
+      }
+    })
+  }
 }
 </script>
 
@@ -169,20 +237,39 @@ const applyFilters = () => {
 
       <!-- POS AKUN KAS LIST -->
       <div class="space-y-3">
-        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-          <CreditCard class="w-4 h-4 text-indigo-500" />
-          Daftar Pos Akun Kas
-        </h3>
+        <div class="flex items-center justify-between gap-2">
+          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+            <CreditCard class="w-4 h-4 text-indigo-500" />
+            Daftar Pos Akun Kas
+          </h3>
+
+          <button
+            @click="openAddAccountModal"
+            class="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-bold transition-all flex items-center gap-1 border border-indigo-100"
+          >
+            <span>+ Tambah Pos Kas</span>
+          </button>
+        </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div
             v-for="acc in cashAccounts"
             :key="acc.id"
-            class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex items-center justify-between hover:border-indigo-300 transition-all"
+            class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex items-center justify-between hover:border-indigo-300 transition-all group"
           >
             <div>
-              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 uppercase tracking-wider">
-                {{ acc.code }}
-              </span>
+              <div class="flex items-center gap-1.5">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 uppercase tracking-wider">
+                  {{ acc.code }}
+                </span>
+                <button
+                  @click="openEditAccountModal(acc)"
+                  class="p-1 text-slate-400 hover:text-indigo-600 rounded transition-colors"
+                  title="Edit Akun Kas"
+                >
+                  <Pen class="w-3.5 h-3.5" />
+                </button>
+              </div>
               <h4 class="font-bold text-sm text-slate-900 mt-1">{{ acc.name }}</h4>
               <span class="text-[11px] text-slate-400 block mt-0.5">PIC: {{ acc.pic_name }}</span>
             </div>
@@ -346,6 +433,73 @@ const applyFilters = () => {
               :class="modalType === 'in' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'"
             >
               Simpan Transaksi
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL ADD / EDIT POS AKUN KAS -->
+    <div v-if="showAccountModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h3 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+            <span class="p-1.5 rounded-lg bg-indigo-100 text-indigo-600">
+              <CreditCard class="w-4 h-4" />
+            </span>
+            <span>{{ isEditAccount ? 'Edit Master Pos Akun Kas' : 'Tambah Pos Akun Kas Baru' }}</span>
+          </h3>
+          <button @click="showAccountModal = false" class="text-slate-400 hover:text-slate-600 text-sm font-bold">✕</button>
+        </div>
+
+        <form @submit.prevent="submitAccount" class="space-y-4 text-xs">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Nama Pos Akun Kas <span class="text-rose-500">*</span></label>
+            <input v-model="accountForm.name" type="text" placeholder="Contoh: Kas Bank BCA Operasional / Kas Kecil" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 font-semibold" />
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Kode Unik Akun <span class="text-rose-500">*</span></label>
+            <input v-model="accountForm.code" type="text" placeholder="Contoh: KAS-BCA / KAS-PETTY" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 font-bold uppercase" />
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Saldo Berjalan / Saldo Awal (Rp) <span class="text-rose-500">*</span></label>
+            <div class="relative">
+              <span class="absolute left-3 top-2 font-bold text-slate-400">Rp</span>
+              <input
+                :value="rawAccountBalanceInput"
+                @input="handleAccountBalanceInput"
+                type="text"
+                placeholder="0"
+                class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 font-bold text-slate-900"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">PIC / Pengelola Kas</label>
+            <select v-model="accountForm.pic_user_id" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 font-medium">
+              <option value="">Admin Keuangan (Default)</option>
+              <option v-for="user in usersList" :key="user.id" :value="user.id">
+                {{ user.name }}
+              </option>
+            </select>
+          </div>
+
+          <div v-if="isEditAccount" class="flex items-center gap-2 pt-1">
+            <input id="is_active_chk" v-model="accountForm.is_active" type="checkbox" class="rounded text-indigo-600 focus:ring-indigo-500" />
+            <label for="is_active_chk" class="font-bold text-slate-700">Akun Kas Aktif</label>
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+            <button type="button" @click="showAccountModal = false" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold">Batal</button>
+            <button
+              type="submit"
+              :disabled="accountForm.processing"
+              class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md transition-all"
+            >
+              {{ isEditAccount ? 'Simpan Perubahan' : 'Simpan Pos Kas' }}
             </button>
           </div>
         </form>

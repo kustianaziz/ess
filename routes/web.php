@@ -85,6 +85,8 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('role:admin|hrd_finance')->prefix('keuangan')->name('keuangan.')->group(function () {
         // Kas Operasional
         Route::get('/kas-operasional', [\App\Http\Controllers\CashOperationalController::class, 'dashboard'])->name('kas-operasional.dashboard');
+        Route::post('/kas-operasional/accounts', [\App\Http\Controllers\CashOperationalController::class, 'storeAccount'])->name('kas-operasional.accounts.store');
+        Route::put('/kas-operasional/accounts/{id}', [\App\Http\Controllers\CashOperationalController::class, 'updateAccount'])->name('kas-operasional.accounts.update');
         Route::post('/kas-operasional/transaksi', [\App\Http\Controllers\CashOperationalController::class, 'storeTransaction'])->name('kas-operasional.transaksi.store');
 
         // Tagihan Bulanan Rutin

@@ -91,6 +91,8 @@ class CashOperationalController extends Controller
             'created_by' => $tx->createdBy?->name ?? 'System',
         ]);
 
+        $usersList = \App\Models\User::orderBy('name')->get(['id', 'name']);
+
         return Inertia::render('Keuangan/KasOperasional/Dashboard', [
             'cashAccounts' => $cashAccounts,
             'summary' => [
@@ -103,6 +105,7 @@ class CashOperationalController extends Controller
             ],
             'transactions' => $transactions,
             'filters' => $request->only(['cash_account_id', 'type', 'category', 'search']),
+            'usersList' => $usersList,
         ]);
     }
 
@@ -138,5 +141,48 @@ class CashOperationalController extends Controller
             'success',
             "Transaksi {$typeLabel} ({$tx->transaction_number}) senilai Rp " . number_format($tx->amount, 0, ',', '.') . " berhasil dicatat!"
         );
+    }
+
+    public function storeAccount(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'code' => 'required|string|max:50|unique:cash_accounts,code',
+            'current_balance' => 'required|numeric|min:0',
+            'pic_user_id' => 'nullable|exists:users,id',
+        ]);
+
+        $account = CashAccount::create([
+            'name' => $validated['name'],
+            'code' => strtoupper($validated['code']),
+            'current_balance' => $validated['current_balance'],
+            'pic_user_id' => $validated['pic_user_id'] ?? null,
+            'is_active' => true,
+        ]);
+
+        return redirect()->back()->with('success', "Akun Kas '{$account->name}' berhasil ditambahkan!");
+    }
+
+    public function updateAccount(Request $request, int $id): RedirectResponse
+    {
+        $account = CashAccount::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'code' => 'required|string|max:50|unique:cash_accounts,code,' . $id,
+            'current_balance' => 'required|numeric|min:0',
+            'pic_user_id' => 'nullable|exists:users,id',
+            'is_active' => 'required|boolean',
+        ]);
+
+        $account->update([
+            'name' => $validated['name'],
+            'code' => strtoupper($validated['code']),
+            'current_balance' => $validated['current_balance'],
+            'pic_user_id' => $validated['pic_user_id'] ?? null,
+            'is_active' => $validated['is_active'],
+        ]);
+
+        return redirect()->back()->with('success', "Data Akun Kas '{$account->name}' berhasil diperbarui!");
     }
 }
