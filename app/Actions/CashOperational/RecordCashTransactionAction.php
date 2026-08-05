@@ -34,7 +34,7 @@ class RecordCashTransactionAction
             $sourceModel,
             $transactionDate
         ) {
-            $transactionNumber = $this->generateRequestNumber->execute('KAS', 'cash_transactions');
+            $transactionNumber = $this->generateRequestNumber->execute('KAS', 'cash_transactions', 'transaction_number');
 
             $cashTransaction = CashTransaction::create([
                 'transaction_number' => $transactionNumber,

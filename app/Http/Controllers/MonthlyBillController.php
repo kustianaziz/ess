@@ -34,7 +34,7 @@ class MonthlyBillController extends Controller
             if (!$existing) {
                 $dueDate = sprintf('%04d-%02d-%02d', $year, $month, min($billType->billing_day ?? 10, 28));
                 MonthlyBillPayment::create([
-                    'payment_number' => $generateRequestNumber->execute('TB', 'monthly_bill_payments'),
+                    'payment_number' => $generateRequestNumber->execute('TB', 'monthly_bill_payments', 'payment_number'),
                     'bill_type_id' => $billType->id,
                     'period_month' => $month,
                     'period_year' => $year,
