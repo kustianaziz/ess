@@ -93,6 +93,9 @@ const selectedAccountId = ref(null)
 const accountForm = useForm({
   name: '',
   code: '',
+  type: 'cash',
+  bank_name: '',
+  account_number: '',
   current_balance: 0,
   pic_user_id: '',
   is_active: true
@@ -111,6 +114,9 @@ const openAddAccountModal = () => {
   selectedAccountId.value = null
   accountForm.name = ''
   accountForm.code = ''
+  accountForm.type = 'cash'
+  accountForm.bank_name = ''
+  accountForm.account_number = ''
   accountForm.current_balance = 0
   rawAccountBalanceInput.value = ''
   accountForm.pic_user_id = props.usersList?.[0]?.id || ''
@@ -123,6 +129,9 @@ const openEditAccountModal = (acc) => {
   selectedAccountId.value = acc.id
   accountForm.name = acc.name
   accountForm.code = acc.code
+  accountForm.type = acc.type || 'cash'
+  accountForm.bank_name = acc.bank_name || ''
+  accountForm.account_number = acc.account_number || ''
   accountForm.current_balance = acc.current_balance
   rawAccountBalanceInput.value = acc.current_balance ? new Intl.NumberFormat('id-ID').format(acc.current_balance) : '0'
   accountForm.pic_user_id = acc.pic_user_id || props.usersList?.[0]?.id || ''
@@ -258,19 +267,30 @@ const submitAccount = () => {
             class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex items-center justify-between hover:border-indigo-300 transition-all group"
           >
             <div>
-              <div class="flex items-center gap-1.5">
+              <div class="flex items-center gap-1.5 flex-wrap">
                 <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 uppercase tracking-wider">
                   {{ acc.code }}
                 </span>
+                <span
+                  class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"
+                  :class="acc.type === 'bank' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'"
+                >
+                  <Building2 v-if="acc.type === 'bank'" class="w-3 h-3" />
+                  <Wallet v-else class="w-3 h-3" />
+                  <span>{{ acc.type_label }}</span>
+                </span>
                 <button
                   @click="openEditAccountModal(acc)"
-                  class="p-1 text-slate-400 hover:text-indigo-600 rounded transition-colors"
+                  class="p-1 text-slate-400 hover:text-indigo-600 rounded transition-colors ml-auto sm:ml-0"
                   title="Edit Akun Kas"
                 >
                   <Pen class="w-3.5 h-3.5" />
                 </button>
               </div>
               <h4 class="font-bold text-sm text-slate-900 mt-1">{{ acc.name }}</h4>
+              <span v-if="acc.type === 'bank' && acc.bank_name" class="text-[11px] text-slate-500 font-medium block">
+                {{ acc.bank_name }} <span v-if="acc.account_number">• {{ acc.account_number }}</span>
+              </span>
               <span class="text-[11px] text-slate-400 block mt-0.5">PIC: {{ acc.pic_name }}</span>
             </div>
             <div class="text-right">
@@ -454,13 +474,60 @@ const submitAccount = () => {
 
         <form @submit.prevent="submitAccount" class="space-y-4 text-xs">
           <div>
+            <label class="block font-bold text-slate-700 mb-1">Tipe Pos Akun Kas <span class="text-rose-500">*</span></label>
+            <div class="grid grid-cols-2 gap-2">
+              <label
+                class="p-2.5 rounded-xl border flex items-center justify-center gap-2 cursor-pointer font-bold transition-all"
+                :class="accountForm.type === 'cash' ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-600'"
+              >
+                <input type="radio" v-model="accountForm.type" value="cash" class="sr-only" />
+                <Wallet class="w-4 h-4" />
+                <span>Kas Tunai</span>
+              </label>
+
+              <label
+                class="p-2.5 rounded-xl border flex items-center justify-center gap-2 cursor-pointer font-bold transition-all"
+                :class="accountForm.type === 'bank' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-600'"
+              >
+                <input type="radio" v-model="accountForm.type" value="bank" class="sr-only" />
+                <Building2 class="w-4 h-4" />
+                <span>Rekening Bank</span>
+              </label>
+            </div>
+          </div>
+
+          <div>
             <label class="block font-bold text-slate-700 mb-1">Nama Pos Akun Kas <span class="text-rose-500">*</span></label>
             <input v-model="accountForm.name" type="text" placeholder="Contoh: Kas Bank BCA Operasional / Kas Kecil" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 font-semibold" />
           </div>
 
-          <div>
-            <label class="block font-bold text-slate-700 mb-1">Kode Unik Akun <span class="text-rose-500">*</span></label>
-            <input v-model="accountForm.code" type="text" placeholder="Contoh: KAS-BCA / KAS-PETTY" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 font-bold uppercase" />
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Kode Unik Akun <span class="text-rose-500">*</span></label>
+              <input v-model="accountForm.code" type="text" placeholder="Contoh: KAS-BCA" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 font-bold uppercase" />
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">PIC / Pengelola Kas</label>
+              <select v-model="accountForm.pic_user_id" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 font-medium">
+                <option value="">Admin Keuangan</option>
+                <option v-for="user in usersList" :key="user.id" :value="user.id">
+                  {{ user.name }}
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <div v-if="accountForm.type === 'bank'" class="grid grid-cols-2 gap-3 p-3 rounded-xl bg-blue-50/70 border border-blue-100">
+            <div>
+              <label class="block font-bold text-blue-900 mb-1">Nama Bank</label>
+              <input v-model="accountForm.bank_name" type="text" placeholder="Contoh: Bank BCA / Bank Mandiri" class="w-full px-3 py-2 rounded-xl border border-blue-200 text-slate-800 font-semibold" />
+            </div>
+
+            <div>
+              <label class="block font-bold text-blue-900 mb-1">Nomor Rekening</label>
+              <input v-model="accountForm.account_number" type="text" placeholder="Contoh: 8391204812" class="w-full px-3 py-2 rounded-xl border border-blue-200 text-slate-800 font-bold" />
+            </div>
           </div>
 
           <div>
@@ -475,16 +542,6 @@ const submitAccount = () => {
                 class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 font-bold text-slate-900"
               />
             </div>
-          </div>
-
-          <div>
-            <label class="block font-bold text-slate-700 mb-1">PIC / Pengelola Kas</label>
-            <select v-model="accountForm.pic_user_id" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 font-medium">
-              <option value="">Admin Keuangan (Default)</option>
-              <option v-for="user in usersList" :key="user.id" :value="user.id">
-                {{ user.name }}
-              </option>
-            </select>
           </div>
 
           <div v-if="isEditAccount" class="flex items-center gap-2 pt-1">

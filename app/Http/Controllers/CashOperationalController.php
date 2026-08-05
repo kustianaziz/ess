@@ -24,9 +24,14 @@ class CashOperationalController extends Controller
                 'id' => $acc->id,
                 'name' => $acc->name,
                 'code' => $acc->code,
+                'type' => $acc->type ?? 'cash',
+                'type_label' => ($acc->type === 'bank') ? 'Rekening Bank' : 'Kas Tunai',
+                'bank_name' => $acc->bank_name,
+                'account_number' => $acc->account_number,
                 'current_balance' => (float)$acc->current_balance,
                 'current_balance_formatted' => 'Rp ' . number_format($acc->current_balance, 0, ',', '.'),
                 'pic_name' => $acc->picUser?->name ?? 'Admin Keuangan',
+                'pic_user_id' => $acc->pic_user_id,
             ]);
 
         $totalBalance = $cashAccounts->sum('current_balance');
@@ -148,6 +153,9 @@ class CashOperationalController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:cash_accounts,code',
+            'type' => 'required|in:cash,bank',
+            'bank_name' => 'nullable|string|max:255',
+            'account_number' => 'nullable|string|max:255',
             'current_balance' => 'required|numeric|min:0',
             'pic_user_id' => 'nullable|exists:users,id',
         ]);
@@ -155,6 +163,9 @@ class CashOperationalController extends Controller
         $account = CashAccount::create([
             'name' => $validated['name'],
             'code' => strtoupper($validated['code']),
+            'type' => $validated['type'],
+            'bank_name' => $validated['type'] === 'bank' ? $validated['bank_name'] : null,
+            'account_number' => $validated['type'] === 'bank' ? $validated['account_number'] : null,
             'current_balance' => $validated['current_balance'],
             'pic_user_id' => $validated['pic_user_id'] ?? null,
             'is_active' => true,
@@ -170,6 +181,9 @@ class CashOperationalController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:cash_accounts,code,' . $id,
+            'type' => 'required|in:cash,bank',
+            'bank_name' => 'nullable|string|max:255',
+            'account_number' => 'nullable|string|max:255',
             'current_balance' => 'required|numeric|min:0',
             'pic_user_id' => 'nullable|exists:users,id',
             'is_active' => 'required|boolean',
@@ -178,6 +192,9 @@ class CashOperationalController extends Controller
         $account->update([
             'name' => $validated['name'],
             'code' => strtoupper($validated['code']),
+            'type' => $validated['type'],
+            'bank_name' => $validated['type'] === 'bank' ? $validated['bank_name'] : null,
+            'account_number' => $validated['type'] === 'bank' ? $validated['account_number'] : null,
             'current_balance' => $validated['current_balance'],
             'pic_user_id' => $validated['pic_user_id'] ?? null,
             'is_active' => $validated['is_active'],

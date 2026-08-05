@@ -14,6 +14,9 @@ class CashAccount extends Model
     protected $fillable = [
         'name',
         'code',
+        'type',
+        'bank_name',
+        'account_number',
         'current_balance',
         'pic_user_id',
         'is_active',
