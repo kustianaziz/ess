@@ -21,7 +21,12 @@ import {
   BarChart3,
   Bell,
   User,
-  LogOut
+  LogOut,
+  LineChart,
+  Layers,
+  Store,
+  Globe,
+  RefreshCw
 } from 'lucide-vue-next';
 
 const page = usePage();
@@ -138,8 +143,27 @@ const isCurrentRoute = (routeName) => {
           <button @click="showQuickMenu = false" class="p-1 rounded-lg text-slate-400 hover:text-slate-600 font-bold">✕</button>
         </div>
 
+        <!-- SECTION: DASHBOARD EKSEKUTIF -->
+        <div v-if="isHrdOrAdmin" class="space-y-2">
+          <Link
+            :href="route('executive.dashboard')"
+            @click="showQuickMenu = false"
+            class="p-3 rounded-2xl bg-indigo-600 text-white flex items-center justify-between hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/30"
+          >
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-8 h-8 rounded-xl bg-white/20 text-white flex items-center justify-center shrink-0">
+                <LineChart class="w-4 h-4" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-sm font-bold truncate">Dashboard Eksekutif</p>
+                <p class="text-[10px] text-indigo-100 truncate">Analisis Keuangan & Laba Rugi</p>
+              </div>
+            </div>
+          </Link>
+        </div>
+
         <!-- SECTION 1: FORM PENGAJUAN BARU -->
-        <div class="space-y-2">
+        <div class="space-y-2 pt-2 border-t border-slate-100">
           <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">1. Layanan & Form Pengajuan Saya</span>
           <div class="grid grid-cols-2 gap-2">
             <Link
@@ -282,7 +306,89 @@ const isCurrentRoute = (routeName) => {
           </div>
         </div>
 
-        <!-- SECTION 4: REKAPITULASI & LAPORAN (HRD & ADMIN) -->
+        <!-- SECTION 4: PENDAPATAN / INVOICING -->
+        <div v-if="isHrdOrAdmin" class="space-y-2 pt-2 border-t border-slate-100">
+          <span class="text-[11px] font-bold text-sky-700 uppercase tracking-wider block">4. Pendapatan & Invoicing</span>
+          <div class="grid grid-cols-2 gap-2">
+            <Link
+              :href="route('invoicing.customers.index')"
+              @click="showQuickMenu = false"
+              class="p-3 rounded-2xl bg-sky-50/80 border border-sky-200 flex items-center gap-2.5 hover:bg-sky-100/80 transition-all"
+            >
+              <div class="w-7 h-7 rounded-xl bg-sky-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <Users class="w-3.5 h-3.5" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-900 truncate">Klien / Customer</p>
+                <p class="text-[9px] text-sky-700 font-semibold truncate">Data pelanggan</p>
+              </div>
+            </Link>
+
+            <Link
+              :href="route('invoicing.invoices.index')"
+              @click="showQuickMenu = false"
+              class="p-3 rounded-2xl bg-indigo-50/80 border border-indigo-200 flex items-center gap-2.5 hover:bg-indigo-100/80 transition-all"
+            >
+              <div class="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <FileText class="w-3.5 h-3.5" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-900 truncate">Invoice Tagihan</p>
+                <p class="text-[9px] text-indigo-700 font-semibold truncate">Pembuatan invoice</p>
+              </div>
+            </Link>
+          </div>
+        </div>
+
+        <!-- SECTION 5: RENEWAL WEBPRAKTIS -->
+        <div v-if="isHrdOrAdmin" class="space-y-2 pt-2 border-t border-slate-100">
+          <span class="text-[11px] font-bold text-violet-700 uppercase tracking-wider block">5. Modul Renewal Webpraktis</span>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <Link
+              :href="route('renewal.vendors.index')"
+              @click="showQuickMenu = false"
+              class="p-3 rounded-2xl bg-violet-50/80 border border-violet-200 flex items-center gap-2.5 hover:bg-violet-100/80 transition-all"
+            >
+              <div class="w-7 h-7 rounded-xl bg-violet-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <Store class="w-3.5 h-3.5" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-900 truncate">Master Vendor</p>
+                <p class="text-[9px] text-violet-700 font-semibold truncate">Daftar layanan</p>
+              </div>
+            </Link>
+
+            <Link
+              :href="route('renewal.domains.index')"
+              @click="showQuickMenu = false"
+              class="p-3 rounded-2xl bg-cyan-50/80 border border-cyan-200 flex items-center gap-2.5 hover:bg-cyan-100/80 transition-all"
+            >
+              <div class="w-7 h-7 rounded-xl bg-cyan-600 text-white flex items-center justify-center shrink-0">
+                <Globe class="w-3.5 h-3.5" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-900 truncate">Domain & Hosting</p>
+                <p class="text-[9px] text-slate-500 truncate">Aset digital klien</p>
+              </div>
+            </Link>
+
+            <Link
+              :href="route('renewal.renewals.index')"
+              @click="showQuickMenu = false"
+              class="p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 flex items-center gap-2.5 hover:bg-emerald-100/80 transition-all col-span-2 sm:col-span-1"
+            >
+              <div class="w-7 h-7 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                <RefreshCw class="w-3.5 h-3.5" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-900 truncate">Proses Renewal</p>
+                <p class="text-[9px] text-slate-500 truncate">Perpanjangan layanan</p>
+              </div>
+            </Link>
+          </div>
+        </div>
+
+        <!-- SECTION 6: REKAPITULASI & LAPORAN (HRD & ADMIN) -->
         <div v-if="isHrdOrAdmin" class="space-y-2 pt-2 border-t border-slate-100">
           <span class="text-[11px] font-bold text-indigo-600 uppercase tracking-wider block">4. Rekapitulasi & Laporan Perusahaan</span>
           <Link
@@ -300,9 +406,9 @@ const isCurrentRoute = (routeName) => {
           </Link>
         </div>
 
-        <!-- SECTION 5: ADMIN PANEL (KHUSUS ROLE ADMIN) -->
+        <!-- SECTION 7: ADMIN PANEL (KHUSUS ROLE ADMIN) -->
         <div v-if="isAdmin" class="space-y-2 pt-2 border-t border-slate-100">
-          <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">5. Admin Panel (Master Data)</span>
+          <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">7. Admin Panel (Master Data)</span>
           <div class="grid grid-cols-2 gap-2">
             <Link
               :href="route('admin.users.index')"
@@ -387,12 +493,26 @@ const isCurrentRoute = (routeName) => {
                 <p class="text-[9px] text-slate-500 truncate">Saldo cuti karyawan</p>
               </div>
             </Link>
+
+            <Link
+              :href="route('admin.services.index')"
+              @click="showQuickMenu = false"
+              class="p-3 rounded-2xl bg-slate-100 border border-slate-200 flex items-center gap-2.5 hover:bg-slate-200 transition-all"
+            >
+              <div class="w-7 h-7 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
+                <Layers class="w-3.5 h-3.5 text-teal-400" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-900 truncate">Master Layanan</p>
+                <p class="text-[9px] text-slate-500 truncate">Layanan Invoice</p>
+              </div>
+            </Link>
           </div>
         </div>
 
-        <!-- SECTION 6: NOTIFIKASI & AKUN SAYA -->
+        <!-- SECTION 8: NOTIFIKASI & AKUN SAYA -->
         <div class="space-y-2 pt-2 border-t border-slate-100">
-          <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">6. Akun & Notifikasi</span>
+          <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">8. Akun & Notifikasi</span>
           <div class="grid grid-cols-2 gap-2">
             <Link
               :href="route('notifikasi.index')"
