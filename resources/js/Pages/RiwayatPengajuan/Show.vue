@@ -1,13 +1,16 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { Head, Link, useForm, router } from '@inertiajs/vue3';
+import { Head, Link, useForm, router, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 import { ArrowLeft, Clock, FileText, CheckCircle2, XCircle, User, Paperclip, CheckSquare } from 'lucide-vue-next';
 
 const props = defineProps({
   requestData: Object,
-  cashAccounts: Array,
+  cashAccounts: {
+    type: Array,
+    default: () => [],
+  },
 });
 
 const page = usePage();
