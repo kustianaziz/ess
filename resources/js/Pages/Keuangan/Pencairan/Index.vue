@@ -39,18 +39,23 @@ const payForm = useForm({
   ]
 })
 
+const selectedProofFiles = ref([])
+
 const openPayModal = (item) => {
   selectedItem.value = item
   payForm.payment_reference = 'TRF-' + Math.floor(100000 + Math.random() * 900000)
   payForm.cash_account_id = props.cashAccounts?.[0]?.id || ''
-  payForm.proof_of_payment = null
+  payForm.proof_of_payment = []
+  selectedProofFiles.value = []
   payForm.disbursed_budget = item.amount
   showPayModal.value = true
 }
 
-const handleProofFileChange = (e) => {
-  if (e.target.files && e.target.files[0]) {
-    payForm.proof_of_payment = e.target.files[0]
+const handleProofFilesChange = (e) => {
+  if (e.target.files && e.target.files.length > 0) {
+    const files = Array.from(e.target.files)
+    selectedProofFiles.value = files
+    payForm.proof_of_payment = files
   }
 }
 
@@ -295,16 +300,29 @@ const getBadgeColor = (type) => {
             />
           </div>
 
-          <!-- UPLOAD BUKTI TRANSFER FILE -->
+          <!-- UPLOAD BUKTI TRANSFER FILE (MULTI-FILE SUPPORT) -->
           <div>
-            <label class="block font-bold text-slate-700 mb-1">Upload Bukti Transfer / Struk Bank (JPG, PNG, PDF)</label>
+            <label class="block font-bold text-slate-700 mb-1">Upload Bukti Transfer / Struk Bank (Bisa Banyak File sekaligus: JPG, PNG, PDF)</label>
             <input
               type="file"
-              @change="handleProofFileChange"
+              multiple
+              @change="handleProofFilesChange"
               accept=".jpg,.jpeg,.png,.pdf"
-              class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+              class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
             />
-            <span class="text-[10px] text-slate-400 block mt-1">Maksimal ukuran file: 5MB</span>
+            <span class="text-[10px] text-slate-400 block mt-1">Dapat memilih lebih dari 1 file (Maks. 5MB per file)</span>
+
+            <!-- PREVIEW TERPILIH -->
+            <div v-if="selectedProofFiles.length > 0" class="mt-2 space-y-1 p-2 rounded-xl bg-slate-50 border border-slate-200">
+              <span class="text-[10px] font-bold text-slate-500 block uppercase">File Terpilih ({{ selectedProofFiles.length }}):</span>
+              <ul class="space-y-0.5">
+                <li v-for="(f, i) in selectedProofFiles" :key="i" class="text-[11px] font-medium text-slate-700 flex items-center gap-1.5 truncate">
+                  <Upload class="w-3 h-3 text-emerald-600 shrink-0" />
+                  <span class="truncate">{{ f.name }}</span>
+                  <span class="text-[9px] text-slate-400 shrink-0">({{ Math.round(f.size / 1024) }} KB)</span>
+                </li>
+              </ul>
+            </div>
           </div>
 
           <!-- OPTIONAL RINCIAN PERJALANAN DINAS -->

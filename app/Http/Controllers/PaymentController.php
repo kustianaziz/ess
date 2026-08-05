@@ -26,7 +26,8 @@ class PaymentController extends Controller
             'cash_account_id' => 'required|exists:cash_accounts,id',
             'disbursed_budget' => 'nullable|numeric|min:0',
             'allowance_breakdown' => 'nullable|array',
-            'proof_of_payment' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'proof_of_payment' => 'nullable',
+            'proof_of_payment.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
 
         $user = $request->user();
@@ -72,16 +73,24 @@ class PaymentController extends Controller
 
             $model->update($updateData);
 
-            // Handle Proof of Payment Upload if uploaded
+            // Handle Proof of Payment Upload if uploaded (supports single or array of multiple files)
             if ($request->hasFile('proof_of_payment')) {
-                $file = $request->file('proof_of_payment');
-                $path = $file->store('proofs', 'public');
-                $model->attachments()->create([
-                    'file_path' => $path,
-                    'file_name' => 'Bukti_Transfer_' . $reference . '.' . $file->getClientOriginalExtension(),
-                    'file_size' => $file->getSize(),
-                    'mime_type' => $file->getClientMimeType(),
-                ]);
+                $files = is_array($request->file('proof_of_payment')) 
+                    ? $request->file('proof_of_payment') 
+                    : [$request->file('proof_of_payment')];
+
+                foreach ($files as $idx => $file) {
+                    if ($file && $file->isValid()) {
+                        $path = $file->store('proofs', 'public');
+                        $fileNum = count($files) > 1 ? '_' . ($idx + 1) : '';
+                        $model->attachments()->create([
+                            'file_path' => $path,
+                            'file_name' => 'Bukti_Transfer_' . $reference . $fileNum . '.' . $file->getClientOriginalExtension(),
+                            'file_size' => $file->getSize(),
+                            'mime_type' => $file->getClientMimeType(),
+                        ]);
+                    }
+                }
             }
 
             // Record cash out transaction automatically for selected cash account
