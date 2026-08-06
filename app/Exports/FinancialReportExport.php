@@ -8,7 +8,9 @@ use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class FinancialReportExport implements FromView, ShouldAutoSize, WithStyles
+use Maatwebsite\Excel\Concerns\WithColumnWidths;
+
+class FinancialReportExport implements FromView, WithStyles, WithColumnWidths
 {
     protected $viewName;
     protected $data;
@@ -26,9 +28,26 @@ class FinancialReportExport implements FromView, ShouldAutoSize, WithStyles
 
     public function styles(Worksheet $sheet)
     {
+        // Global styles
+        $sheet->getStyle('A1:G1000')->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+        $sheet->getStyle('A1:G1000')->getAlignment()->setWrapText(true);
+        
         return [
-            // Style the first row as bold text.
             1    => ['font' => ['bold' => true]],
+            2    => ['font' => ['bold' => true]],
+        ];
+    }
+
+    public function columnWidths(): array
+    {
+        return [
+            'A' => 45, // Uraian / Akun / Tanggal
+            'B' => 25, // Saldo / Referensi
+            'C' => 45, // Deskripsi / Akun Pasiva
+            'D' => 25, // Debit / Saldo Pasiva
+            'E' => 25, // Credit
+            'F' => 25, // Balance
+            'G' => 25,
         ];
     }
 }
