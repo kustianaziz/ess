@@ -144,7 +144,8 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('invoicing')->name('invoicing.')->group(function () {
         Route::resource('customers', \App\Http\Controllers\Invoicing\CustomerController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::post('invoices/{invoice}/duplicate', [\App\Http\Controllers\Invoicing\InvoiceController::class, 'duplicate'])->name('invoices.duplicate');
-        Route::resource('invoices', \App\Http\Controllers\Invoicing\InvoiceController::class)->except(['edit', 'update']);
+        Route::post('invoices/{invoice}/sent', [\App\Http\Controllers\Invoicing\InvoiceController::class, 'markAsSent'])->name('invoices.sent');
+        Route::resource('invoices', \App\Http\Controllers\Invoicing\InvoiceController::class);
         Route::get('invoices/{invoice}/pdf', [\App\Http\Controllers\Invoicing\InvoiceController::class, 'downloadPdf'])->name('invoices.pdf');
         Route::post('invoices/{invoice}/payments', [\App\Http\Controllers\Invoicing\InvoicePaymentController::class, 'store'])->name('invoices.payments.store');
     });

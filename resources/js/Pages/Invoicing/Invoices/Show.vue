@@ -1,8 +1,8 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { Head, useForm, Link } from '@inertiajs/vue3'
+import { Head, useForm, Link, router } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import { ArrowLeft, CheckCircle2, Wallet, Clock, Download, Upload, Trash2, Send } from 'lucide-vue-next'
+import { ArrowLeft, Wallet, CheckCircle2, Download, AlertCircle, FileText, Send, Pen, Trash2, Clock, Upload } from 'lucide-vue-next'
 
 const props = defineProps({
   invoice: Object,
@@ -69,6 +69,18 @@ const submitPayment = () => {
   })
 }
 
+const deleteInvoice = () => {
+  if (confirm('Apakah Anda yakin ingin menghapus invoice ini secara permanen?')) {
+    router.delete(route('invoicing.invoices.destroy', props.invoice.id))
+  }
+}
+
+const postInvoice = () => {
+  if (confirm('Posting invoice ini? Status akan berubah menjadi Sent dan invoice final siap dikirim.')) {
+    router.post(route('invoicing.invoices.sent', props.invoice.id))
+  }
+}
+
 const getStatusBadge = (status) => {
   switch (status) {
     case 'draft': return 'bg-slate-100 text-slate-700 border-slate-200'
@@ -124,6 +136,30 @@ const formatRupiah = (angka) => {
             <Download class="w-4 h-4" />
             <span>Unduh PDF</span>
           </a>
+          <button
+            v-if="invoice.status === 'draft'"
+            @click="postInvoice"
+            class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-2"
+          >
+            <Send class="w-4 h-4" />
+            <span>Posting</span>
+          </button>
+          <Link
+            v-if="invoice.status === 'draft'"
+            :href="route('invoicing.invoices.edit', invoice.id)"
+            class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2"
+          >
+            <Pen class="w-4 h-4" />
+            <span>Edit</span>
+          </Link>
+          <button
+            v-if="['draft', 'sent'].includes(invoice.status)"
+            @click="deleteInvoice"
+            class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-lg shadow-rose-600/20 transition-all flex items-center justify-center gap-2"
+          >
+            <Trash2 class="w-4 h-4" />
+            <span>Hapus</span>
+          </button>
           <button
             v-if="!['paid', 'cancelled'].includes(invoice.status)"
             @click="openPayModal"

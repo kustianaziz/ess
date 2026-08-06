@@ -114,10 +114,75 @@ class InvoiceController extends Controller
         ]);
     }
 
+    public function edit(Invoice $invoice)
+    {
+        $invoice->load(['customer', 'items']);
+        return Inertia::render('Invoicing/Invoices/Edit', [
+            'invoice' => $invoice,
+            'customers' => Customer::latest()->get()
+        ]);
+    }
+
+    public function update(Request $request, Invoice $invoice)
+    {
+        if ($invoice->status !== 'draft') {
+            return redirect()->back()->withErrors(['error' => 'Hanya invoice dengan status Draft yang bisa diedit.']);
+        }
+
+        $validated = $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'invoice_date' => 'required|date',
+            'due_date' => 'required|date',
+            'po_number' => 'nullable|string',
+            'subtotal' => 'required|numeric|min:0',
+            'tax_amount' => 'required|numeric|min:0',
+            'total_amount' => 'required|numeric|min:0',
+            'notes' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.description' => 'required|string',
+            'items.*.qty' => 'required|numeric|min:1',
+            'items.*.unit_price' => 'required|numeric|min:0',
+        ]);
+
+        DB::transaction(function () use ($validated, $invoice) {
+            $invoice->update([
+                'customer_id' => $validated['customer_id'],
+                'invoice_date' => $validated['invoice_date'],
+                'due_date' => $validated['due_date'],
+                'po_number' => $validated['po_number'] ?? null,
+                'subtotal' => $validated['subtotal'],
+                'tax_amount' => $validated['tax_amount'],
+                'total_amount' => $validated['total_amount'],
+                'notes' => $validated['notes'],
+            ]);
+
+            // Hapus items lama
+            $invoice->items()->delete();
+
+            // Masukkan items baru
+            foreach ($validated['items'] as $item) {
+                $invoice->items()->create([
+                    'description' => $item['description'],
+                    'qty' => $item['qty'],
+                    'unit_price' => $item['unit_price'],
+                    'subtotal' => $item['qty'] * $item['unit_price'],
+                ]);
+            }
+        });
+
+        return redirect()->route('invoicing.invoices.show', $invoice->id)->with('success', 'Invoice updated successfully.');
+    }
+
     public function destroy(Invoice $invoice)
     {
         $invoice->delete();
         return redirect()->route('invoicing.invoices.index')->with('success', 'Invoice deleted successfully.');
+    }
+
+    public function markAsSent(Invoice $invoice)
+    {
+        $invoice->update(['status' => 'sent']);
+        return redirect()->back()->with('success', 'Invoice telah di-posting/dikirim ke klien.');
     }
 
     public function downloadPdf(Invoice $invoice)
