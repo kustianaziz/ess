@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Head, useForm, router, Link } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Modal from '@/Components/Modal.vue';
@@ -15,6 +15,7 @@ const props = defineProps({
     pendingTransactions: Array,
     coas: Array,
     periods: Array,
+    activePeriodId: Number,
     filters: Object,
     sourceTypes: Array,
 });
@@ -24,11 +25,22 @@ const isManualModalOpen = ref(false);
 const isJurnalkanModalOpen = ref(false);
 const selectedTrx = ref(null);
 
-// Filter state — same pattern as History.vue
-const filterDateFrom = ref(props.filters?.date_from ?? '');
-const filterDateTo = ref(props.filters?.date_to ?? '');
-const filterPeriodId = ref(props.filters?.period_id ?? '');
+// Filter state
+const filterPeriodId  = ref(props.filters?.period_id ?? '');
+const filterDateFrom  = ref(props.filters?.date_from ?? '');
+const filterDateTo    = ref(props.filters?.date_to ?? '');
 const filterSourceType = ref(props.filters?.source_type ?? '');
+
+// When period changes → auto-set date range from that period
+watch(filterPeriodId, (newId) => {
+    if (!newId) return;
+    const period = props.periods.find(p => p.id == newId);
+    if (period) {
+        filterDateFrom.value = period.start_date ? period.start_date.substring(0, 10) : '';
+        filterDateTo.value   = period.end_date   ? period.end_date.substring(0, 10)   : '';
+    }
+    applyFilters();
+});
 
 const applyFilters = () => {
     router.get(route('accounting.journals.index'), {
@@ -144,7 +156,7 @@ const statusColor = (s) => ({ posted: 'bg-emerald-100 text-emerald-700', void: '
         <div class="py-12">
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8 space-y-5">
 
-                <!-- Filter Card — always visible, same pattern as History.vue -->
+                <!-- Filter Card -->
                 <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
                     <div class="flex items-center justify-between">
                         <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
@@ -156,7 +168,16 @@ const statusColor = (s) => ({ posted: 'bg-emerald-100 text-emerald-700', void: '
                             Reset Filter
                         </button>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                        <!-- Periode FIRST -->
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1 font-semibold">Periode Akuntansi</label>
+                            <select v-model="filterPeriodId"
+                                class="w-full text-xs border-slate-200 rounded-xl focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="">Semua Periode</option>
+                                <option v-for="p in periods" :key="p.id" :value="p.id">{{ p.name }}</option>
+                            </select>
+                        </div>
                         <div>
                             <label class="block text-xs text-slate-500 mb-1">Tanggal Dari</label>
                             <input type="date" v-model="filterDateFrom" @change="applyFilters"
@@ -167,15 +188,7 @@ const statusColor = (s) => ({ posted: 'bg-emerald-100 text-emerald-700', void: '
                             <input type="date" v-model="filterDateTo" @change="applyFilters"
                                 class="w-full text-xs border-slate-200 rounded-xl focus:ring-indigo-500 focus:border-indigo-500">
                         </div>
-                        <div>
-                            <label class="block text-xs text-slate-500 mb-1">Periode Akuntansi</label>
-                            <select v-model="filterPeriodId" @change="applyFilters"
-                                class="w-full text-xs border-slate-200 rounded-xl focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="">Semua Periode</option>
-                                <option v-for="p in periods" :key="p.id" :value="p.id">{{ p.name }}</option>
-                            </select>
-                        </div>
-                        <div>
+                        <div class="lg:col-span-2">
                             <label class="block text-xs text-slate-500 mb-1">Sumber Transaksi</label>
                             <select v-model="filterSourceType" @change="applyFilters"
                                 class="w-full text-xs border-slate-200 rounded-xl focus:ring-indigo-500 focus:border-indigo-500">
