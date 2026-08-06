@@ -122,7 +122,7 @@ class InvoiceController extends Controller
 
     public function downloadPdf(Invoice $invoice)
     {
-        $invoice->load(['customer', 'items', 'payments']);
+        $invoice->load(['customer.service', 'items', 'payments']);
         
         $terbilang = $this->terbilang($invoice->total_amount);
         $terbilang = ucwords(strtolower($terbilang));

@@ -23,7 +23,19 @@ class ServiceController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'is_active' => 'boolean',
+            'logo' => 'nullable|image|max:2048',
+            'signature_image' => 'nullable|image|max:2048',
+            'signature_name' => 'nullable|string|max:255',
+            'bank_credentials' => 'nullable|string',
         ]);
+
+        if ($request->hasFile('logo')) {
+            $validated['logo'] = $request->file('logo')->store('services/logos', 'public');
+        }
+
+        if ($request->hasFile('signature_image')) {
+            $validated['signature_image'] = $request->file('signature_image')->store('services/signatures', 'public');
+        }
 
         Service::create($validated);
 
@@ -36,7 +48,25 @@ class ServiceController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'is_active' => 'boolean',
+            'logo' => 'nullable|image|max:2048',
+            'signature_image' => 'nullable|image|max:2048',
+            'signature_name' => 'nullable|string|max:255',
+            'bank_credentials' => 'nullable|string',
         ]);
+
+        if ($request->hasFile('logo')) {
+            $validated['logo'] = $request->file('logo')->store('services/logos', 'public');
+        } else {
+            // Keep existing if not uploaded
+            unset($validated['logo']);
+        }
+
+        if ($request->hasFile('signature_image')) {
+            $validated['signature_image'] = $request->file('signature_image')->store('services/signatures', 'public');
+        } else {
+            // Keep existing if not uploaded
+            unset($validated['signature_image']);
+        }
 
         $service->update($validated);
 

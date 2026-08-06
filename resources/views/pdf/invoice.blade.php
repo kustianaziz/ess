@@ -85,7 +85,13 @@
     <table class="header">
         <tr>
             <td class="header-left">
-                <img src="{{ public_path('logo_emd.png') }}" alt="EDU MEDIA DIGITAL" class="logo-img">
+                @php
+                    $logo = public_path('logo_emd.png');
+                    if(isset($invoice->customer->service->logo) && $invoice->customer->service->logo != '') {
+                        $logo = storage_path('app/public/' . $invoice->customer->service->logo);
+                    }
+                @endphp
+                <img src="{{ $logo }}" alt="Logo" class="logo-img" style="max-height: 80px; width: auto;">
                 <div class="client-box">
                     <div class="client-label">Kepada:</div>
                     <div class="client-name">{{ $invoice->customer->name }}</div>
@@ -160,21 +166,35 @@
         <tr>
             <td class="payment-info">
                 <h4>Informasi Pembayaran:</h4>
-                <table class="bank-table">
-                    <tr><td>Account</td><td>: PT. EDU MEDIA DIGITAL</td></tr>
-                    <tr><td>Bank</td><td>: MANDIRI</td></tr>
-                    <tr><td>No. Acc</td><td>: 132-00-2333843-8</td></tr>
-                </table>
+                @if(isset($invoice->customer->service->bank_credentials) && $invoice->customer->service->bank_credentials != '')
+                    <div style="font-weight: bold; font-size: 11px; white-space: pre-wrap;">{{ $invoice->customer->service->bank_credentials }}</div>
+                @else
+                    <table class="bank-table">
+                        <tr><td>Account</td><td>: PT. EDU MEDIA DIGITAL</td></tr>
+                        <tr><td>Bank</td><td>: MANDIRI</td></tr>
+                        <tr><td>No. Acc</td><td>: 132-00-2333843-8</td></tr>
+                    </table>
+                @endif
             </td>
 
             <td class="signature-box">
                 <div class="sign-date">Bandung, {{ \Carbon\Carbon::parse($invoice->invoice_date)->translatedFormat('d F Y') }}</div>
-                <div class="sign-company">PT. EDU MEDIA DIGITAL</div>
+                <div class="sign-company">
+                    {{ isset($invoice->customer->service) ? $invoice->customer->service->name : 'PT. EDU MEDIA DIGITAL' }}
+                </div>
                 
                 <!-- Signature Area -->
-                <br><br><br>
+                @if(isset($invoice->customer->service->signature_image) && $invoice->customer->service->signature_image != '')
+                    <div style="margin-top: 10px; margin-bottom: 5px;">
+                        <img src="{{ storage_path('app/public/' . $invoice->customer->service->signature_image) }}" style="max-height: 80px; width: auto;" alt="Signature">
+                    </div>
+                @else
+                    <br><br><br>
+                @endif
                 
-                <div class="sign-name">Fourizal Novyansyah</div>
+                <div class="sign-name">
+                    {{ isset($invoice->customer->service->signature_name) && $invoice->customer->service->signature_name != '' ? $invoice->customer->service->signature_name : 'Fourizal Novyansyah' }}
+                </div>
                 <div class="sign-role">Finance</div>
             </td>
         </tr>

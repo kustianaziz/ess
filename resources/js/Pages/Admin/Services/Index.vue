@@ -15,7 +15,11 @@ const form = useForm({
   id: null,
   name: '',
   description: '',
-  is_active: true
+  is_active: true,
+  logo: null,
+  signature_image: null,
+  signature_name: '',
+  bank_credentials: ''
 })
 
 const openModal = (service = null) => {
@@ -25,6 +29,10 @@ const openModal = (service = null) => {
     form.name = service.name
     form.description = service.description || ''
     form.is_active = service.is_active
+    form.logo = null // Don't bind existing file
+    form.signature_image = null
+    form.signature_name = service.signature_name || ''
+    form.bank_credentials = service.bank_credentials || ''
   } else {
     isEditing.value = false
     form.reset()
@@ -35,13 +43,23 @@ const openModal = (service = null) => {
 
 const submit = () => {
   if (isEditing.value) {
-    form.put(route('admin.services.update', form.id), {
+    // Inertia requires POST with _method=PUT to upload files correctly
+    form.transform((data) => ({
+      ...data,
+      _method: 'put',
+    })).post(route('admin.services.update', form.id), {
       onSuccess: () => { showModal.value = false; form.reset() }
     })
   } else {
     form.post(route('admin.services.store'), {
       onSuccess: () => { showModal.value = false; form.reset() }
     })
+  }
+}
+
+const handleFile = (e, field) => {
+  if (e.target.files.length) {
+    form[field] = e.target.files[0]
   }
 }
 
@@ -180,6 +198,42 @@ const deleteService = (id) => {
               class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 text-sm focus:border-teal-500 focus:ring-teal-500"
               placeholder="Penjelasan singkat tentang layanan ini..."
             ></textarea>
+          </div>
+
+          <div class="p-3 border border-slate-200 rounded-xl bg-slate-50 space-y-3">
+            <h4 class="font-bold text-xs text-slate-800 border-b border-slate-200 pb-2">Pengaturan Invoice & Penagihan (Dinamis)</h4>
+            
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Logo di Invoice (Opsional)</label>
+              <input type="file" @change="e => handleFile(e, 'logo')" accept="image/*" class="w-full text-xs" />
+              <div v-if="form.errors.logo" class="text-rose-500 text-xs mt-1">{{ form.errors.logo }}</div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Upload Gambar Tanda Tangan (Opsional)</label>
+              <input type="file" @change="e => handleFile(e, 'signature_image')" accept="image/*" class="w-full text-xs" />
+              <div v-if="form.errors.signature_image" class="text-rose-500 text-xs mt-1">{{ form.errors.signature_image }}</div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Nama Penandatangan</label>
+              <input
+                v-model="form.signature_name"
+                type="text"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm focus:border-teal-500 focus:ring-teal-500"
+                placeholder="Contoh: Budi Santoso, Direktur"
+              >
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Informasi Transfer / Credential Bank</label>
+              <textarea
+                v-model="form.bank_credentials"
+                rows="3"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm focus:border-teal-500 focus:ring-teal-500"
+                placeholder="Contoh: BCA 1234567890 a.n PT Contoh Sukses"
+              ></textarea>
+            </div>
           </div>
 
           <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
