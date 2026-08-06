@@ -138,9 +138,10 @@ const statusColor = (s) => ({ posted: 'bg-emerald-100 text-emerald-700', void: '
                 <h2 class="text-xl font-bold leading-tight text-gray-800">Transaksi Jurnal</h2>
                 <div class="flex items-center gap-2">
                     <button @click="showFilters = !showFilters"
-                        class="flex items-center gap-2 px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white hover:bg-slate-50 transition-all"
-                        :class="showFilters ? 'bg-indigo-50 border-indigo-300 text-indigo-600' : 'text-slate-600'">
-                        <SlidersHorizontal class="w-4 h-4" /> Filter
+                        class="flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition-all"
+                        :class="showFilters ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 bg-white hover:bg-slate-50 text-slate-600'">
+                        <SlidersHorizontal class="w-4 h-4" />
+                        Filter
                     </button>
                     <PrimaryButton @click="openManualModal" class="gap-2 shrink-0">
                         <Plus class="w-4 h-4" /> Jurnal Manual
@@ -153,39 +154,40 @@ const statusColor = (s) => ({ posted: 'bg-emerald-100 text-emerald-700', void: '
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8 space-y-5">
 
                 <!-- ── Filter Panel ── -->
-                <Transition name="slide-down">
-                    <div v-if="showFilters" class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-                        <p class="text-sm font-semibold text-slate-700 mb-4">Filter Transaksi</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-500 mb-1.5">Tanggal Dari</label>
-                                <input type="date" v-model="filterDateFrom" class="border-gray-300 rounded-lg text-sm w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-500 mb-1.5">Tanggal Sampai</label>
-                                <input type="date" v-model="filterDateTo" class="border-gray-300 rounded-lg text-sm w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-500 mb-1.5">Periode Akuntansi</label>
-                                <select v-model="filterPeriodId" class="border-gray-300 rounded-lg text-sm w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="">Semua Periode</option>
-                                    <option v-for="p in periods" :key="p.id" :value="p.id">{{ p.name }}</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-500 mb-1.5">Sumber Transaksi</label>
-                                <select v-model="filterSourceType" class="border-gray-300 rounded-lg text-sm w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="">Semua Sumber</option>
-                                    <option v-for="st in sourceTypes" :key="st.value" :value="st.value">{{ st.label }}</option>
-                                </select>
-                            </div>
+                <div v-show="showFilters" class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <p class="text-sm font-semibold text-slate-700">🔍 Filter Transaksi</p>
+                        <button @click="showFilters = false" class="text-slate-400 hover:text-slate-600 text-xs">✕ Tutup</button>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Tanggal Dari</label>
+                            <input type="date" v-model="filterDateFrom" class="border-gray-300 rounded-lg text-sm w-full shadow-sm">
                         </div>
-                        <div class="flex justify-end gap-2 mt-4">
-                            <button @click="resetFilters" class="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-600 transition">Reset</button>
-                            <PrimaryButton @click="applyFilters">Terapkan Filter</PrimaryButton>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Tanggal Sampai</label>
+                            <input type="date" v-model="filterDateTo" class="border-gray-300 rounded-lg text-sm w-full shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Periode Akuntansi</label>
+                            <select v-model="filterPeriodId" class="border-gray-300 rounded-lg text-sm w-full shadow-sm">
+                                <option value="">Semua Periode</option>
+                                <option v-for="p in periods" :key="p.id" :value="p.id">{{ p.name }}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Sumber Transaksi</label>
+                            <select v-model="filterSourceType" class="border-gray-300 rounded-lg text-sm w-full shadow-sm">
+                                <option value="">Semua Sumber</option>
+                                <option v-for="st in sourceTypes" :key="st.value" :value="st.value">{{ st.label }}</option>
+                            </select>
                         </div>
                     </div>
-                </Transition>
+                    <div class="flex justify-end gap-2 mt-4">
+                        <button @click="resetFilters" class="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-600 transition">Reset</button>
+                        <PrimaryButton @click="applyFilters">Terapkan Filter</PrimaryButton>
+                    </div>
+                </div>
 
                 <!-- ── Tabs ── -->
                 <div class="border-b border-gray-200">
