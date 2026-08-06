@@ -108,6 +108,45 @@ const submitPayment = () => {
     }
   })
 }
+
+// Edit Payment Details (Attachments/Reference) Modal
+const showEditPaymentModal = ref(false)
+const editPaymentForm = ref({
+  payment_reference: '',
+  notes: '',
+  attachments: []
+})
+const isSubmittingEditPayment = ref(false)
+
+const handleEditFileChange = (e) => {
+  editPaymentForm.value.attachments = Array.from(e.target.files)
+}
+
+const openEditPaymentModal = (item) => {
+  selectedPayment.value = item
+  editPaymentForm.value.payment_reference = item.payment_reference || ''
+  editPaymentForm.value.notes = item.notes || ''
+  editPaymentForm.value.attachments = []
+  showEditPaymentModal.value = true
+}
+
+const submitEditPayment = () => {
+  if (!editPaymentForm.value.payment_reference) {
+    alert('Mohon isi referensi transfer.')
+    return
+  }
+
+  isSubmittingEditPayment.value = true
+  router.post(route('keuangan.tagihan-bulanan.update-details', selectedPayment.value.id), editPaymentForm.value, {
+    forceFormData: true,
+    onSuccess: () => {
+      showEditPaymentModal.value = false
+    },
+    onFinish: () => {
+      isSubmittingEditPayment.value = false
+    }
+  })
+}
 // Add / Edit Bill Type Modal
 const showAddTypeModal = ref(false)
 const isEditType = ref(false)
@@ -397,7 +436,12 @@ const cancelPayment = (item) => {
               </button>
 
               <div v-else class="text-right text-xs">
-                <span class="text-slate-400 block text-[10px]">Ref: {{ item.payment_reference }}</span>
+                <div class="flex items-center justify-end gap-1 mb-1">
+                  <span class="text-slate-400 text-[10px]">Ref: {{ item.payment_reference }}</span>
+                  <button @click="openEditPaymentModal(item)" class="text-indigo-500 hover:text-indigo-700 p-0.5" title="Edit Referensi & Lampiran">
+                    <Pen class="w-3 h-3" />
+                  </button>
+                </div>
                 <span class="text-emerald-600 font-bold block mb-1">Dibayar {{ item.payment_date }}</span>
                 <button
                   @click="cancelPayment(item)"
@@ -600,6 +644,66 @@ const cancelPayment = (item) => {
             <button
               type="submit"
               class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md transition-all"
+            >
+              Simpan Perubahan
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL EDIT PAYMENT DETAILS -->
+    <div v-if="showEditPaymentModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h3 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+            <span class="p-1.5 rounded-lg bg-indigo-100 text-indigo-600">
+              <Pen class="w-4 h-4" />
+            </span>
+            <span>Edit Referensi & Lampiran</span>
+          </h3>
+          <button @click="showEditPaymentModal = false" class="text-slate-400 hover:text-slate-600 text-sm font-bold">✕</button>
+        </div>
+
+        <form @submit.prevent="submitEditPayment" class="space-y-4 text-xs">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Referensi Transfer <span class="text-rose-500">*</span></label>
+            <input
+              v-model="editPaymentForm.payment_reference"
+              type="text"
+              placeholder="Contoh: TRF-12345"
+              required
+              class="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold text-slate-900"
+            />
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Upload Lampiran Baru (Opsional)</label>
+            <input
+              @change="handleEditFileChange"
+              type="file"
+              multiple
+              class="w-full text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+            />
+            <p class="text-[10px] text-slate-400 mt-1">Lampiran yang baru di-upload akan ditambahkan, tidak menghapus lampiran sebelumnya.</p>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Catatan (Opsional)</label>
+            <textarea
+              v-model="editPaymentForm.notes"
+              rows="2"
+              class="w-full px-3 py-2 rounded-xl border border-slate-200"
+              placeholder="Tambahkan catatan jika ada"
+            ></textarea>
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+            <button type="button" @click="showEditPaymentModal = false" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold">Batal</button>
+            <button
+              type="submit"
+              :disabled="isSubmittingEditPayment"
+              class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md transition-all disabled:opacity-50"
             >
               Simpan Perubahan
             </button>

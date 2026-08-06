@@ -161,6 +161,35 @@ class MonthlyBillController extends Controller
         );
     }
 
+    public function updatePaymentDetails(Request $request, int $id): RedirectResponse
+    {
+        $payment = MonthlyBillPayment::findOrFail($id);
+
+        $validated = $request->validate([
+            'payment_reference' => 'required|string|max:255',
+            'notes' => 'nullable|string',
+            'attachments.*' => 'nullable|file|max:5120',
+        ]);
+
+        $payment->update([
+            'payment_reference' => $validated['payment_reference'],
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $path = $file->store('attachments', 'public');
+                $payment->attachments()->create([
+                    'file_path' => $path,
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_type' => $file->getMimeType(),
+                ]);
+            }
+        }
+
+        return redirect()->back()->with('success', 'Detail pembayaran dan bukti lampiran berhasil diperbarui.');
+    }
+
     public function cancelPayment(int $id): RedirectResponse
     {
         $payment = MonthlyBillPayment::with(['billType', 'attachments'])->findOrFail($id);
