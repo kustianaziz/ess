@@ -18,6 +18,7 @@ const form = useForm({
   is_active: true,
   logo: null,
   signature_image: null,
+  stamp_image: null,
   signature_name: '',
   bank_credentials: ''
 })
@@ -31,6 +32,7 @@ const openModal = (service = null) => {
     form.is_active = service.is_active
     form.logo = null // Don't bind existing file
     form.signature_image = null
+    form.stamp_image = null
     form.signature_name = service.signature_name || ''
     form.bank_credentials = service.bank_credentials || ''
   } else {
@@ -213,6 +215,12 @@ const deleteService = (id) => {
               <label class="block text-xs font-bold text-slate-700 mb-1">Upload Gambar Tanda Tangan (Opsional)</label>
               <input type="file" @change="e => handleFile(e, 'signature_image')" accept="image/*" class="w-full text-xs" />
               <div v-if="form.errors.signature_image" class="text-rose-500 text-xs mt-1">{{ form.errors.signature_image }}</div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Upload Cap Perusahaan (Opsional)</label>
+              <input type="file" @change="e => handleFile(e, 'stamp_image')" accept="image/*" class="w-full text-xs" />
+              <div v-if="form.errors.stamp_image" class="text-rose-500 text-xs mt-1">{{ form.errors.stamp_image }}</div>
             </div>
 
             <div>

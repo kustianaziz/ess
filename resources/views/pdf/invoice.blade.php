@@ -179,20 +179,24 @@
 
             <td class="signature-box">
                 <div class="sign-date">Bandung, {{ \Carbon\Carbon::parse($invoice->invoice_date)->translatedFormat('d F Y') }}</div>
-                <div class="sign-company">
+                <div class="sign-company" style="margin-bottom: 5px;">
                     {{ isset($invoice->customer->service) ? $invoice->customer->service->name : 'PT. EDU MEDIA DIGITAL' }}
                 </div>
                 
-                <!-- Signature Area -->
-                @if(isset($invoice->customer->service->signature_image) && $invoice->customer->service->signature_image != '')
-                    <div style="margin-top: 10px; margin-bottom: 5px;">
-                        <img src="{{ storage_path('app/public/' . $invoice->customer->service->signature_image) }}" style="max-height: 80px; width: auto;" alt="Signature">
-                    </div>
-                @else
-                    <br><br><br>
-                @endif
+                <!-- Signature & Stamp Area -->
+                <div style="position: relative; min-height: {{ (isset($invoice->customer->service->signature_image) && $invoice->customer->service->signature_image != '') || (isset($invoice->customer->service->stamp_image) && $invoice->customer->service->stamp_image != '') ? '80px' : '45px' }}; margin: 0 auto;">
+                    
+                    @if(isset($invoice->customer->service->stamp_image) && $invoice->customer->service->stamp_image != '')
+                        <img src="{{ storage_path('app/public/' . $invoice->customer->service->stamp_image) }}" style="max-height: 80px; width: auto; position: absolute; left: 15%; top: 0; opacity: 0.85; z-index: 1;" alt="Stamp">
+                    @endif
+
+                    @if(isset($invoice->customer->service->signature_image) && $invoice->customer->service->signature_image != '')
+                        <img src="{{ storage_path('app/public/' . $invoice->customer->service->signature_image) }}" style="max-height: 70px; width: auto; position: relative; z-index: 2; margin-top: 5px;" alt="Signature">
+                    @endif
+
+                </div>
                 
-                <div class="sign-name">
+                <div class="sign-name" style="margin-top: 5px;">
                     {{ isset($invoice->customer->service->signature_name) && $invoice->customer->service->signature_name != '' ? $invoice->customer->service->signature_name : 'Fourizal Novyansyah' }}
                 </div>
                 <div class="sign-role">Finance</div>

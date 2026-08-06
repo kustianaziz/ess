@@ -25,6 +25,7 @@ class ServiceController extends Controller
             'is_active' => 'boolean',
             'logo' => 'nullable|image|max:2048',
             'signature_image' => 'nullable|image|max:2048',
+            'stamp_image' => 'nullable|image|max:2048',
             'signature_name' => 'nullable|string|max:255',
             'bank_credentials' => 'nullable|string',
         ]);
@@ -35,6 +36,10 @@ class ServiceController extends Controller
 
         if ($request->hasFile('signature_image')) {
             $validated['signature_image'] = $request->file('signature_image')->store('services/signatures', 'public');
+        }
+
+        if ($request->hasFile('stamp_image')) {
+            $validated['stamp_image'] = $request->file('stamp_image')->store('services/stamps', 'public');
         }
 
         Service::create($validated);
@@ -50,6 +55,7 @@ class ServiceController extends Controller
             'is_active' => 'boolean',
             'logo' => 'nullable|image|max:2048',
             'signature_image' => 'nullable|image|max:2048',
+            'stamp_image' => 'nullable|image|max:2048',
             'signature_name' => 'nullable|string|max:255',
             'bank_credentials' => 'nullable|string',
         ]);
@@ -66,6 +72,13 @@ class ServiceController extends Controller
         } else {
             // Keep existing if not uploaded
             unset($validated['signature_image']);
+        }
+
+        if ($request->hasFile('stamp_image')) {
+            $validated['stamp_image'] = $request->file('stamp_image')->store('services/stamps', 'public');
+        } else {
+            // Keep existing if not uploaded
+            unset($validated['stamp_image']);
         }
 
         $service->update($validated);
