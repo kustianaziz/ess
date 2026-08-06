@@ -12,8 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('financial_report_notes', function (Blueprint $table) {
-            $table->dropColumn(['period_month', 'period_year']);
-            $table->date('period_date')->nullable()->after('id');
+            if (Schema::hasColumn('financial_report_notes', 'period_month')) {
+                $table->dropColumn('period_month');
+            }
+            if (Schema::hasColumn('financial_report_notes', 'period_year')) {
+                $table->dropColumn('period_year');
+            }
+            if (!Schema::hasColumn('financial_report_notes', 'period_date')) {
+                $table->date('period_date')->nullable()->after('id');
+            }
         });
     }
 
@@ -23,9 +30,15 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('financial_report_notes', function (Blueprint $table) {
-            $table->dropColumn('period_date');
-            $table->integer('period_month')->nullable();
-            $table->integer('period_year')->nullable();
+            if (Schema::hasColumn('financial_report_notes', 'period_date')) {
+                $table->dropColumn('period_date');
+            }
+            if (!Schema::hasColumn('financial_report_notes', 'period_month')) {
+                $table->integer('period_month')->nullable();
+            }
+            if (!Schema::hasColumn('financial_report_notes', 'period_year')) {
+                $table->integer('period_year')->nullable();
+            }
         });
     }
 };
