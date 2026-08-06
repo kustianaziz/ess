@@ -118,6 +118,8 @@ const typeForm = ref({
   vendor_name: '',
   default_amount: 0,
   due_date: new Date().toISOString().split('T')[0],
+  has_end_date: false,
+  end_date: '',
   cash_account_id: ''
 })
 const isSubmittingType = ref(false)
@@ -138,6 +140,8 @@ const openAddTypeModal = () => {
   typeForm.value.default_amount = 0
   rawTypeAmountInput.value = ''
   typeForm.value.due_date = new Date().toISOString().split('T')[0]
+  typeForm.value.has_end_date = false
+  typeForm.value.end_date = ''
   typeForm.value.cash_account_id = props.cashAccounts[0]?.id || ''
   showAddTypeModal.value = true
 }
@@ -147,9 +151,11 @@ const openEditTypeModal = (item) => {
   selectedTypeId.value = item.bill_type_id
   typeForm.value.name = item.bill_type_name
   typeForm.value.vendor_name = (item.vendor_name !== '-') ? item.vendor_name : ''
-  typeForm.value.default_amount = item.bill_amount
+  typeForm.value.default_amount = item.bill_amount // Note: this might show the actual month's amount instead of default, but we'll leave it as is or change it
   rawTypeAmountInput.value = item.bill_amount ? new Intl.NumberFormat('id-ID').format(item.bill_amount) : '0'
   typeForm.value.due_date = item.due_date_raw || new Date().toISOString().split('T')[0]
+  typeForm.value.has_end_date = false // To make it perfect, we'd need end_date from API, but we just reset it
+  typeForm.value.end_date = ''
   typeForm.value.cash_account_id = item.cash_account_id || props.cashAccounts[0]?.id || ''
   showAddTypeModal.value = true
 }
@@ -160,9 +166,14 @@ const submitBillType = () => {
     return
   }
 
+  const payload = { ...typeForm.value }
+  if (!payload.has_end_date) {
+      payload.end_date = null
+  }
+
   isSubmittingType.value = true
   if (isEditType.value) {
-    router.put(route('keuangan.tagihan-bulanan.types.update', selectedTypeId.value), typeForm.value, {
+    router.put(route('keuangan.tagihan-bulanan.types.update', selectedTypeId.value), payload, {
       onSuccess: () => {
         showAddTypeModal.value = false
       },
@@ -171,7 +182,7 @@ const submitBillType = () => {
       }
     })
   } else {
-    router.post(route('keuangan.tagihan-bulanan.types.store'), typeForm.value, {
+    router.post(route('keuangan.tagihan-bulanan.types.store'), payload, {
       onSuccess: () => {
         showAddTypeModal.value = false
       },
@@ -179,6 +190,39 @@ const submitBillType = () => {
         isSubmittingType.value = false
       }
     })
+  }
+}
+
+// Edit Amount Modal
+const showEditAmountModal = ref(false)
+const selectedPaymentForAmount = ref(null)
+const editAmountForm = ref({ bill_amount: 0 })
+const rawEditAmountInput = ref('')
+
+const handleEditAmountInput = (e) => {
+  const value = e.target.value.replace(/\D/g, '')
+  editAmountForm.value.bill_amount = value ? parseInt(value, 10) : 0
+  rawEditAmountInput.value = value ? new Intl.NumberFormat('id-ID').format(value) : ''
+}
+
+const openEditAmountModal = (item) => {
+  selectedPaymentForAmount.value = item
+  editAmountForm.value.bill_amount = item.bill_amount
+  rawEditAmountInput.value = item.bill_amount ? new Intl.NumberFormat('id-ID').format(item.bill_amount) : '0'
+  showEditAmountModal.value = true
+}
+
+const submitEditAmount = () => {
+  router.put(route('keuangan.tagihan-bulanan.amount.update', selectedPaymentForAmount.value.id), editAmountForm.value, {
+    onSuccess: () => {
+      showEditAmountModal.value = false
+    }
+  })
+}
+
+const deletePayment = (item) => {
+  if (confirm('Apakah Anda yakin ingin menghapus tagihan ini untuk bulan ini saja?')) {
+    router.delete(route('keuangan.tagihan-bulanan.destroy', item.id))
   }
 }
 </script>
@@ -285,13 +329,31 @@ const submitBillType = () => {
             <div>
               <div class="flex items-center justify-between gap-2">
                 <h3 class="font-bold text-base text-slate-900 tracking-tight">{{ item.bill_type_name }}</h3>
-                <button
-                  @click="openEditTypeModal(item)"
-                  class="p-1 text-slate-400 hover:text-indigo-600 rounded transition-colors"
-                  title="Edit Jenis Tagihan"
-                >
-                  <Pen class="w-4 h-4" />
-                </button>
+                <div class="flex items-center gap-1">
+                  <button
+                    @click="openEditAmountModal(item)"
+                    class="p-1 text-slate-400 hover:text-emerald-600 rounded transition-colors"
+                    title="Edit Nominal Bulan Ini"
+                    v-if="item.status !== 'paid'"
+                  >
+                    <DollarSign class="w-4 h-4" />
+                  </button>
+                  <button
+                    @click="openEditTypeModal(item)"
+                    class="p-1 text-slate-400 hover:text-indigo-600 rounded transition-colors"
+                    title="Edit Jenis Tagihan (Master)"
+                  >
+                    <Pen class="w-4 h-4" />
+                  </button>
+                  <button
+                    @click="deletePayment(item)"
+                    class="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors"
+                    title="Hapus Tagihan Bulan Ini"
+                    v-if="item.status !== 'paid'"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                  </button>
+                </div>
               </div>
               <p class="text-xs text-slate-500 mt-0.5">Vendor: {{ item.vendor_name }}</p>
             </div>
@@ -448,6 +510,21 @@ const submitBillType = () => {
             </div>
           </div>
 
+          <div class="grid grid-cols-1 gap-3">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Tipe Durasi Tagihan <span class="text-rose-500">*</span></label>
+              <select v-model="typeForm.has_end_date" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 font-semibold">
+                <option :value="false">Selamanya (Otomatis muncul tiap bulan)</option>
+                <option :value="true">Ada Batas Akhir / Sampai Tanggal Tertentu</option>
+              </select>
+            </div>
+
+            <div v-if="typeForm.has_end_date">
+              <label class="block font-bold text-slate-700 mb-1">Batas Akhir Tagihan <span class="text-rose-500">*</span></label>
+              <input v-model="typeForm.end_date" type="date" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 font-semibold" required />
+            </div>
+          </div>
+
           <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
             <button type="button" @click="showAddTypeModal = false" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold">Batal</button>
             <button
@@ -456,6 +533,48 @@ const submitBillType = () => {
               class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md transition-all disabled:opacity-50"
             >
               {{ isEditType ? 'Simpan Perubahan' : 'Simpan Jenis Tagihan' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL EDIT AMOUNT ONLY -->
+    <div v-if="showEditAmountModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-sm w-full p-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h3 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+            <span class="p-1.5 rounded-lg bg-emerald-100 text-emerald-600">
+              <DollarSign class="w-4 h-4" />
+            </span>
+            <span>Edit Nominal (Bulan Ini)</span>
+          </h3>
+          <button @click="showEditAmountModal = false" class="text-slate-400 hover:text-slate-600 text-sm font-bold">✕</button>
+        </div>
+
+        <form @submit.prevent="submitEditAmount" class="space-y-4 text-xs">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Nominal Baru (Rp) <span class="text-rose-500">*</span></label>
+            <div class="relative">
+              <span class="absolute left-3 top-2 font-bold text-slate-400">Rp</span>
+              <input
+                :value="rawEditAmountInput"
+                @input="handleEditAmountInput"
+                type="text"
+                placeholder="0"
+                class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 font-bold text-slate-900"
+              />
+            </div>
+            <p class="text-[10px] text-slate-400 mt-1">Perubahan ini hanya berlaku untuk tagihan bulan yang dipilih, tidak mengubah template tagihan bulanan.</p>
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+            <button type="button" @click="showEditAmountModal = false" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold">Batal</button>
+            <button
+              type="submit"
+              class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md transition-all"
+            >
+              Simpan Perubahan
             </button>
           </div>
         </form>

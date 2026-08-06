@@ -22,10 +22,18 @@ class MonthlyBillController extends Controller
         $month = (int) $request->input('month', date('n'));
         $year = (int) $request->input('year', date('Y'));
 
-        // 1. Auto-generate payments for active bill types for selected period if not exist
         $activeBillTypes = MonthlyBillType::where('is_active', true)->get();
 
         foreach ($activeBillTypes as $billType) {
+            // Check if end_date is set and if this month/year is beyond it
+            if ($billType->end_date) {
+                $endMonth = (int) $billType->end_date->format('n');
+                $endYear = (int) $billType->end_date->format('Y');
+                if ($year > $endYear || ($year === $endYear && $month > $endMonth)) {
+                    continue;
+                }
+            }
+
             $existing = MonthlyBillPayment::where('bill_type_id', $billType->id)
                 ->where('period_month', $month)
                 ->where('period_year', $year)
@@ -162,6 +170,7 @@ class MonthlyBillController extends Controller
             'default_amount' => 'required|numeric|min:0',
             'due_date' => 'required|date',
             'cash_account_id' => 'required|exists:cash_accounts,id',
+            'end_date' => 'nullable|date',
         ]);
 
         $dueDate = $validated['due_date'];
@@ -176,6 +185,7 @@ class MonthlyBillController extends Controller
             'default_amount' => $validated['default_amount'],
             'billing_day' => min($billingDay, 28),
             'cash_account_id' => $validated['cash_account_id'],
+            'end_date' => $validated['end_date'] ?? null,
             'is_active' => true,
         ]);
 
@@ -205,6 +215,7 @@ class MonthlyBillController extends Controller
             'vendor_name' => 'nullable|string|max:255',
             'default_amount' => 'required|numeric|min:0',
             'due_date' => 'nullable|date',
+            'end_date' => 'nullable|date',
             'cash_account_id' => 'required|exists:cash_accounts,id',
         ]);
 
@@ -212,6 +223,7 @@ class MonthlyBillController extends Controller
             'name' => $validated['name'],
             'vendor_name' => $validated['vendor_name'] ?? null,
             'default_amount' => $validated['default_amount'],
+            'end_date' => $validated['end_date'] ?? null,
             'cash_account_id' => $validated['cash_account_id'],
         ];
 
@@ -239,5 +251,33 @@ class MonthlyBillController extends Controller
             'success',
             "Jenis tagihan '{$billType->name}' berhasil diperbarui!"
         );
+    }
+
+    public function updateAmount(Request $request, int $id): RedirectResponse
+    {
+        $payment = MonthlyBillPayment::findOrFail($id);
+        
+        $validated = $request->validate([
+            'bill_amount' => 'required|numeric|min:0',
+        ]);
+        
+        $payment->update([
+            'bill_amount' => $validated['bill_amount']
+        ]);
+        
+        return redirect()->back()->with('success', 'Nominal tagihan untuk bulan ini berhasil diperbarui.');
+    }
+
+    public function destroy(int $id): RedirectResponse
+    {
+        $payment = MonthlyBillPayment::findOrFail($id);
+        
+        if ($payment->status === 'paid') {
+            return redirect()->back()->with('error', 'Tagihan yang sudah dibayar tidak dapat dihapus.');
+        }
+        
+        $payment->delete();
+        
+        return redirect()->back()->with('success', 'Tagihan untuk bulan ini berhasil dihapus.');
     }
 }

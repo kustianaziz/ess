@@ -18,11 +18,13 @@ class MonthlyBillType extends Model
         'billing_day',
         'cash_account_id',
         'is_active',
+        'end_date',
     ];
 
     protected $casts = [
         'default_amount' => 'decimal:2',
         'is_active' => 'boolean',
+        'end_date' => 'date',
     ];
 
     public function cashAccount(): BelongsTo
