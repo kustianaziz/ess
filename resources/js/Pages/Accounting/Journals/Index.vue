@@ -106,7 +106,7 @@ const openJurnalkanModal = (trx) => {
     selectedTrx.value = trx;
     jurnalkanForm.source_type = trx.source_type;
     jurnalkanForm.source_id = trx.source_id;
-    jurnalkanForm.date = trx.date;
+    jurnalkanForm.date = trx.date ? trx.date.substring(0, 10) : '';
     jurnalkanForm.description = trx.description;
     jurnalkanForm.items = [
         { coa_id: '', description: trx.description, debit: trx.amount, credit: 0 },
