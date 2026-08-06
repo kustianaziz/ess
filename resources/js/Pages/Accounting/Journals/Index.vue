@@ -8,7 +8,7 @@ import TextInput from '@/Components/TextInput.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import { Plus, Trash2, FileText, CheckCircle2, SlidersHorizontal, Ban, BookOpen } from 'lucide-vue-next';
+import { Plus, Trash2, FileText, CheckCircle2, Ban, BookOpen, Filter, RotateCcw } from 'lucide-vue-next';
 
 const props = defineProps({
     journals: Array,
@@ -23,9 +23,8 @@ const activeTab = ref('pending');
 const isManualModalOpen = ref(false);
 const isJurnalkanModalOpen = ref(false);
 const selectedTrx = ref(null);
-const showFilters = ref(false);
 
-// Filter state — plain refs to avoid reactive + useForm conflict
+// Filter state — same pattern as History.vue
 const filterDateFrom = ref(props.filters?.date_from ?? '');
 const filterDateTo = ref(props.filters?.date_to ?? '');
 const filterPeriodId = ref(props.filters?.period_id ?? '');
@@ -45,7 +44,7 @@ const resetFilters = () => {
     filterDateTo.value = '';
     filterPeriodId.value = '';
     filterSourceType.value = '';
-    router.get(route('accounting.journals.index'), {}, { preserveState: false });
+    applyFilters();
 };
 
 // ── Manual Journal Form ──
@@ -134,62 +133,60 @@ const statusColor = (s) => ({ posted: 'bg-emerald-100 text-emerald-700', void: '
     <Head title="Transaksi Jurnal" />
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div class="flex items-center justify-between">
                 <h2 class="text-xl font-bold leading-tight text-gray-800">Transaksi Jurnal</h2>
-                <div class="flex items-center gap-2">
-                    <button @click="showFilters = !showFilters"
-                        class="flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition-all"
-                        :class="showFilters ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 bg-white hover:bg-slate-50 text-slate-600'">
-                        <SlidersHorizontal class="w-4 h-4" />
-                        Filter
-                    </button>
-                    <PrimaryButton @click="openManualModal" class="gap-2 shrink-0">
-                        <Plus class="w-4 h-4" /> Jurnal Manual
-                    </PrimaryButton>
-                </div>
+                <PrimaryButton @click="openManualModal" class="gap-2">
+                    <Plus class="w-4 h-4" /> Jurnal Manual
+                </PrimaryButton>
             </div>
         </template>
 
         <div class="py-12">
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8 space-y-5">
 
-                <!-- ── Filter Panel ── -->
-                <div v-show="showFilters" class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-                    <div class="flex items-center justify-between mb-4">
-                        <p class="text-sm font-semibold text-slate-700">🔍 Filter Transaksi</p>
-                        <button @click="showFilters = false" class="text-slate-400 hover:text-slate-600 text-xs">✕ Tutup</button>
+                <!-- Filter Card — always visible, same pattern as History.vue -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                            <Filter class="w-4 h-4 text-indigo-600" />
+                            Filter Pencarian
+                        </h3>
+                        <button @click="resetFilters" class="text-xs text-slate-500 hover:text-indigo-600 font-semibold flex items-center gap-1 transition-colors">
+                            <RotateCcw class="w-3.5 h-3.5" />
+                            Reset Filter
+                        </button>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         <div>
-                            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Tanggal Dari</label>
-                            <input type="date" v-model="filterDateFrom" class="border-gray-300 rounded-lg text-sm w-full shadow-sm">
+                            <label class="block text-xs text-slate-500 mb-1">Tanggal Dari</label>
+                            <input type="date" v-model="filterDateFrom" @change="applyFilters"
+                                class="w-full text-xs border-slate-200 rounded-xl focus:ring-indigo-500 focus:border-indigo-500">
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Tanggal Sampai</label>
-                            <input type="date" v-model="filterDateTo" class="border-gray-300 rounded-lg text-sm w-full shadow-sm">
+                            <label class="block text-xs text-slate-500 mb-1">Tanggal Sampai</label>
+                            <input type="date" v-model="filterDateTo" @change="applyFilters"
+                                class="w-full text-xs border-slate-200 rounded-xl focus:ring-indigo-500 focus:border-indigo-500">
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Periode Akuntansi</label>
-                            <select v-model="filterPeriodId" class="border-gray-300 rounded-lg text-sm w-full shadow-sm">
+                            <label class="block text-xs text-slate-500 mb-1">Periode Akuntansi</label>
+                            <select v-model="filterPeriodId" @change="applyFilters"
+                                class="w-full text-xs border-slate-200 rounded-xl focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="">Semua Periode</option>
                                 <option v-for="p in periods" :key="p.id" :value="p.id">{{ p.name }}</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Sumber Transaksi</label>
-                            <select v-model="filterSourceType" class="border-gray-300 rounded-lg text-sm w-full shadow-sm">
+                            <label class="block text-xs text-slate-500 mb-1">Sumber Transaksi</label>
+                            <select v-model="filterSourceType" @change="applyFilters"
+                                class="w-full text-xs border-slate-200 rounded-xl focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="">Semua Sumber</option>
                                 <option v-for="st in sourceTypes" :key="st.value" :value="st.value">{{ st.label }}</option>
                             </select>
                         </div>
                     </div>
-                    <div class="flex justify-end gap-2 mt-4">
-                        <button @click="resetFilters" class="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-600 transition">Reset</button>
-                        <PrimaryButton @click="applyFilters">Terapkan Filter</PrimaryButton>
-                    </div>
                 </div>
 
-                <!-- ── Tabs ── -->
+                <!-- Tabs -->
                 <div class="border-b border-gray-200">
                     <nav class="-mb-px flex space-x-8">
                         <button @click="activeTab = 'pending'"
