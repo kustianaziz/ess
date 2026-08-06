@@ -233,6 +233,12 @@ const deletePayment = (item) => {
     router.delete(route('keuangan.tagihan-bulanan.destroy', item.id))
   }
 }
+
+const cancelPayment = (item) => {
+  if (confirm('Apakah Anda yakin ingin MEMBATALKAN pembayaran ini? Saldo kas akan otomatis dikembalikan.')) {
+    router.post(route('keuangan.tagihan-bulanan.cancel', item.id))
+  }
+}
 </script>
 
 <template>
@@ -392,7 +398,13 @@ const deletePayment = (item) => {
 
               <div v-else class="text-right text-xs">
                 <span class="text-slate-400 block text-[10px]">Ref: {{ item.payment_reference }}</span>
-                <span class="text-emerald-600 font-bold">Dibayar {{ item.payment_date }}</span>
+                <span class="text-emerald-600 font-bold block mb-1">Dibayar {{ item.payment_date }}</span>
+                <button
+                  @click="cancelPayment(item)"
+                  class="text-rose-500 hover:text-rose-700 font-medium underline text-[10px]"
+                >
+                  Batalkan Pembayaran
+                </button>
               </div>
             </div>
           </div>

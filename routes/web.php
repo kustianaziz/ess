@@ -93,6 +93,7 @@ Route::middleware(['auth'])->group(function () {
         // Tagihan Bulanan Rutin
         Route::get('/tagihan-bulanan', [\App\Http\Controllers\MonthlyBillController::class, 'index'])->name('tagihan-bulanan.index');
         Route::post('/tagihan-bulanan/{id}/pay', [\App\Http\Controllers\MonthlyBillController::class, 'pay'])->name('tagihan-bulanan.pay');
+        Route::post('/tagihan-bulanan/{id}/cancel', [\App\Http\Controllers\MonthlyBillController::class, 'cancelPayment'])->name('tagihan-bulanan.cancel');
         Route::put('/tagihan-bulanan/{id}/amount', [\App\Http\Controllers\MonthlyBillController::class, 'updateAmount'])->name('tagihan-bulanan.amount.update');
         Route::delete('/tagihan-bulanan/{id}', [\App\Http\Controllers\MonthlyBillController::class, 'destroy'])->name('tagihan-bulanan.destroy');
         Route::post('/tagihan-bulanan/types', [\App\Http\Controllers\MonthlyBillController::class, 'storeBillType'])->name('tagihan-bulanan.types.store');

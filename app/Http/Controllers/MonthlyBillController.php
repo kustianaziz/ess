@@ -161,6 +161,54 @@ class MonthlyBillController extends Controller
         );
     }
 
+    public function cancelPayment(int $id): RedirectResponse
+    {
+        $payment = MonthlyBillPayment::with(['billType', 'attachments'])->findOrFail($id);
+
+        if ($payment->status !== 'paid') {
+            return redirect()->back()->withErrors(['error' => 'Tagihan belum dibayar, tidak dapat dibatalkan.']);
+        }
+
+        DB::transaction(function () use ($payment) {
+            // Find and reverse cash transaction
+            $cashTx = \App\Models\CashTransaction::where('source_type', get_class($payment))
+                ->where('source_id', $payment->id)
+                ->first();
+
+            if ($cashTx) {
+                $cashAccount = CashAccount::lockForUpdate()->findOrFail($cashTx->cash_account_id);
+                if ($cashTx->type === 'in') {
+                    $cashAccount->decrement('current_balance', $cashTx->amount);
+                } else {
+                    $cashAccount->increment('current_balance', $cashTx->amount);
+                }
+                $cashTx->delete();
+            }
+
+            // Delete physical attachments and records
+            foreach ($payment->attachments as $attachment) {
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($attachment->file_path)) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($attachment->file_path);
+                }
+                $attachment->delete();
+            }
+
+            // Revert payment status
+            $payment->update([
+                'payment_reference' => null,
+                'payment_date' => null,
+                'notes' => null,
+                'status' => 'unpaid',
+                'paid_by' => null,
+            ]);
+        });
+
+        return redirect()->back()->with(
+            'success',
+            "Pembayaran tagihan {$payment->billType->name} ({$payment->payment_number}) berhasil dibatalkan dan saldo kas telah dikembalikan."
+        );
+    }
+
     public function storeBillType(
         Request $request,
         GenerateRequestNumberAction $generateRequestNumber
