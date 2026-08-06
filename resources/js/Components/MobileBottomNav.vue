@@ -482,6 +482,30 @@ const isCurrentRoute = (routeName) => {
               </div>
             </Link>
           </div>
+          
+          <span class="text-[11px] font-bold text-indigo-600 uppercase tracking-wider block mt-4">Laporan Keuangan</span>
+          <div class="grid grid-cols-2 gap-2 mt-2">
+            <Link :href="route('accounting.reports.ledger')" @click="showQuickMenu = false" class="p-3 rounded-2xl bg-pink-50/70 border border-pink-100 flex items-center gap-3 hover:bg-pink-100/70 transition-all">
+              <div class="w-7 h-7 rounded-xl bg-pink-600 text-white flex items-center justify-center shrink-0"><FileText class="w-3.5 h-3.5" /></div>
+              <div class="min-w-0"><p class="text-xs font-bold text-slate-900 truncate">Buku Besar</p></div>
+            </Link>
+            <Link :href="route('accounting.reports.income-statement')" @click="showQuickMenu = false" class="p-3 rounded-2xl bg-green-50/70 border border-green-100 flex items-center gap-3 hover:bg-green-100/70 transition-all">
+              <div class="w-7 h-7 rounded-xl bg-green-600 text-white flex items-center justify-center shrink-0"><BarChart3 class="w-3.5 h-3.5" /></div>
+              <div class="min-w-0"><p class="text-xs font-bold text-slate-900 truncate">Laba Rugi</p></div>
+            </Link>
+            <Link :href="route('accounting.reports.balance-sheet')" @click="showQuickMenu = false" class="p-3 rounded-2xl bg-blue-50/70 border border-blue-100 flex items-center gap-3 hover:bg-blue-100/70 transition-all">
+              <div class="w-7 h-7 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0"><Scale class="w-3.5 h-3.5" /></div>
+              <div class="min-w-0"><p class="text-xs font-bold text-slate-900 truncate">Neraca</p></div>
+            </Link>
+            <Link :href="route('accounting.reports.cash-flow')" @click="showQuickMenu = false" class="p-3 rounded-2xl bg-yellow-50/70 border border-yellow-100 flex items-center gap-3 hover:bg-yellow-100/70 transition-all">
+              <div class="w-7 h-7 rounded-xl bg-yellow-600 text-white flex items-center justify-center shrink-0"><Zap class="w-3.5 h-3.5" /></div>
+              <div class="min-w-0"><p class="text-xs font-bold text-slate-900 truncate">Arus Kas</p></div>
+            </Link>
+            <Link :href="route('accounting.reports.calk')" @click="showQuickMenu = false" class="p-3 rounded-2xl bg-purple-50/70 border border-purple-100 flex items-center gap-3 hover:bg-purple-100/70 transition-all col-span-2">
+              <div class="w-7 h-7 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0"><Layers class="w-3.5 h-3.5" /></div>
+              <div class="min-w-0"><p class="text-xs font-bold text-slate-900 truncate">Catatan Laporan Keuangan (CALK)</p></div>
+            </Link>
+          </div>
         </div>
 
         <!-- SECTION 7: ADMIN PANEL (KHUSUS ROLE ADMIN) -->

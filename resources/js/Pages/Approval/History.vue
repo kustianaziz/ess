@@ -217,9 +217,9 @@ watch(search, () => {
                 <th class="py-3.5 px-4">No. Transaksi & Jenis</th>
                 <th class="py-3.5 px-4">Pemohon / Divisi</th>
                 <th class="py-3.5 px-4">Nominal / Durasi</th>
-                <th class="py-3.5 px-4">Eksekutor Penyetuju</th>
-                <th class="py-3.5 px-4">Status Langkah Approval</th>
-                <th class="py-3.5 px-4">Waktu Eksekusi</th>
+                <th class="py-3.5 px-4">Status Level 1 (Atasan)</th>
+                <th class="py-3.5 px-4">Status Level 2 (HRD/Finance)</th>
+                <th class="py-3.5 px-4">Status Keseluruhan</th>
                 <th class="py-3.5 px-4 text-center">Aksi</th>
               </tr>
             </thead>
@@ -242,36 +242,70 @@ watch(search, () => {
                 <td class="py-3.5 px-4 font-bold text-slate-800">
                   {{ item.amount_or_days }}
                 </td>
-                <td class="py-3.5 px-4">
-                  <div class="flex items-center gap-1.5">
-                    <span class="font-bold text-slate-900 block text-xs">{{ item.approver_name }}</span>
-                    <span
-                      v-if="item.is_acted_by_me"
-                      class="px-1.5 py-0.5 text-[9px] bg-indigo-100 text-indigo-700 rounded-md font-bold shrink-0"
-                    >
-                      Oleh Saya
-                    </span>
-                  </div>
-                  <span class="text-[10px] text-slate-400 block">{{ item.approver_role }}</span>
-                </td>
+                <!-- Status Level 1 -->
                 <td class="py-3.5 px-4">
                   <div class="flex flex-col items-start gap-1">
                     <span
-                      v-if="item.status === 'approved'"
+                      v-if="item.l1_status === 'approved'"
                       class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"
                     >
-                      <CheckCircle2 class="w-3 h-3" /> {{ item.step_description }}
+                      <CheckCircle2 class="w-3 h-3" /> Approved
+                    </span>
+                    <span
+                      v-else-if="item.l1_status === 'rejected'"
+                      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200"
+                    >
+                      <XCircle class="w-3 h-3" /> Rejected
                     </span>
                     <span
                       v-else
-                      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200"
+                      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200"
                     >
-                      <XCircle class="w-3 h-3" /> {{ item.step_description }}
+                      Pending
                     </span>
+                    <span class="text-[9px] text-slate-400 mt-0.5">{{ item.l1_approver }}</span>
                   </div>
                 </td>
-                <td class="py-3.5 px-4 text-[11px] text-slate-500 whitespace-nowrap">
-                  {{ item.acted_at }}
+
+                <!-- Status Level 2 -->
+                <td class="py-3.5 px-4">
+                  <div class="flex flex-col items-start gap-1">
+                    <span
+                      v-if="item.l2_status === 'approved'"
+                      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    >
+                      <CheckCircle2 class="w-3 h-3" /> Approved
+                    </span>
+                    <span
+                      v-else-if="item.l2_status === 'rejected'"
+                      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200"
+                    >
+                      <XCircle class="w-3 h-3" /> Rejected
+                    </span>
+                    <span
+                      v-else
+                      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200"
+                    >
+                      {{ item.l2_status === '-' ? '-' : 'Pending' }}
+                    </span>
+                    <span class="text-[9px] text-slate-400 mt-0.5">{{ item.l2_approver }}</span>
+                  </div>
+                </td>
+
+                <!-- Status Keseluruhan -->
+                <td class="py-3.5 px-4">
+                  <div class="flex flex-col items-start gap-1">
+                    <span class="px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider"
+                      :class="{
+                        'bg-emerald-100 text-emerald-800 border border-emerald-200': ['approved', 'paid', 'completed'].includes(item.overall_status),
+                        'bg-rose-100 text-rose-800 border border-rose-200': item.overall_status === 'rejected',
+                        'bg-amber-100 text-amber-800 border border-amber-200': ['pending', 'submitted'].includes(item.overall_status)
+                      }"
+                    >
+                      {{ item.overall_status_label }}
+                    </span>
+                    <span class="text-[9px] text-slate-400 font-semibold" v-if="item.acted_at !== '-'">Acted: {{ item.acted_at }}</span>
+                  </div>
                 </td>
                 <td class="py-3.5 px-4 text-center" @click.stop>
                   <div class="flex items-center justify-center gap-1.5">

@@ -102,6 +102,9 @@ class ExecutiveDashboardController extends Controller
             'expense_by_category' => $expenseByCategory,
             'period' => $period,
             'top_customers' => \App\Models\Customer::withSum('invoices as total_revenue', 'total_amount')
+                ->with(['invoices' => function($q) {
+                    $q->latest('invoice_date')->take(1);
+                }])
                 ->orderByDesc('total_revenue')
                 ->take(5)
                 ->get(),
@@ -114,7 +117,32 @@ class ExecutiveDashboardController extends Controller
                 ->orderBy('expired_date', 'asc')
                 ->take(5)
                 ->get(),
+            'assets_by_category' => \App\Models\Asset::join('coas', 'assets.coa_asset_id', '=', 'coas.id')
+                ->selectRaw('coas.name as category, sum(assets.book_value) as total')
+                ->groupBy('coas.name')
+                ->get(),
+            'leaves_by_month' => $this->getLeavesByMonth(),
         ]);
+    }
+
+    private function getLeavesByMonth()
+    {
+        $data = [];
+        $now = now();
+        for ($i = 5; $i >= 0; $i--) {
+            $date = $now->copy()->subMonths($i);
+            $count = \App\Models\LeaveRequest::whereIn('status', ['approved', 'completed'])
+                ->whereYear('start_date', $date->year)
+                ->whereMonth('start_date', $date->month)
+                ->count();
+            $data[] = [
+                'month' => $date->format('M Y'),
+                'year' => $date->year,
+                'month_num' => $date->month,
+                'count' => $count
+            ];
+        }
+        return $data;
     }
 
     private function getChartData($period)
@@ -323,8 +351,62 @@ class ExecutiveDashboardController extends Controller
                 $label = ucwords(str_replace('_', ' ', $d->label));
                 $results[] = ['label' => $label, 'total' => (float)$d->total];
             }
+        } elseif ($category === 'Aset') {
+            $catName = $request->query('asset_category');
+            $query = \App\Models\Asset::with(['coaAsset', 'depreciations' => function($q) {
+                $q->whereYear('depreciation_date', now()->year)->whereMonth('depreciation_date', now()->month);
+            }]);
+            if ($catName) {
+                $query->whereHas('coaAsset', function($q) use ($catName) {
+                    $q->where('name', $catName);
+                });
+            }
+            $assets = $query->get();
+            foreach ($assets as $a) {
+                $depThisMonth = $a->depreciations->sum('depreciation_amount');
+                $results[] = [
+                    'asset_name' => $a->name,
+                    'purchase_price' => (float)$a->purchase_price,
+                    'depreciation_this_month' => (float)$depThisMonth,
+                    'book_value' => (float)$a->book_value,
+                    'is_table' => true
+                ];
+            }
+            return response()->json($results);
+
+        } elseif ($category === 'Cuti') {
+            $year = $request->query('year');
+            $month = $request->query('month');
+            
+            $query = \App\Models\LeaveRequest::with(['user.division', 'leaveType'])->whereIn('status', ['approved', 'completed']);
+            if ($year && $month) {
+                $query->whereYear('start_date', $year)->whereMonth('start_date', $month);
+            }
+            
+            $leaves = $query->get();
+            foreach ($leaves as $l) {
+                $results[] = [
+                    'applicant_name' => $l->user->name,
+                    'division' => $l->user->division->name ?? '-',
+                    'leave_type' => $l->leaveType->name ?? '-',
+                    'start_date' => $l->start_date->format('d M Y'),
+                    'total_days' => $l->total_days,
+                    'is_leave_table' => true
+                ];
+            }
+            return response()->json($results);
+
+        } elseif ($category === 'Pembayaran Bulanan') {
+            $query = \App\Models\MonthlyBillPayment::whereIn('monthly_bill_payments.status', ['paid', 'completed'])
+                ->join('monthly_bill_types', 'monthly_bill_payments.bill_type_id', '=', 'monthly_bill_types.id')
+                ->selectRaw('monthly_bill_types.name as label, sum(monthly_bill_payments.bill_amount) as total');
+            if ($start && $end) {
+                $query->whereBetween('monthly_bill_payments.updated_at', [$start . ' 00:00:00', $end . ' 23:59:59']);
+            }
+            $data = $query->groupBy('monthly_bill_types.name')->get();
+            foreach ($data as $d) { $results[] = ['label' => $d->label, 'total' => (float)$d->total]; }
         } else {
-            // Default for other types like Pembayaran Bulanan / Vendor Renewal manual
+            // Default for other types
             $query = \App\Models\CashTransaction::where('type', 'out');
             if ($start && $end) {
                 $query->whereBetween('transaction_date', [$start, $end]);
@@ -333,7 +415,10 @@ class ExecutiveDashboardController extends Controller
             $results[] = ['label' => 'Total ' . $category, 'total' => (float)$query->sum('amount')];
         }
 
-        usort($results, fn($a, $b) => $b['total'] <=> $a['total']);
+        // Only sort if it's not a table format
+        if (count($results) > 0 && !isset($results[0]['is_table']) && !isset($results[0]['is_leave_table'])) {
+            usort($results, fn($a, $b) => $b['total'] <=> $a['total']);
+        }
         return response()->json($results);
     }
 }

@@ -32,6 +32,7 @@
                 <th class="text-right">Reimbursement (Rp)</th>
                 <th class="text-right">Operasional (Rp)</th>
                 <th class="text-center">Cuti (Hari)</th>
+                <th class="text-right">Dinas (Rp)</th>
             </tr>
         </thead>
         <tbody>
@@ -43,6 +44,7 @@
                     <td class="text-right">Rp {{ number_format($div['reimbursement_sum'], 0, ',', '.') }}</td>
                     <td class="text-right">Rp {{ number_format($div['operational_sum'], 0, ',', '.') }}</td>
                     <td class="text-center">{{ $div['leave_days_sum'] }} Hari</td>
+                    <td class="text-right">Rp {{ number_format($div['business_trip_sum'], 0, ',', '.') }}</td>
                 </tr>
             @endforeach
             <tr class="bg-section">
@@ -51,6 +53,7 @@
                 <td class="text-right"><b>Rp {{ number_format($stats['total_reimbursement_amount'], 0, ',', '.') }}</b></td>
                 <td class="text-right"><b>Rp {{ number_format($stats['total_operational_amount'], 0, ',', '.') }}</b></td>
                 <td class="text-center"><b>{{ $stats['total_leave_days'] }} Hari</b></td>
+                <td class="text-right"><b>Rp {{ number_format($stats['total_business_trip_amount'], 0, ',', '.') }}</b></td>
             </tr>
         </tbody>
     </table>

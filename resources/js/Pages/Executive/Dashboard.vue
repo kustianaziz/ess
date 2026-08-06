@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, shallowRef, markRaw } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
 import Modal from '@/Components/Modal.vue';
 import axios from 'axios';
@@ -19,6 +19,8 @@ const props = defineProps({
   active_domains: Number,
   renewal_margin: Number,
   upcoming_renewals: Array,
+  assets_by_category: Array,
+  leaves_by_month: Array,
 });
 
 const formatRupiah = (angka) => {
@@ -34,13 +36,14 @@ const updatePeriod = (event) => {
 }
 
 // Chart Options
-const chartOptions = ref({
+const chartOptions = shallowRef(markRaw({
   chart: {
     type: 'area',
     height: 350,
     fontFamily: 'Inter, sans-serif',
     toolbar: { show: false },
-    background: 'transparent'
+    background: 'transparent',
+    selection: { enabled: false }
   },
   colors: ['#34d399', '#f43f5e'],
   dataLabels: { enabled: false },
@@ -75,15 +78,16 @@ const chartOptions = ref({
     size: 4,
     hover: { size: 6 }
   },
+  states: {
+    active: { filter: { type: 'none' } }
+  },
   events: {
-    dataPointSelection: (event, chartContext, config) => {
-      const index = config.dataPointIndex;
-      if (index >= 0) {
-        updateDonutCharts(index);
-      }
+    click: (event, chartContext, config) => {
+      if (!config || config.dataPointIndex === undefined || config.dataPointIndex < 0) return;
+      updateDonutCharts(config.dataPointIndex);
     }
   }
-});
+}));
 
 const chartSeries = ref([
   {
@@ -97,17 +101,16 @@ const chartSeries = ref([
 ]);
 
 // Donut Chart Configs
-const donutOptions = (labels, colors, typeStr) => ({
+const donutOptions = (labels, colors, typeStr) => markRaw({
   chart: {
     type: 'donut',
     fontFamily: 'Inter, sans-serif',
     background: 'transparent',
-    events: {
-      dataPointSelection: (event, chartContext, config) => {
-         const category = config.w.config.labels[config.dataPointIndex];
-         fetchBreakdownDetails(category);
-      }
-    }
+    selection: { enabled: false },
+    events: {}
+  },
+  states: {
+    active: { filter: { type: 'none' } }
   },
   labels: labels,
   colors: colors,
@@ -119,6 +122,7 @@ const donutOptions = (labels, colors, typeStr) => ({
   },
   plotOptions: {
     pie: {
+      expandOnClick: false,
       donut: {
         size: '75%',
         labels: {
@@ -143,11 +147,11 @@ const donutOptions = (labels, colors, typeStr) => ({
 const selectedLabel = ref('Keseluruhan Waktu');
 const selectedBounds = ref({ start: null, end: null });
 
-const revenueOptions = ref(donutOptions(props.revenue_by_category.map(item => item.category), ['#34d399', '#38bdf8', '#fbbf24', '#f472b6', '#818cf8']));
-const revenueDataSeries = ref(props.revenue_by_category.map(item => item.total));
+const revenueOptions = shallowRef(donutOptions(props.revenue_by_category.map(item => item.category), ['#34d399', '#38bdf8', '#fbbf24', '#f472b6', '#818cf8']));
+const revenueDataSeries = shallowRef(props.revenue_by_category.map(item => item.total));
 
-const expenseOptions = ref(donutOptions(props.expense_by_category.map(item => item.category), ['#f43f5e', '#fb923c', '#a78bfa', '#2dd4bf', '#fb7185', '#94a3b8']));
-const expenseDataSeries = ref(props.expense_by_category.map(item => item.total));
+const expenseOptions = shallowRef(donutOptions(props.expense_by_category.map(item => item.category), ['#f43f5e', '#fb923c', '#a78bfa', '#2dd4bf', '#fb7185', '#94a3b8']));
+const expenseDataSeries = shallowRef(props.expense_by_category.map(item => item.total));
 
 const updateDonutCharts = (index) => {
   if (index === null || index === undefined) {
@@ -175,6 +179,30 @@ const updateDonutCharts = (index) => {
   }
 }
 
+const handleNativeDonutClick = (type, e) => {
+    // We capture mousedown to prevent ApexCharts from running its buggy pathMouseDown
+    e.stopPropagation();
+    let target = e.target;
+    // Traverse up slightly just in case clicking on a nested element
+    while (target && target.tagName !== 'svg' && target.tagName !== 'div') {
+        if (target.tagName && target.tagName.toLowerCase() === 'path' && target.classList.contains('apexcharts-pie-area')) {
+            const indexAttr = target.getAttribute('j');
+            if (indexAttr !== null && indexAttr !== undefined) {
+                const index = parseInt(indexAttr, 10);
+                if (!isNaN(index)) {
+                    const labels = type === 'revenue' ? revenueOptions.value.labels : expenseOptions.value.labels;
+                    const category = labels[index];
+                    if (category) {
+                        fetchBreakdownDetails(category);
+                        return;
+                    }
+                }
+            }
+        }
+        target = target.parentNode;
+    }
+};
+
 const resetSelection = () => {
   updateDonutCharts(null);
 }
@@ -184,13 +212,13 @@ const breakdownData = ref([]);
 const breakdownCategory = ref('');
 const breakdownLoading = ref(false);
 
-const fetchBreakdownDetails = (category) => {
+function fetchBreakdownDetails(category, extraParams = {}) {
     breakdownCategory.value = category;
     breakdownModalOpen.value = true;
     breakdownLoading.value = true;
     breakdownData.value = [];
 
-    const params = { category: category };
+    const params = { category: category, ...extraParams };
     if (selectedBounds.value.start && selectedBounds.value.end) {
         params.start = selectedBounds.value.start;
         params.end = selectedBounds.value.end;
@@ -206,7 +234,62 @@ const fetchBreakdownDetails = (category) => {
         .finally(() => {
             breakdownLoading.value = false;
         });
-};
+}
+
+// Asset Chart
+const assetOptions = shallowRef(markRaw({
+  chart: {
+    type: 'bar',
+    fontFamily: 'Inter, sans-serif',
+    toolbar: { show: false },
+    selection: { enabled: false },
+    events: {
+        click: (event, chartContext, config) => {
+            if (!config || config.dataPointIndex === undefined || config.dataPointIndex < 0) return;
+            if (config.w && config.w.config && config.w.config.xaxis && config.w.config.xaxis.categories) {
+                const cat = config.w.config.xaxis.categories[config.dataPointIndex];
+                if (cat) fetchBreakdownDetails('Aset', { asset_category: cat });
+            }
+        }
+    }
+  },
+  states: {
+    active: { filter: { type: 'none' } }
+  },
+  xaxis: { categories: (props.assets_by_category || []).map(i => i.category) },
+  plotOptions: { bar: { borderRadius: 4, horizontal: true } },
+  dataLabels: { enabled: false },
+  colors: ['#3b82f6'],
+  tooltip: { y: { formatter: (val) => formatRupiah(val) } }
+}));
+const assetSeries = shallowRef([{ name: 'Nominal Aset', data: (props.assets_by_category || []).map(i => i.total) }]);
+
+// Leave Chart
+const leaveOptions = shallowRef(markRaw({
+  chart: {
+    type: 'bar',
+    fontFamily: 'Inter, sans-serif',
+    toolbar: { show: false },
+    selection: { enabled: false },
+    events: {
+        click: (event, chartContext, config) => {
+            if (!config || config.dataPointIndex === undefined || config.dataPointIndex < 0) return;
+            const dataItem = (props.leaves_by_month || [])[config.dataPointIndex];
+            if (dataItem) {
+                fetchBreakdownDetails('Cuti', { month: dataItem.month_num, year: dataItem.year });
+            }
+        }
+    }
+  },
+  states: {
+    active: { filter: { type: 'none' } }
+  },
+  xaxis: { categories: (props.leaves_by_month || []).map(i => i.month) },
+  plotOptions: { bar: { borderRadius: 4 } },
+  dataLabels: { enabled: false },
+  colors: ['#8b5cf6'],
+}));
+const leaveSeries = shallowRef([{ name: 'Jumlah Pengajuan', data: (props.leaves_by_month || []).map(i => i.count) }]);
 
 </script>
 
@@ -284,7 +367,10 @@ const fetchBreakdownDetails = (category) => {
                 <!-- Revenue by Category -->
                 <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl flex-1 flex flex-col justify-center relative">
                   <h4 class="text-sm font-bold text-slate-800 mb-2 text-center">Pendapatan per Kategori</h4>
-                  <div class="flex justify-center flex-1 items-center">
+                  <div class="flex justify-center flex-1 items-center" 
+                       @mousedown.capture="handleNativeDonutClick('revenue', $event)"
+                       @touchstart.capture="handleNativeDonutClick('revenue', $event)"
+                       @pointerdown.capture="handleNativeDonutClick('revenue', $event)">
                       <VueApexCharts v-if="revenueDataSeries.length > 0" type="donut" height="250" :options="revenueOptions" :series="revenueDataSeries" />
                       <p v-else class="text-xs text-slate-400 italic">Belum ada data pendapatan</p>
                   </div>
@@ -292,12 +378,36 @@ const fetchBreakdownDetails = (category) => {
                 <!-- Expense by Category -->
                 <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl flex-1 flex flex-col justify-center relative">
                   <h4 class="text-sm font-bold text-slate-800 mb-2 text-center">Pengeluaran per Kategori</h4>
-                  <div class="flex justify-center flex-1 items-center">
+                  <div class="flex justify-center flex-1 items-center"
+                       @mousedown.capture="handleNativeDonutClick('expense', $event)"
+                       @touchstart.capture="handleNativeDonutClick('expense', $event)"
+                       @pointerdown.capture="handleNativeDonutClick('expense', $event)">
                       <VueApexCharts v-if="expenseDataSeries.length > 0" type="donut" height="250" :options="expenseOptions" :series="expenseDataSeries" />
                       <p v-else class="text-xs text-slate-400 italic">Belum ada data pengeluaran</p>
                   </div>
                 </div>
               </div>
+            </div>
+
+            <!-- New Charts (Assets and Leaves) -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+               <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl">
+                  <div class="flex justify-between items-center mb-4">
+                    <h4 class="text-sm font-bold text-slate-800">Nominal Aset per Kategori</h4>
+                    <p class="text-xs text-slate-500 italic">Klik batang grafik untuk rincian aset</p>
+                  </div>
+                  <VueApexCharts v-if="assetSeries[0].data.length > 0" type="bar" height="250" :options="assetOptions" :series="assetSeries" />
+                  <p v-else class="text-xs text-slate-400 italic text-center py-10">Belum ada data aset</p>
+               </div>
+               
+               <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl">
+                  <div class="flex justify-between items-center mb-4">
+                    <h4 class="text-sm font-bold text-slate-800">Trend Pengajuan Cuti (6 Bulan Terakhir)</h4>
+                    <p class="text-xs text-slate-500 italic">Klik batang grafik untuk melihat siapa saja</p>
+                  </div>
+                  <VueApexCharts v-if="leaveSeries[0].data.length > 0" type="bar" height="250" :options="leaveOptions" :series="leaveSeries" />
+                  <p v-else class="text-xs text-slate-400 italic text-center py-10">Belum ada data cuti</p>
+               </div>
             </div>
 
             <!-- Two Columns for Insights -->
@@ -342,7 +452,16 @@ const fetchBreakdownDetails = (category) => {
                     </div>
                     <div class="flex-1 min-w-0">
                       <p class="text-sm font-bold text-slate-800 truncate">{{ customer.name }}</p>
-                      <p class="text-xs text-slate-500 truncate">{{ customer.email }}</p>
+                      <p class="text-[10px] sm:text-xs text-slate-500 truncate mb-1">{{ customer.email }}</p>
+                      <div class="flex items-center gap-2 text-[10px]" v-if="customer.invoices && customer.invoices.length > 0">
+                        <span class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-medium">Inv: Sudah</span>
+                        <span :class="customer.invoices[0].status === 'paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'" class="px-1.5 py-0.5 rounded font-medium">
+                          Bayar: {{ customer.invoices[0].status === 'paid' ? 'Sudah' : 'Belum' }}
+                        </span>
+                      </div>
+                      <div class="flex items-center gap-2 text-[10px]" v-else>
+                        <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-medium">Inv: Belum</span>
+                      </div>
                     </div>
                     <div class="text-right shrink-0">
                       <p class="text-sm font-black text-emerald-600">{{ formatRupiah(customer.total_revenue) }}</p>
@@ -373,11 +492,55 @@ const fetchBreakdownDetails = (category) => {
                     Belum ada data rincian untuk periode ini.
                 </div>
                 
-                <div v-else class="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
-                    <div v-for="(item, idx) in breakdownData" :key="idx" class="flex justify-between items-center p-3 rounded-lg border border-slate-100 bg-slate-50 hover:bg-slate-100 transition-colors">
-                        <span class="font-medium text-slate-700 text-sm">{{ item.label }}</span>
-                        <span class="font-bold text-slate-900 text-sm">{{ formatRupiah(item.total) }}</span>
-                    </div>
+                <div v-else class="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                    <template v-if="breakdownData[0]?.is_table">
+                        <table class="w-full text-left text-xs text-slate-600 border border-slate-200 rounded-xl overflow-hidden">
+                            <thead class="bg-slate-100 font-bold text-slate-500">
+                                <tr>
+                                    <th class="p-2">Nama Aset</th>
+                                    <th class="p-2 text-right">Nilai Perolehan</th>
+                                    <th class="p-2 text-right">Penyusutan Bln Ini</th>
+                                    <th class="p-2 text-right">Nilai Buku Akhir</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 bg-white">
+                                <tr v-for="(item, idx) in breakdownData" :key="idx" class="hover:bg-slate-50">
+                                    <td class="p-2 font-medium text-slate-800">{{ item.asset_name }}</td>
+                                    <td class="p-2 text-right text-emerald-600">{{ formatRupiah(item.purchase_price) }}</td>
+                                    <td class="p-2 text-right text-rose-500">{{ formatRupiah(item.depreciation_this_month) }}</td>
+                                    <td class="p-2 text-right font-bold">{{ formatRupiah(item.book_value) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </template>
+                    <template v-else-if="breakdownData[0]?.is_leave_table">
+                        <table class="w-full text-left text-xs text-slate-600 border border-slate-200 rounded-xl overflow-hidden">
+                            <thead class="bg-slate-100 font-bold text-slate-500">
+                                <tr>
+                                    <th class="p-2">Pemohon</th>
+                                    <th class="p-2">Divisi</th>
+                                    <th class="p-2">Tipe Cuti</th>
+                                    <th class="p-2 text-center">Tgl Mulai</th>
+                                    <th class="p-2 text-center">Durasi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 bg-white">
+                                <tr v-for="(item, idx) in breakdownData" :key="idx" class="hover:bg-slate-50">
+                                    <td class="p-2 font-medium text-slate-800">{{ item.applicant_name }}</td>
+                                    <td class="p-2">{{ item.division }}</td>
+                                    <td class="p-2">{{ item.leave_type }}</td>
+                                    <td class="p-2 text-center">{{ item.start_date }}</td>
+                                    <td class="p-2 text-center font-bold text-purple-600">{{ item.total_days }} Hari</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </template>
+                    <template v-else>
+                        <div v-for="(item, idx) in breakdownData" :key="idx" class="flex justify-between items-center p-3 rounded-lg border border-slate-100 bg-slate-50 hover:bg-slate-100 transition-colors">
+                            <span class="font-medium text-slate-700 text-sm">{{ item.label }}</span>
+                            <span class="font-bold text-slate-900 text-sm">{{ formatRupiah(item.total) }}</span>
+                        </div>
+                    </template>
                 </div>
 
                 <div class="mt-6 flex justify-end">

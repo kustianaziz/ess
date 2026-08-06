@@ -3,7 +3,7 @@ import { ref, computed } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
-import { BarChart3, FileSpreadsheet, FileText, Calendar, Utensils, Download, Filter, RotateCcw, Building2, Layers, ListFilter } from 'lucide-vue-next';
+import { BarChart3, FileSpreadsheet, FileText, Calendar, Utensils, Download, Filter, RotateCcw, Building2, Layers, ListFilter, Zap, RefreshCcw } from 'lucide-vue-next';
 
 const props = defineProps({
   stats: Object,
@@ -157,6 +157,9 @@ const exportWordUrl = computed(() => {
               <option value="reimbursement">Reimbursement</option>
               <option value="operasional">Operasional / Konsumsi</option>
               <option value="cuti">Cuti Karyawan</option>
+              <option value="perjalanan-dinas">Perjalanan Dinas</option>
+              <option value="tagihan-bulanan">Tagihan Bulanan</option>
+              <option value="renewal-domain">Renewal Domain</option>
             </select>
           </div>
 
@@ -193,7 +196,7 @@ const exportWordUrl = computed(() => {
       </div>
 
       <!-- Stat Cards Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
         <!-- Reimbursement Stat Card -->
         <div class="bg-gradient-to-br from-emerald-50 to-white p-5 rounded-2xl border border-emerald-200/80 shadow-sm">
           <div class="flex items-center justify-between mb-3">
@@ -256,6 +259,27 @@ const exportWordUrl = computed(() => {
             Total {{ stats.total_leave_count }} transaksi pengajuan
           </p>
         </div>
+
+        <!-- Business Trip Stat Card -->
+        <div class="bg-gradient-to-br from-blue-50 to-white p-5 rounded-2xl border border-blue-200/80 shadow-sm">
+          <div class="flex items-center justify-between mb-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-600/20">
+              <FileText class="w-5 h-5" />
+            </div>
+            <span class="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md">
+              Perjalanan Dinas
+            </span>
+          </div>
+          <div class="space-y-1">
+            <p class="text-xs text-slate-500 font-semibold">Total Biaya Disetujui</p>
+            <h3 class="text-2xl font-black text-slate-900">
+              Rp {{ (stats.total_business_trip_amount || 0).toLocaleString('id-ID') }}
+            </h3>
+          </div>
+          <p class="text-xs text-slate-400 mt-3 border-t border-blue-100/80 pt-2 font-medium">
+            Total {{ stats.total_business_trip_count }} transaksi pengajuan
+          </p>
+        </div>
       </div>
 
       <!-- Tab View Selection (Rekap & Detail List) -->
@@ -307,6 +331,7 @@ const exportWordUrl = computed(() => {
                 <th class="py-3 px-4 text-right">Reimbursement (Rp)</th>
                 <th class="py-3 px-4 text-right">Operasional (Rp)</th>
                 <th class="py-3 px-4 text-center">Cuti (Hari)</th>
+                <th class="py-3 px-4 text-right">Dinas (Rp)</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 font-medium">
@@ -321,6 +346,9 @@ const exportWordUrl = computed(() => {
                 </td>
                 <td class="py-3 px-4 text-center font-bold text-purple-600">
                   {{ div.leave_days_sum }} Hari
+                </td>
+                <td class="py-3 px-4 text-right font-bold text-blue-600">
+                  Rp {{ div.business_trip_sum.toLocaleString('id-ID') }}
                 </td>
               </tr>
               <tr v-if="divisionSummary.length === 0">

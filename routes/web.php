@@ -109,6 +109,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('periods/{period}/close', [\App\Http\Controllers\Accounting\AccountingPeriodController::class, 'closePeriod'])->name('periods.close');
         Route::get('beginning-balances', [\App\Http\Controllers\Accounting\BeginningBalanceController::class, 'index'])->name('beginning-balances.index');
         Route::post('beginning-balances', [\App\Http\Controllers\Accounting\BeginningBalanceController::class, 'store'])->name('beginning-balances.store');
+        
+        // Financial Reports
+        Route::get('reports/ledger', [\App\Http\Controllers\Accounting\FinancialReportController::class, 'ledger'])->name('reports.ledger');
+        Route::get('reports/income-statement', [\App\Http\Controllers\Accounting\FinancialReportController::class, 'incomeStatement'])->name('reports.income-statement');
+        Route::get('reports/balance-sheet', [\App\Http\Controllers\Accounting\FinancialReportController::class, 'balanceSheet'])->name('reports.balance-sheet');
+        Route::get('reports/cash-flow', [\App\Http\Controllers\Accounting\FinancialReportController::class, 'cashFlow'])->name('reports.cash-flow');
+        Route::get('reports/calk', [\App\Http\Controllers\Accounting\FinancialReportController::class, 'calk'])->name('reports.calk');
     });
 
     // Executive dashboard route protected by role

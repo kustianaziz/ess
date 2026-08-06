@@ -26,7 +26,8 @@ import {
   Store,
   LineChart,
   Archive,
-  CalendarClock
+  CalendarClock,
+  CreditCard
 } from 'lucide-vue-next';
 
 const page = usePage();
@@ -272,6 +273,57 @@ const isHrdOrAdmin = computed(() => {
               <FileText class="w-4 h-4 text-orange-400" />
               <span>Transaksi Jurnal</span>
             </Link>
+
+            <div class="mt-4 mb-2 px-3.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              LAPORAN KEUANGAN
+            </div>
+            
+            <Link
+              :href="route('accounting.reports.ledger')"
+              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="isCurrentRoute('accounting.reports.ledger') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+            >
+              <FileText class="w-4 h-4 text-pink-400" />
+              <span>Buku Besar</span>
+            </Link>
+
+            <Link
+              :href="route('accounting.reports.income-statement')"
+              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="isCurrentRoute('accounting.reports.income-statement') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+            >
+              <BarChart3 class="w-4 h-4 text-green-400" />
+              <span>Laba Rugi</span>
+            </Link>
+
+            <Link
+              :href="route('accounting.reports.balance-sheet')"
+              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="isCurrentRoute('accounting.reports.balance-sheet') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+            >
+              <Scale class="w-4 h-4 text-blue-400" />
+              <span>Neraca</span>
+            </Link>
+
+            <Link
+              :href="route('accounting.reports.cash-flow')"
+              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="isCurrentRoute('accounting.reports.cash-flow') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+            >
+              <Zap class="w-4 h-4 text-yellow-400" />
+              <span>Arus Kas</span>
+            </Link>
+
+            <Link
+              :href="route('accounting.reports.calk')"
+              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="isCurrentRoute('accounting.reports.calk') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+            >
+              <Layers class="w-4 h-4 text-purple-400" />
+              <span>Catatan Atas Laporan (CALK)</span>
+            </Link>
+
+
           </div>
         </div>
         <div>

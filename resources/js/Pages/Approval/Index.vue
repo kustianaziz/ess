@@ -152,11 +152,11 @@ const submitApproval = () => {
             <thead class="bg-slate-50 border-b border-slate-100 text-xs uppercase font-semibold text-slate-500 tracking-wider">
               <tr>
                 <th class="px-6 py-4">No. Pengajuan</th>
-                <th class="px-6 py-4">Pemohon</th>
-                <th class="px-6 py-4">Divisi</th>
+                <th class="px-6 py-4">Pemohon / Divisi</th>
                 <th class="px-6 py-4">Jenis Layanan</th>
-                <th class="px-6 py-4">Level</th>
-                <th class="px-6 py-4">Waktu Submit</th>
+                <th class="px-6 py-4">Status L1 (Atasan)</th>
+                <th class="px-6 py-4">Status L2 (HRD)</th>
+                <th class="px-6 py-4">Status Keseluruhan</th>
                 <th class="px-6 py-4 text-right">Aksi Persetujuan</th>
               </tr>
             </thead>
@@ -171,22 +171,54 @@ const submitApproval = () => {
                 <td class="px-6 py-4 font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
                   {{ item.request_number }}
                 </td>
-                <td class="px-6 py-4 font-semibold text-slate-800">
-                  {{ item.applicant_name }}
-                </td>
-                <td class="px-6 py-4 text-xs text-slate-500">
-                  {{ item.applicant_division }}
+                <td class="px-6 py-4">
+                  <span class="font-bold text-slate-800 block">{{ item.applicant_name }}</span>
+                  <span class="text-[10px] text-slate-500">{{ item.applicant_division }}</span>
                 </td>
                 <td class="px-6 py-4 text-xs font-medium text-slate-700">
                   {{ item.type_label }}
                 </td>
                 <td class="px-6 py-4">
-                  <span class="px-2.5 py-1 text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 rounded-full">
-                    Level {{ item.level }}
-                  </span>
+                  <div class="flex flex-col items-start gap-1">
+                    <span
+                      v-if="item.l1_status === 'approved'"
+                      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    >
+                      <CheckCircle2 class="w-3 h-3" /> Approved
+                    </span>
+                    <span
+                      v-else
+                      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200"
+                    >
+                      Pending
+                    </span>
+                    <span class="text-[9px] text-slate-400 mt-0.5">{{ item.l1_approver }}</span>
+                  </div>
                 </td>
-                <td class="px-6 py-4 text-xs text-slate-400">
-                  {{ item.submitted_at }}
+                <td class="px-6 py-4">
+                  <div class="flex flex-col items-start gap-1">
+                    <span
+                      v-if="item.l2_status === 'approved'"
+                      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    >
+                      <CheckCircle2 class="w-3 h-3" /> Approved
+                    </span>
+                    <span
+                      v-else
+                      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200"
+                    >
+                      {{ item.l2_status === '-' ? '-' : 'Pending' }}
+                    </span>
+                    <span class="text-[9px] text-slate-400 mt-0.5">{{ item.l2_approver }}</span>
+                  </div>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex flex-col items-start gap-1">
+                    <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 tracking-wider">
+                      {{ item.overall_status_label }}
+                    </span>
+                    <span class="text-[9px] text-slate-400 font-semibold">Aktif di L{{ item.level }}</span>
+                  </div>
                 </td>
                 <td class="px-6 py-4 text-right" @click.stop>
                   <div class="flex items-center justify-end gap-2">

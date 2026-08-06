@@ -198,9 +198,9 @@ class JournalEntryController extends Controller
                 'source_label'     => 'Tagihan Bulanan',
                 'source_id'        => $mb->id,
                 'date'             => $mb->payment_date,
-                'description'      => '[TAGIHAN] ' . ($mb->billType->name ?? '-') . ' - ' . ($mb->period_label ?? ''),
-                'amount'           => $mb->amount,
-                'reference_number' => 'TAG-' . str_pad($mb->id, 4, '0', STR_PAD_LEFT),
+                'description'      => '[TAGIHAN] ' . ($mb->billType->name ?? '-') . ' (' . ($mb->billType->vendor_name ?? '-') . ') - ' . str_pad($mb->period_month, 2, '0', STR_PAD_LEFT) . '/' . $mb->period_year,
+                'amount'           => $mb->bill_amount,
+                'reference_number' => $mb->payment_reference ?? $mb->payment_number ?? ('TAG-' . $mb->id),
                 'is_journalled'    => $allJournalRefs->has($refKey),
                 'type'             => 'out',
             ]);

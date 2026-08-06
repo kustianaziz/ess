@@ -64,6 +64,10 @@
                 <td><b>Total Pengajuan Cuti:</b> {{ $stats['total_leave_count'] }} Transaksi</td>
                 <td><b>Total Hari Cuti Disetujui:</b> {{ $stats['total_leave_days'] }} Hari</td>
             </tr>
+            <tr>
+                <td><b>Total Pengajuan Perjalanan Dinas:</b> {{ $stats['total_business_trip_count'] }} Transaksi</td>
+                <td><b>Total Nominal Dinas:</b> Rp {{ number_format($stats['total_business_trip_amount'], 0, ',', '.') }}</td>
+            </tr>
         </table>
     </div>
 
@@ -78,6 +82,7 @@
                 <th class="text-right">Total Reimbursement</th>
                 <th class="text-right">Total Operasional</th>
                 <th class="text-center">Cuti (Hari)</th>
+                <th class="text-right">Total Dinas</th>
             </tr>
         </thead>
         <tbody>
@@ -89,6 +94,7 @@
                     <td class="text-right">Rp {{ number_format($div['reimbursement_sum'], 0, ',', '.') }}</td>
                     <td class="text-right">Rp {{ number_format($div['operational_sum'], 0, ',', '.') }}</td>
                     <td class="text-center">{{ $div['leave_days_sum'] }} Hari</td>
+                    <td class="text-right">Rp {{ number_format($div['business_trip_sum'], 0, ',', '.') }}</td>
                 </tr>
             @endforeach
             <tr class="bg-total">
@@ -97,6 +103,7 @@
                 <td class="text-right">Rp {{ number_format($stats['total_reimbursement_amount'], 0, ',', '.') }}</td>
                 <td class="text-right">Rp {{ number_format($stats['total_operational_amount'], 0, ',', '.') }}</td>
                 <td class="text-center">{{ $stats['total_leave_days'] }} Hari</td>
+                <td class="text-right">Rp {{ number_format($stats['total_business_trip_amount'], 0, ',', '.') }}</td>
             </tr>
         </tbody>
     </table>

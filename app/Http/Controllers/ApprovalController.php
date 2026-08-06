@@ -23,7 +23,7 @@ class ApprovalController extends Controller
         $user = $request->user();
 
         // Query pending approvals matching current user & active level
-        $pendingApprovals = Approval::with(['approvable.user.division'])
+        $pendingApprovals = Approval::with(['approvable.user.division', 'approvable.approvals.approver'])
             ->where('status', 'pending')
             ->where(function($q) use ($user) {
                 if ($user->hasRole('admin')) {
@@ -82,6 +82,9 @@ class ApprovalController extends Controller
                 default => 'Pengajuan',
             };
 
+            $l1Approval = $model->approvals->where('level', 1)->first();
+            $l2Approval = $model->approvals->where('level', 2)->first();
+
             return [
                 'approval_id' => $approval->id,
                 'level' => $approval->level,
@@ -92,6 +95,12 @@ class ApprovalController extends Controller
                 'applicant_name' => $model->user?->name ?? 'Karyawan',
                 'applicant_division' => $model->user?->division?->name ?? '-',
                 'submitted_at' => $model->submitted_at?->format('d M Y H:i') ?? '-',
+                'l1_status' => $l1Approval ? $l1Approval->status : 'pending',
+                'l1_approver' => $l1Approval?->approver?->name ?? 'Atasan',
+                'l2_status' => $l2Approval ? $l2Approval->status : '-',
+                'l2_approver' => $l2Approval?->approver?->name ?? 'HRD/Finance',
+                'overall_status' => $model->status->value,
+                'overall_status_label' => $model->status->label(),
             ];
         })->filter()->values();
 
@@ -257,7 +266,7 @@ class ApprovalController extends Controller
     {
         $user = $request->user();
 
-        $query = Approval::with(['approvable.user.division', 'approver'])
+        $query = Approval::with(['approvable.user.division', 'approver', 'approvable.approvals.approver'])
             ->whereIn('status', ['approved', 'rejected']);
 
         $scope = $request->input('scope', 'all');
@@ -319,7 +328,7 @@ class ApprovalController extends Controller
             $model = $approval->approvable;
             if (!$model) return null;
 
-            $historyKey = get_class($model) . '_' . $model->id . '_L' . $approval->level;
+            $historyKey = get_class($model) . '_' . $model->id;
             if (in_array($historyKey, $seenHistoryKeys)) {
                 return null;
             }
@@ -348,17 +357,13 @@ class ApprovalController extends Controller
                 default => '-',
             };
 
-            $stepDescription = $approval->level === 1
-                ? ($approval->status === 'approved' ? 'Disetujui Atasan (L1) → Menunggu HRD' : 'Ditolak Atasan (L1)')
-                : ($approval->status === 'approved' ? 'Disetujui HRD (L2 Final)' : 'Ditolak HRD (L2)');
+            $l1Approval = $model->approvals->where('level', 1)->first();
+            $l2Approval = $model->approvals->where('level', 2)->first();
 
             return [
                 'approval_id' => $approval->id,
                 'level' => $approval->level,
                 'level_label' => $approval->level === 1 ? 'Level 1 (Atasan Langsung)' : 'Level 2 (HRD & Finance)',
-                'status' => $approval->status,
-                'step_description' => $stepDescription,
-                'notes' => $approval->notes ?? '-',
                 'acted_at' => $approval->acted_at?->format('d M Y H:i') ?? '-',
                 'type' => $type,
                 'type_label' => $typeLabel,
@@ -368,11 +373,13 @@ class ApprovalController extends Controller
                 'applicant_name' => $model->user?->name ?? 'Karyawan',
                 'applicant_division' => $model->user?->division?->name ?? '-',
                 'approver_id' => $approval->approver_id,
-                'approver_name' => $approval->approver?->name ?? 'System',
-                'approver_role' => $approval->level === 1 ? 'Manager (L1)' : 'HRD & Finance (L2)',
                 'is_acted_by_me' => (int)$approval->approver_id === (int)$user->id,
                 'overall_status' => $model->status->value,
                 'overall_status_label' => $model->status->label(),
+                'l1_status' => $l1Approval ? $l1Approval->status : 'pending',
+                'l1_approver' => $l1Approval?->approver?->name ?? 'Atasan',
+                'l2_status' => $l2Approval ? $l2Approval->status : '-',
+                'l2_approver' => $l2Approval?->approver?->name ?? '-',
             ];
         })->filter()->values();
 

@@ -7,6 +7,9 @@ use App\Models\Division;
 use App\Models\LeaveRequest;
 use App\Models\OperationalRequest;
 use App\Models\ReimbursementRequest;
+use App\Models\BusinessTripRequest;
+use App\Models\MonthlyBillPayment;
+use App\Models\RenewalRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
@@ -73,6 +76,9 @@ class ReportController extends Controller
         $reimbursements = collect();
         $operationals = collect();
         $leaves = collect();
+        $businessTrips = collect();
+        $monthlyBills = collect();
+        $renewals = collect();
 
         // 1. Query Reimbursements
         if ($type === 'all' || $type === 'reimbursement') {
@@ -108,6 +114,52 @@ class ReportController extends Controller
                 $q->whereHas('user', fn($uq) => $uq->where('division_id', $divisionId));
             }
             $leaves = $q->latest()->get();
+        }
+
+        // 4. Query Business Trips
+        if ($type === 'all' || $type === 'perjalanan-dinas') {
+            $q = BusinessTripRequest::with(['user.division']);
+            if ($startDate) $q->whereDate('created_at', '>=', $startDate);
+            if ($endDate) $q->whereDate('created_at', '<=', $endDate);
+            if ($status !== 'all') $q->where('status', $status);
+            if ($divisionId !== 'all') {
+                $q->whereHas('user', fn($uq) => $uq->where('division_id', $divisionId));
+            }
+            $businessTrips = $q->latest()->get();
+        }
+
+        // 5. Query Monthly Bills
+        if ($type === 'all' || $type === 'tagihan-bulanan') {
+            $q = MonthlyBillPayment::with(['billType', 'paidBy.division']);
+            if ($startDate) $q->whereDate('created_at', '>=', $startDate);
+            if ($endDate) $q->whereDate('created_at', '<=', $endDate);
+            if ($status !== 'all') $q->where('status', $status);
+            // Monthly bills might not have a specific division if paid by system/finance, but we can filter by paid_by if needed
+            if ($divisionId !== 'all') {
+                $q->whereHas('paidBy', fn($uq) => $uq->where('division_id', $divisionId));
+            }
+            $monthlyBills = $q->latest()->get();
+        }
+
+        // 6. Query Renewals
+        if ($type === 'all' || $type === 'renewal-domain') {
+            $q = RenewalRequest::with(['domain', 'processedBy.division']);
+            if ($startDate) $q->whereDate('created_at', '>=', $startDate);
+            if ($endDate) $q->whereDate('created_at', '<=', $endDate);
+            // Renewal status doesn't match generic status exactly, but we can filter
+            if ($status !== 'all') {
+                if ($status === 'approved' || $status === 'paid' || $status === 'completed') {
+                    $q->whereIn('status', ['paid_customer', 'paid_vendor', 'completed']);
+                } else if ($status === 'rejected') {
+                    $q->where('status', 'cancelled');
+                } else {
+                    $q->where('status', 'pending');
+                }
+            }
+            if ($divisionId !== 'all') {
+                $q->whereHas('processedBy', fn($uq) => $uq->where('division_id', $divisionId));
+            }
+            $renewals = $q->latest()->get();
         }
 
         // Combined detail list
@@ -170,6 +222,63 @@ class ReportController extends Controller
             ]);
         }
 
+        foreach ($businessTrips as $item) {
+            $detailList->push([
+                'id' => $item->id,
+                'request_number' => $item->request_number,
+                'type' => 'perjalanan-dinas',
+                'type_label' => 'Perjalanan Dinas',
+                'category' => 'Dinas',
+                'applicant_name' => $item->user?->name ?? 'Karyawan',
+                'applicant_nik' => $item->user?->nik ?? '-',
+                'division_name' => $item->user?->division?->name ?? '-',
+                'date' => $item->departure_date?->format('d/m/Y') ?? $item->created_at->format('d/m/Y'),
+                'amount_formatted' => 'Rp ' . number_format($item->estimated_cost ?? 0, 0, ',', '.'),
+                'amount_raw' => $item->estimated_cost ?? 0,
+                'status' => $item->status->value,
+                'status_label' => $item->status->label(),
+                'created_at' => $item->created_at->format('d/m/Y H:i'),
+            ]);
+        }
+
+        foreach ($monthlyBills as $item) {
+            $detailList->push([
+                'id' => $item->id,
+                'request_number' => $item->payment_number,
+                'type' => 'tagihan-bulanan',
+                'type_label' => 'Tagihan Bulanan',
+                'category' => $item->billType?->name ?? 'Tagihan',
+                'applicant_name' => $item->paidBy?->name ?? 'Sistem / Finance',
+                'applicant_nik' => $item->paidBy?->nik ?? '-',
+                'division_name' => $item->paidBy?->division?->name ?? 'Keuangan',
+                'date' => $item->due_date?->format('d/m/Y') ?? $item->created_at->format('d/m/Y'),
+                'amount_formatted' => 'Rp ' . number_format($item->bill_amount ?? 0, 0, ',', '.'),
+                'amount_raw' => $item->bill_amount ?? 0,
+                'status' => $item->status,
+                'status_label' => ucfirst($item->status),
+                'created_at' => $item->created_at->format('d/m/Y H:i'),
+            ]);
+        }
+
+        foreach ($renewals as $item) {
+            $detailList->push([
+                'id' => $item->id,
+                'request_number' => $item->renewal_number,
+                'type' => 'renewal-domain',
+                'type_label' => 'Renewal Domain/Hosting',
+                'category' => $item->domain?->type ?? 'Domain/Hosting',
+                'applicant_name' => $item->processedBy?->name ?? 'Admin',
+                'applicant_nik' => $item->processedBy?->nik ?? '-',
+                'division_name' => $item->processedBy?->division?->name ?? 'IT',
+                'date' => $item->created_at->format('d/m/Y'),
+                'amount_formatted' => '-',
+                'amount_raw' => 0,
+                'status' => $item->status,
+                'status_label' => str_replace('_', ' ', ucfirst($item->status)),
+                'created_at' => $item->created_at->format('d/m/Y H:i'),
+            ]);
+        }
+
         // Summary Stats
         $stats = [
             'total_reimbursement_count' => $reimbursements->count(),
@@ -180,6 +289,14 @@ class ReportController extends Controller
             
             'total_leave_count' => $leaves->count(),
             'total_leave_days' => $leaves->whereIn('status.value', ['approved', 'completed'])->sum('total_days'),
+
+            'total_business_trip_count' => $businessTrips->count(),
+            'total_business_trip_amount' => $businessTrips->whereIn('status.value', ['approved', 'paid', 'completed'])->sum('estimated_cost'),
+
+            'total_monthly_bill_count' => $monthlyBills->count(),
+            'total_monthly_bill_amount' => $monthlyBills->where('status', 'paid')->sum('bill_amount'),
+
+            'total_renewal_count' => $renewals->count(),
 
             'grand_total_count' => $detailList->count(),
         ];
@@ -194,6 +311,11 @@ class ReportController extends Controller
                 'operational_sum' => $items->where('type', 'operasional')->whereIn('status', ['approved', 'paid', 'completed'])->sum('amount_raw'),
                 'leave_count' => $items->where('type', 'cuti')->count(),
                 'leave_days_sum' => $items->where('type', 'cuti')->whereIn('status', ['approved', 'completed'])->sum('amount_raw'),
+                'business_trip_count' => $items->where('type', 'perjalanan-dinas')->count(),
+                'business_trip_sum' => $items->where('type', 'perjalanan-dinas')->whereIn('status', ['approved', 'paid', 'completed'])->sum('amount_raw'),
+                'monthly_bill_count' => $items->where('type', 'tagihan-bulanan')->count(),
+                'monthly_bill_sum' => $items->where('type', 'tagihan-bulanan')->where('status', 'paid')->sum('amount_raw'),
+                'renewal_count' => $items->where('type', 'renewal-domain')->count(),
                 'total_requests' => $items->count(),
             ];
         })->values();
