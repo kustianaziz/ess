@@ -106,11 +106,12 @@ class MonthlyBillController extends Controller
             'cash_account_id' => 'required|exists:cash_accounts,id',
             'payment_date' => 'required|date',
             'notes' => 'nullable|string',
+            'attachments.*' => 'nullable|file|max:5120',
         ]);
 
         $user = $request->user();
 
-        DB::transaction(function () use ($payment, $validated, $user, $recordCashTransaction) {
+        DB::transaction(function () use ($request, $payment, $validated, $user, $recordCashTransaction) {
             $payment->update([
                 'bill_amount' => $validated['bill_amount'],
                 'payment_reference' => $validated['payment_reference'],
@@ -119,6 +120,18 @@ class MonthlyBillController extends Controller
                 'status' => 'paid',
                 'paid_by' => $user->id,
             ]);
+
+            // Handle file attachments
+            if ($request->hasFile('attachments')) {
+                foreach ($request->file('attachments') as $file) {
+                    $path = $file->store('attachments', 'public');
+                    $payment->attachments()->create([
+                        'file_path' => $path,
+                        'file_name' => $file->getClientOriginalName(),
+                        'file_type' => $file->getMimeType(),
+                    ]);
+                }
+            }
 
             // Record cash out transaction
             $recordCashTransaction->execute(

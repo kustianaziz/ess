@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { Head, useForm, router } from '@inertiajs/vue3'
+import { Head, router } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import {
   Zap,
@@ -57,40 +57,54 @@ const changePeriod = () => {
 const showPayModal = ref(false)
 const selectedPayment = ref(null)
 
-const payForm = useForm({
+const payForm = ref({
   bill_amount: 0,
   payment_reference: '',
   cash_account_id: '',
   payment_date: new Date().toISOString().split('T')[0],
-  notes: ''
+  notes: '',
+  attachments: []
 })
+
+const handleFileChange = (e) => {
+  payForm.value.attachments = Array.from(e.target.files)
+}
+
+const isSubmittingPay = ref(false)
 
 const rawAmountInput = ref('')
 
 const handleAmountInput = (e) => {
   const value = e.target.value.replace(/\D/g, '')
-  payForm.bill_amount = value ? parseInt(value, 10) : 0
+  payForm.value.bill_amount = value ? parseInt(value, 10) : 0
   rawAmountInput.value = value ? new Intl.NumberFormat('id-ID').format(value) : ''
 }
 
 const openPayModal = (item) => {
   selectedPayment.value = item
-  payForm.bill_amount = item.bill_amount
+  payForm.value.bill_amount = item.bill_amount
   rawAmountInput.value = item.bill_amount ? new Intl.NumberFormat('id-ID').format(item.bill_amount) : ''
-  payForm.payment_reference = 'TRF-' + Math.floor(100000 + Math.random() * 900000)
-  payForm.cash_account_id = item.cash_account_id || props.cashAccounts[0]?.id || ''
-  payForm.notes = ''
+  payForm.value.payment_reference = 'TRF-' + Math.floor(100000 + Math.random() * 900000)
+  payForm.value.cash_account_id = item.cash_account_id || props.cashAccounts[0]?.id || ''
+  payForm.value.notes = ''
+  payForm.value.attachments = []
   showPayModal.value = true
 }
 
 const submitPayment = () => {
-  if (!payForm.payment_reference || !payForm.bill_amount || !payForm.cash_account_id) {
+  if (!payForm.value.payment_reference || !payForm.value.bill_amount || !payForm.value.cash_account_id) {
     alert('Mohon isi referensi transfer, nominal, dan akun kas pembayar.')
     return
   }
-  payForm.post(route('keuangan.tagihan-bulanan.pay', selectedPayment.value.id), {
+
+  isSubmittingPay.value = true
+  router.post(route('keuangan.tagihan-bulanan.pay', selectedPayment.value.id), payForm.value, {
+    forceFormData: true,
     onSuccess: () => {
       showPayModal.value = false
+    },
+    onFinish: () => {
+      isSubmittingPay.value = false
     }
   })
 }
@@ -99,62 +113,70 @@ const showAddTypeModal = ref(false)
 const isEditType = ref(false)
 const selectedTypeId = ref(null)
 
-const typeForm = useForm({
+const typeForm = ref({
   name: '',
   vendor_name: '',
   default_amount: 0,
   due_date: new Date().toISOString().split('T')[0],
   cash_account_id: ''
 })
+const isSubmittingType = ref(false)
 
 const rawTypeAmountInput = ref('')
 
 const handleTypeAmountInput = (e) => {
   const value = e.target.value.replace(/\D/g, '')
-  typeForm.default_amount = value ? parseInt(value, 10) : 0
+  typeForm.value.default_amount = value ? parseInt(value, 10) : 0
   rawTypeAmountInput.value = value ? new Intl.NumberFormat('id-ID').format(value) : ''
 }
 
 const openAddTypeModal = () => {
   isEditType.value = false
   selectedTypeId.value = null
-  typeForm.name = ''
-  typeForm.vendor_name = ''
-  typeForm.default_amount = 0
+  typeForm.value.name = ''
+  typeForm.value.vendor_name = ''
+  typeForm.value.default_amount = 0
   rawTypeAmountInput.value = ''
-  typeForm.due_date = new Date().toISOString().split('T')[0]
-  typeForm.cash_account_id = props.cashAccounts[0]?.id || ''
+  typeForm.value.due_date = new Date().toISOString().split('T')[0]
+  typeForm.value.cash_account_id = props.cashAccounts[0]?.id || ''
   showAddTypeModal.value = true
 }
 
 const openEditTypeModal = (item) => {
   isEditType.value = true
   selectedTypeId.value = item.bill_type_id
-  typeForm.name = item.bill_type_name
-  typeForm.vendor_name = (item.vendor_name !== '-') ? item.vendor_name : ''
-  typeForm.default_amount = item.bill_amount
+  typeForm.value.name = item.bill_type_name
+  typeForm.value.vendor_name = (item.vendor_name !== '-') ? item.vendor_name : ''
+  typeForm.value.default_amount = item.bill_amount
   rawTypeAmountInput.value = item.bill_amount ? new Intl.NumberFormat('id-ID').format(item.bill_amount) : '0'
-  typeForm.due_date = item.due_date_raw || new Date().toISOString().split('T')[0]
-  typeForm.cash_account_id = item.cash_account_id || props.cashAccounts[0]?.id || ''
+  typeForm.value.due_date = item.due_date_raw || new Date().toISOString().split('T')[0]
+  typeForm.value.cash_account_id = item.cash_account_id || props.cashAccounts[0]?.id || ''
   showAddTypeModal.value = true
 }
 
 const submitBillType = () => {
-  if (!typeForm.name || !typeForm.default_amount || !typeForm.cash_account_id) {
+  if (!typeForm.value.name || !typeForm.value.default_amount || !typeForm.value.cash_account_id) {
     alert('Mohon isi nama tagihan, estimasi nominal, dan akun kas pembayar.')
     return
   }
 
+  isSubmittingType.value = true
   if (isEditType.value) {
-    typeForm.put(route('keuangan.tagihan-bulanan.types.update', selectedTypeId.value), {
+    router.put(route('keuangan.tagihan-bulanan.types.update', selectedTypeId.value), typeForm.value, {
       onSuccess: () => {
         showAddTypeModal.value = false
+      },
+      onFinish: () => {
+        isSubmittingType.value = false
       }
     })
   } else {
-    typeForm.post(route('keuangan.tagihan-bulanan.types.store'), {
+    router.post(route('keuangan.tagihan-bulanan.types.store'), typeForm.value, {
       onSuccess: () => {
         showAddTypeModal.value = false
+      },
+      onFinish: () => {
+        isSubmittingType.value = false
       }
     })
   }
@@ -347,6 +369,11 @@ const submitBillType = () => {
             <label class="block font-bold text-slate-700 mb-1">Tanggal Pembayaran <span class="text-rose-500">*</span></label>
             <input v-model="payForm.payment_date" type="date" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 font-medium" />
           </div>
+          
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Bukti Bayar / Struk (Multiple)</label>
+            <input type="file" multiple @change="handleFileChange" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-800 text-xs" />
+          </div>
 
           <div>
             <label class="block font-bold text-slate-700 mb-1">Catatan (Opsional)</label>
@@ -357,8 +384,8 @@ const submitBillType = () => {
             <button type="button" @click="showPayModal = false" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold">Batal</button>
             <button
               type="submit"
-              :disabled="payForm.processing"
-              class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md transition-all"
+              :disabled="isSubmittingPay"
+              class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md transition-all disabled:opacity-50"
             >
               Konfirmasi & Bayar Tagihan
             </button>
@@ -425,8 +452,8 @@ const submitBillType = () => {
             <button type="button" @click="showAddTypeModal = false" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold">Batal</button>
             <button
               type="submit"
-              :disabled="typeForm.processing"
-              class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md transition-all"
+              :disabled="isSubmittingType"
+              class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md transition-all disabled:opacity-50"
             >
               {{ isEditType ? 'Simpan Perubahan' : 'Simpan Jenis Tagihan' }}
             </button>
