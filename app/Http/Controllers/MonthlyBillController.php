@@ -65,6 +65,7 @@ class MonthlyBillController extends Controller
                 'bill_type_id' => $p->bill_type_id,
                 'bill_type_name' => $p->billType?->name ?? '-',
                 'vendor_name' => $p->billType?->vendor_name ?? '-',
+                'default_amount' => $p->billType?->default_amount ?? 0,
                 'billing_day' => $p->billType?->billing_day ?? 10,
                 'cash_account_id' => $p->billType?->cash_account_id,
                 'cash_account_name' => $p->billType?->cashAccount?->name ?? 'Kas Operasional Pusat',
@@ -234,19 +235,6 @@ class MonthlyBillController extends Controller
 
         $billType->update($updateData);
 
-        // Update active unpaid payment for current month if exists
-        $currentMonthPayment = MonthlyBillPayment::where('bill_type_id', $billType->id)
-            ->where('status', 'unpaid')
-            ->latest('id')
-            ->first();
-
-        if ($currentMonthPayment) {
-            $currentMonthPayment->update([
-                'bill_amount' => $billType->default_amount,
-                'due_date' => $validated['due_date'] ?? $currentMonthPayment->due_date,
-            ]);
-        }
-
         return redirect()->back()->with(
             'success',
             "Jenis tagihan '{$billType->name}' berhasil diperbarui!"
@@ -279,5 +267,27 @@ class MonthlyBillController extends Controller
         $payment->delete();
         
         return redirect()->back()->with('success', 'Tagihan untuk bulan ini berhasil dihapus.');
+    }
+
+    public function destroyBillType(int $id): RedirectResponse
+    {
+        $billType = MonthlyBillType::findOrFail($id);
+        
+        // Check if there are any paid payments
+        $hasPaid = MonthlyBillPayment::where('bill_type_id', $billType->id)
+            ->where('status', 'paid')
+            ->exists();
+            
+        if ($hasPaid) {
+            return redirect()->back()->withErrors(['error' => 'Tidak dapat menghapus keseluruhan tagihan karena sudah ada riwayat pembayaran. Silakan edit dan set "Batas Akhir Tagihan" jika ingin menghentikan tagihan ini.']);
+        }
+        
+        // Delete all unpaid payments first
+        MonthlyBillPayment::where('bill_type_id', $billType->id)->delete();
+        
+        // Delete the bill type
+        $billType->delete();
+        
+        return redirect()->back()->with('success', 'Master tagihan beserta seluruh tagihan yang belum dibayar berhasil dihapus.');
     }
 }

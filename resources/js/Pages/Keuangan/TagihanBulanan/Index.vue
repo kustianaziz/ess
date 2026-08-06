@@ -151,13 +151,21 @@ const openEditTypeModal = (item) => {
   selectedTypeId.value = item.bill_type_id
   typeForm.value.name = item.bill_type_name
   typeForm.value.vendor_name = (item.vendor_name !== '-') ? item.vendor_name : ''
-  typeForm.value.default_amount = item.bill_amount // Note: this might show the actual month's amount instead of default, but we'll leave it as is or change it
-  rawTypeAmountInput.value = item.bill_amount ? new Intl.NumberFormat('id-ID').format(item.bill_amount) : '0'
+  typeForm.value.default_amount = item.default_amount
+  rawTypeAmountInput.value = item.default_amount ? new Intl.NumberFormat('id-ID').format(item.default_amount) : '0'
   typeForm.value.due_date = item.due_date_raw || new Date().toISOString().split('T')[0]
   typeForm.value.has_end_date = false // To make it perfect, we'd need end_date from API, but we just reset it
   typeForm.value.end_date = ''
   typeForm.value.cash_account_id = item.cash_account_id || props.cashAccounts[0]?.id || ''
   showAddTypeModal.value = true
+}
+
+const deleteBillType = (id) => {
+  if (confirm('Anda yakin ingin menghapus KESELURUHAN tagihan ini? (Semua tagihan yang belum dibayar akan ikut terhapus)')) {
+    router.delete(route('keuangan.tagihan-bulanan.types.destroy', id), {
+      preserveScroll: true
+    })
+  }
 }
 
 const submitBillType = () => {
@@ -352,6 +360,13 @@ const deletePayment = (item) => {
                     v-if="item.status !== 'paid'"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                  </button>
+                  <button
+                    @click="deleteBillType(item.bill_type_id)"
+                    class="p-1 text-slate-400 hover:text-red-700 rounded transition-colors"
+                    title="Hapus KESELURUHAN Tagihan (Master)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="14" y2="17"/><line x1="14" y1="11" x2="10" y2="17"/></svg>
                   </button>
                 </div>
               </div>

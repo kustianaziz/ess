@@ -97,6 +97,7 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/tagihan-bulanan/{id}', [\App\Http\Controllers\MonthlyBillController::class, 'destroy'])->name('tagihan-bulanan.destroy');
         Route::post('/tagihan-bulanan/types', [\App\Http\Controllers\MonthlyBillController::class, 'storeBillType'])->name('tagihan-bulanan.types.store');
         Route::put('/tagihan-bulanan/types/{id}', [\App\Http\Controllers\MonthlyBillController::class, 'updateBillType'])->name('tagihan-bulanan.types.update');
+        Route::delete('/tagihan-bulanan/types/{id}', [\App\Http\Controllers\MonthlyBillController::class, 'destroyBillType'])->name('tagihan-bulanan.types.destroy');
         // Pencairan & Pembayaran Keuangan
         Route::get('/pencairan', [\App\Http\Controllers\FinanceDisbursementController::class, 'index'])->name('pencairan.index');
     });
