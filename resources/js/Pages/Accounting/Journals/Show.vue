@@ -1,11 +1,18 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { ArrowLeft, Printer } from 'lucide-vue-next';
+import { ArrowLeft, Printer, Ban } from 'lucide-vue-next';
 
 const props = defineProps({
     journal: Object,
 });
+
+const voidJournal = () => {
+    if (!confirm(`Batalkan jurnal ${props.journal.journal_number}? Tindakan ini tidak bisa dibatalkan.`)) return;
+    router.post(route('accounting.journals.void', props.journal.id), {}, {
+        onSuccess: () => router.visit(route('accounting.journals.index'))
+    });
+};
 
 const formatRupiah = (value) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(value);
@@ -31,10 +38,16 @@ const formatDate = (dateString) => {
                         Detail Jurnal: {{ journal.journal_number }}
                     </h2>
                 </div>
-                <button @click="window.print()" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-all font-medium text-sm shadow-sm">
-                    <Printer class="w-4 h-4" />
-                    Cetak Jurnal
-                </button>
+                <div class="flex items-center gap-2">
+                    <button v-if="journal.status !== 'void'" @click="voidJournal" class="flex items-center gap-2 px-4 py-2 bg-rose-50 border border-rose-200 text-rose-600 rounded-lg hover:bg-rose-100 transition-all font-medium text-sm">
+                        <Ban class="w-4 h-4" />
+                        Batalkan Jurnal
+                    </button>
+                    <button @click="() => window.print()" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-all font-medium text-sm shadow-sm">
+                        <Printer class="w-4 h-4" />
+                        Cetak
+                    </button>
+                </div>
             </div>
         </template>
 
@@ -75,7 +88,14 @@ const formatDate = (dateString) => {
                                 </div>
                                 <div v-if="journal.reference_type">
                                     <p class="text-xs text-slate-500">Referensi Sumber</p>
-                                    <p class="text-sm font-medium text-slate-900">{{ journal.reference_type }} #{{ journal.reference_id }}</p>
+                                    <p class="text-sm font-medium text-slate-900">{{ journal.reference_type.split('\\').pop() }} #{{ journal.reference_id }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-slate-500">Status</p>
+                                    <span class="inline-flex mt-1 px-2.5 py-1 text-xs font-semibold rounded-full"
+                                        :class="{'bg-emerald-100 text-emerald-700': journal.status === 'posted', 'bg-rose-100 text-rose-600': journal.status === 'void', 'bg-amber-100 text-amber-700': journal.status === 'draft'}">
+                                        {{ journal.status.toUpperCase() }}
+                                    </span>
                                 </div>
                             </div>
                         </div>
