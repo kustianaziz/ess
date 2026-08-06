@@ -60,7 +60,7 @@ const selectedPayment = ref(null)
 const payForm = useForm({
   bill_amount: 0,
   payment_reference: '',
-  cash_account_id: props.cashAccounts[0]?.id || '',
+  cash_account_id: '',
   payment_date: new Date().toISOString().split('T')[0],
   notes: ''
 })
@@ -104,7 +104,7 @@ const typeForm = useForm({
   vendor_name: '',
   default_amount: 0,
   due_date: new Date().toISOString().split('T')[0],
-  cash_account_id: props.cashAccounts[0]?.id || ''
+  cash_account_id: ''
 })
 
 const rawTypeAmountInput = ref('')
