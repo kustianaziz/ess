@@ -25,7 +25,7 @@ class RenewalRequestController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, \App\Actions\Shared\GenerateRequestNumberAction $generateRequestNumber)
     {
         $validated = $request->validate([
             'domain_id' => 'required|exists:domains,id',
@@ -33,8 +33,7 @@ class RenewalRequestController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        $count = RenewalRequest::whereYear('created_at', date('Y'))->whereMonth('created_at', date('m'))->count() + 1;
-        $renewalNumber = 'RN/' . date('Y/m/') . str_pad($count, 4, '0', STR_PAD_LEFT);
+        $renewalNumber = $generateRequestNumber->execute('RN', 'renewal_requests', 'renewal_number');
 
         $domain = Domain::findOrFail($validated['domain_id']);
 
@@ -60,7 +59,7 @@ class RenewalRequestController extends Controller
         ]);
     }
 
-    public function generateInvoice(Request $request, RenewalRequest $renewalRequest)
+    public function generateInvoice(Request $request, RenewalRequest $renewalRequest, \App\Actions\Shared\GenerateRequestNumberAction $generateRequestNumber)
     {
         $validated = $request->validate([
             'invoice_date' => 'required|date',
@@ -75,9 +74,8 @@ class RenewalRequestController extends Controller
             'items.*.unit_price' => 'required|numeric|min:0',
         ]);
 
-        DB::transaction(function () use ($validated, $renewalRequest) {
-            $count = Invoice::whereYear('created_at', date('Y'))->whereMonth('created_at', date('m'))->count() + 1;
-            $invoiceNumber = 'INV/' . date('Y/m/') . str_pad($count, 4, '0', STR_PAD_LEFT);
+        DB::transaction(function () use ($validated, $renewalRequest, $generateRequestNumber) {
+            $invoiceNumber = $generateRequestNumber->execute('INV', 'invoices', 'invoice_number');
 
             $invoice = Invoice::create([
                 'invoice_number' => $invoiceNumber,

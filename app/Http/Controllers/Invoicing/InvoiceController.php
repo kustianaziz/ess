@@ -75,8 +75,7 @@ class InvoiceController extends Controller
         ]);
 
         DB::transaction(function () use ($validated) {
-            $count = Invoice::whereYear('created_at', date('Y'))->whereMonth('created_at', date('m'))->count() + 1;
-            $invoice_number = 'INV/' . date('Y/m/') . str_pad($count, 4, '0', STR_PAD_LEFT);
+            $invoice_number = app(\App\Actions\Shared\GenerateRequestNumberAction::class)->execute('INV', 'invoices', 'invoice_number');
 
             $invoice = Invoice::create([
                 'invoice_number' => $invoice_number,
@@ -138,8 +137,7 @@ class InvoiceController extends Controller
         $invoice->load('items');
 
         \DB::transaction(function () use ($invoice) {
-            $invCount = Invoice::whereYear('created_at', date('Y'))->whereMonth('created_at', date('m'))->count() + 1;
-            $invNumber = 'INV/' . date('Y/m/') . str_pad($invCount, 4, '0', STR_PAD_LEFT);
+            $invNumber = app(\App\Actions\Shared\GenerateRequestNumberAction::class)->execute('INV', 'invoices', 'invoice_number');
 
             // Perpanjang 1 bulan
             $newInvoiceDate = \Carbon\Carbon::parse($invoice->due_date);
