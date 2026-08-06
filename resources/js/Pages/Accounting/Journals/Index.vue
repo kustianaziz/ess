@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, reactive } from 'vue';
+import { ref, computed } from 'vue';
 import { Head, useForm, router, Link } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Modal from '@/Components/Modal.vue';
@@ -25,26 +25,30 @@ const isJurnalkanModalOpen = ref(false);
 const selectedTrx = ref(null);
 const showFilters = ref(false);
 
-// Filter state
-const filterForm = reactive({
-    date_from: props.filters?.date_from ?? '',
-    date_to: props.filters?.date_to ?? '',
-    period_id: props.filters?.period_id ?? '',
-    source_type: props.filters?.source_type ?? '',
-});
+// Filter state — plain refs to avoid reactive + useForm conflict
+const filterDateFrom = ref(props.filters?.date_from ?? '');
+const filterDateTo = ref(props.filters?.date_to ?? '');
+const filterPeriodId = ref(props.filters?.period_id ?? '');
+const filterSourceType = ref(props.filters?.source_type ?? '');
 
 const applyFilters = () => {
-    router.get(route('accounting.journals.index'), filterForm, { preserveState: true, preserveScroll: true });
-};
-const resetFilters = () => {
-    filterForm.date_from = '';
-    filterForm.date_to = '';
-    filterForm.period_id = '';
-    filterForm.source_type = '';
-    router.get(route('accounting.journals.index'), {}, { preserveState: true, preserveScroll: true });
+    router.get(route('accounting.journals.index'), {
+        date_from: filterDateFrom.value,
+        date_to: filterDateTo.value,
+        period_id: filterPeriodId.value,
+        source_type: filterSourceType.value,
+    }, { preserveState: true, preserveScroll: true });
 };
 
-// Manual Journal Form
+const resetFilters = () => {
+    filterDateFrom.value = '';
+    filterDateTo.value = '';
+    filterPeriodId.value = '';
+    filterSourceType.value = '';
+    router.get(route('accounting.journals.index'), {}, { preserveState: false });
+};
+
+// ── Manual Journal Form ──
 const manualForm = useForm({
     date: new Date().toISOString().split('T')[0],
     description: '',
@@ -63,6 +67,7 @@ const removeManualItem = (i) => { if (manualForm.items.length > 2) manualForm.it
 
 const openManualModal = () => {
     manualForm.reset();
+    manualForm.date = new Date().toISOString().split('T')[0];
     manualForm.items = [
         { coa_id: '', description: '', debit: 0, credit: 0 },
         { coa_id: '', description: '', debit: 0, credit: 0 }
@@ -70,7 +75,6 @@ const openManualModal = () => {
     isManualModalOpen.value = true;
 };
 const closeManualModal = () => { isManualModalOpen.value = false; manualForm.reset(); };
-
 const submitManual = () => {
     manualForm.post(route('accounting.journals.store'), {
         preserveScroll: true,
@@ -78,7 +82,7 @@ const submitManual = () => {
     });
 };
 
-// Jurnalkan from source transaction (split-capable)
+// ── Jurnalkan from source transaction (split-capable) ──
 const jurnalkanForm = useForm({
     source_type: '',
     source_id: '',
@@ -93,7 +97,6 @@ const openJurnalkanModal = (trx) => {
     jurnalkanForm.source_id = trx.source_id;
     jurnalkanForm.date = trx.date;
     jurnalkanForm.description = trx.description;
-    // Default: single debit & single credit row for the full amount
     jurnalkanForm.items = [
         { coa_id: '', description: trx.description, debit: trx.amount, credit: 0 },
         { coa_id: '', description: trx.description, debit: 0, credit: trx.amount },
@@ -116,15 +119,15 @@ const submitJurnal = () => {
     });
 };
 
-// Void journal
+// ── Void journal (delete reference so it reappears in pending) ──
 const voidJournal = (journal) => {
-    if (!confirm(`Batalkan jurnal ${journal.journal_number}? Tindakan ini tidak bisa dibatalkan.`)) return;
+    if (!confirm(`Batalkan jurnal ${journal.journal_number}?\n\nTransaksi ini akan kembali ke tab "Belum Dijurnal" dan bisa dijurnal ulang.`)) return;
     router.post(route('accounting.journals.void', journal.id), {}, { preserveScroll: true });
 };
 
-const formatRupiah = (v) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(v);
-const formatDate = (d) => new Date(d).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' });
-const statusColor = (s) => ({ 'posted': 'bg-emerald-100 text-emerald-700', 'void': 'bg-rose-100 text-rose-600', 'draft': 'bg-amber-100 text-amber-700' }[s] || 'bg-slate-100 text-slate-600');
+const formatRupiah = (v) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(v || 0);
+const formatDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
+const statusColor = (s) => ({ posted: 'bg-emerald-100 text-emerald-700', void: 'bg-rose-100 text-rose-600', draft: 'bg-amber-100 text-amber-700' }[s] ?? 'bg-slate-100 text-slate-600');
 </script>
 
 <template>
@@ -134,8 +137,10 @@ const statusColor = (s) => ({ 'posted': 'bg-emerald-100 text-emerald-700', 'void
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <h2 class="text-xl font-bold leading-tight text-gray-800">Transaksi Jurnal</h2>
                 <div class="flex items-center gap-2">
-                    <button @click="showFilters = !showFilters" class="flex items-center gap-2 px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white hover:bg-slate-50 transition-all">
-                        <SlidersHorizontal class="w-4 h-4 text-slate-500" /> Filter
+                    <button @click="showFilters = !showFilters"
+                        class="flex items-center gap-2 px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white hover:bg-slate-50 transition-all"
+                        :class="showFilters ? 'bg-indigo-50 border-indigo-300 text-indigo-600' : 'text-slate-600'">
+                        <SlidersHorizontal class="w-4 h-4" /> Filter
                     </button>
                     <PrimaryButton @click="openManualModal" class="gap-2 shrink-0">
                         <Plus class="w-4 h-4" /> Jurnal Manual
@@ -147,39 +152,42 @@ const statusColor = (s) => ({ 'posted': 'bg-emerald-100 text-emerald-700', 'void
         <div class="py-12">
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8 space-y-5">
 
-                <!-- Filter Panel -->
-                <div v-if="showFilters" class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Tanggal Dari</label>
-                            <input type="date" v-model="filterForm.date_from" class="border-gray-300 rounded-lg text-sm w-full shadow-sm">
+                <!-- ── Filter Panel ── -->
+                <Transition name="slide-down">
+                    <div v-if="showFilters" class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                        <p class="text-sm font-semibold text-slate-700 mb-4">Filter Transaksi</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1.5">Tanggal Dari</label>
+                                <input type="date" v-model="filterDateFrom" class="border-gray-300 rounded-lg text-sm w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1.5">Tanggal Sampai</label>
+                                <input type="date" v-model="filterDateTo" class="border-gray-300 rounded-lg text-sm w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1.5">Periode Akuntansi</label>
+                                <select v-model="filterPeriodId" class="border-gray-300 rounded-lg text-sm w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="">Semua Periode</option>
+                                    <option v-for="p in periods" :key="p.id" :value="p.id">{{ p.name }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1.5">Sumber Transaksi</label>
+                                <select v-model="filterSourceType" class="border-gray-300 rounded-lg text-sm w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="">Semua Sumber</option>
+                                    <option v-for="st in sourceTypes" :key="st.value" :value="st.value">{{ st.label }}</option>
+                                </select>
+                            </div>
                         </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Tanggal Sampai</label>
-                            <input type="date" v-model="filterForm.date_to" class="border-gray-300 rounded-lg text-sm w-full shadow-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Periode Akuntansi</label>
-                            <select v-model="filterForm.period_id" class="border-gray-300 rounded-lg text-sm w-full shadow-sm">
-                                <option value="">Semua Periode</option>
-                                <option v-for="p in periods" :key="p.id" :value="p.id">{{ p.name }}</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Sumber Transaksi</label>
-                            <select v-model="filterForm.source_type" class="border-gray-300 rounded-lg text-sm w-full shadow-sm">
-                                <option value="">Semua Sumber</option>
-                                <option v-for="st in sourceTypes" :key="st.value" :value="st.value">{{ st.label }}</option>
-                            </select>
+                        <div class="flex justify-end gap-2 mt-4">
+                            <button @click="resetFilters" class="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-600 transition">Reset</button>
+                            <PrimaryButton @click="applyFilters">Terapkan Filter</PrimaryButton>
                         </div>
                     </div>
-                    <div class="flex justify-end gap-2 mt-4">
-                        <button @click="resetFilters" class="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-600">Reset</button>
-                        <PrimaryButton @click="applyFilters" class="!text-sm !px-4 !py-2">Terapkan</PrimaryButton>
-                    </div>
-                </div>
+                </Transition>
 
-                <!-- Tabs -->
+                <!-- ── Tabs ── -->
                 <div class="border-b border-gray-200">
                     <nav class="-mb-px flex space-x-8">
                         <button @click="activeTab = 'pending'"
@@ -196,7 +204,7 @@ const statusColor = (s) => ({ 'posted': 'bg-emerald-100 text-emerald-700', 'void
                     </nav>
                 </div>
 
-                <!-- ── Tab Pending ── -->
+                <!-- ── Tab: Belum Dijurnal ── -->
                 <div v-if="activeTab === 'pending'" class="overflow-hidden bg-white shadow-sm sm:rounded-xl border border-slate-200">
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse min-w-[700px]">
@@ -212,17 +220,18 @@ const statusColor = (s) => ({ 'posted': 'bg-emerald-100 text-emerald-700', 'void
                             </thead>
                             <tbody>
                                 <tr v-for="trx in pendingTransactions" :key="trx.id" class="border-b border-slate-100 hover:bg-slate-50/50">
-                                    <td class="p-4 text-sm text-slate-600">{{ formatDate(trx.date) }}</td>
-                                    <td class="p-4 text-sm">
+                                    <td class="p-4 text-sm text-slate-600 whitespace-nowrap">{{ formatDate(trx.date) }}</td>
+                                    <td class="p-4 text-sm whitespace-nowrap">
                                         <span class="px-2 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700">{{ trx.source_label }}</span>
                                     </td>
-                                    <td class="p-4 text-sm font-mono text-slate-700">{{ trx.reference_number }}</td>
+                                    <td class="p-4 text-sm font-mono text-slate-700 whitespace-nowrap">{{ trx.reference_number }}</td>
                                     <td class="p-4 text-sm text-slate-800 max-w-xs truncate">{{ trx.description }}</td>
-                                    <td class="p-4 text-sm font-bold text-right" :class="trx.type === 'in' ? 'text-emerald-600' : 'text-rose-600'">
+                                    <td class="p-4 text-sm font-bold text-right whitespace-nowrap" :class="trx.type === 'in' ? 'text-emerald-600' : 'text-rose-600'">
                                         {{ formatRupiah(trx.amount) }}
                                     </td>
                                     <td class="p-4 text-center">
-                                        <button @click="openJurnalkanModal(trx)" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition-all">
+                                        <button @click="openJurnalkanModal(trx)"
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition-all">
                                             <Plus class="w-3 h-3" /> Jurnalkan
                                         </button>
                                     </td>
@@ -238,7 +247,7 @@ const statusColor = (s) => ({ 'posted': 'bg-emerald-100 text-emerald-700', 'void
                     </div>
                 </div>
 
-                <!-- ── Tab Journals ── -->
+                <!-- ── Tab: Buku Jurnal ── -->
                 <div v-if="activeTab === 'journals'" class="overflow-hidden bg-white shadow-sm sm:rounded-xl border border-slate-200">
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse min-w-[700px]">
@@ -253,20 +262,24 @@ const statusColor = (s) => ({ 'posted': 'bg-emerald-100 text-emerald-700', 'void
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="journal in journals" :key="journal.id" class="border-b border-slate-100 hover:bg-slate-50/50" :class="journal.status === 'void' ? 'opacity-60' : ''">
-                                    <td class="p-4 text-sm text-slate-600">{{ formatDate(journal.date) }}</td>
-                                    <td class="p-4 text-sm font-mono font-semibold text-indigo-600">{{ journal.journal_number }}</td>
+                                <tr v-for="journal in journals" :key="journal.id"
+                                    class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors"
+                                    :class="journal.status === 'void' ? 'opacity-50 bg-slate-50' : ''">
+                                    <td class="p-4 text-sm text-slate-600 whitespace-nowrap">{{ formatDate(journal.date) }}</td>
+                                    <td class="p-4 text-sm font-mono font-semibold text-indigo-600 whitespace-nowrap">{{ journal.journal_number }}</td>
                                     <td class="p-4 text-sm text-slate-700 max-w-xs truncate" :class="journal.status === 'void' ? 'line-through' : ''">{{ journal.description }}</td>
-                                    <td class="p-4 text-sm text-right font-semibold text-slate-800">{{ formatRupiah(journal.amount) }}</td>
+                                    <td class="p-4 text-sm text-right font-semibold text-slate-800 whitespace-nowrap">{{ formatRupiah(journal.amount) }}</td>
                                     <td class="p-4 text-sm">
                                         <span class="px-2 py-1 text-xs font-semibold rounded-full" :class="statusColor(journal.status)">{{ journal.status.toUpperCase() }}</span>
                                     </td>
                                     <td class="p-4 text-sm text-center">
-                                        <div class="flex items-center justify-center gap-2">
-                                            <Link :href="route('accounting.journals.show', journal.id)" class="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg" title="Detail">
+                                        <div class="flex items-center justify-center gap-1">
+                                            <Link :href="route('accounting.journals.show', journal.id)"
+                                                class="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition" title="Lihat Detail">
                                                 <FileText class="w-4 h-4" />
                                             </Link>
-                                            <button v-if="journal.status !== 'void'" @click="voidJournal(journal)" class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg" title="Batalkan Jurnal">
+                                            <button v-if="journal.status !== 'void'" @click="voidJournal(journal)"
+                                                class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition" title="Batalkan Jurnal">
                                                 <Ban class="w-4 h-4" />
                                             </button>
                                         </div>
@@ -279,22 +292,23 @@ const statusColor = (s) => ({ 'posted': 'bg-emerald-100 text-emerald-700', 'void
                         </table>
                     </div>
                 </div>
+
             </div>
         </div>
 
-        <!-- ═══ Modal: Jurnalkan (from source) ═══ -->
+        <!-- ══════ Modal: Jurnalkan (from source) ══════ -->
         <Modal :show="isJurnalkanModalOpen" @close="closeJurnalkanModal" maxWidth="5xl">
             <div class="p-6">
                 <div class="mb-5 pb-4 border-b border-slate-200">
                     <h2 class="text-lg font-bold text-gray-900">Jurnalkan Transaksi</h2>
-                    <div v-if="selectedTrx" class="mt-2 flex flex-wrap gap-3 text-xs">
+                    <div v-if="selectedTrx" class="mt-2 flex flex-wrap gap-3 text-xs items-center">
                         <span class="bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full font-semibold">{{ selectedTrx.source_label }}</span>
-                        <span class="text-slate-500">{{ selectedTrx.reference_number }}</span>
+                        <span class="text-slate-500 font-mono">{{ selectedTrx.reference_number }}</span>
                         <span class="font-bold text-slate-800">{{ formatRupiah(selectedTrx.amount) }}</span>
                     </div>
+                    <p class="text-xs text-slate-400 mt-2">Anda bisa pecah nominal ke beberapa akun. Pastikan Total Debit = Total Kredit.</p>
                 </div>
 
-                <!-- Info -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
                     <div>
                         <InputLabel value="Tanggal Jurnal" />
@@ -308,20 +322,19 @@ const statusColor = (s) => ({ 'posted': 'bg-emerald-100 text-emerald-700', 'void
                     </div>
                 </div>
 
-                <!-- Items table with split -->
-                <div class="border border-slate-200 rounded-xl overflow-hidden">
+                <div class="border border-slate-200 rounded-xl overflow-hidden mb-4">
                     <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-                        <p class="text-sm font-semibold text-slate-700">Detail Akun (Bisa Dipecah)</p>
-                        <button @click="addJurnalItem" type="button" class="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-semibold">
+                        <p class="text-sm font-semibold text-slate-700">Baris Akun (Debit / Kredit)</p>
+                        <button @click="addJurnalItem" type="button" class="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-semibold px-2 py-1 rounded hover:bg-indigo-50">
                             <Plus class="w-3.5 h-3.5" /> Tambah Baris
                         </button>
                     </div>
                     <div class="overflow-x-auto">
-                        <table class="w-full text-sm min-w-[600px]">
-                            <thead class="bg-slate-50/50">
-                                <tr class="text-xs text-slate-500 border-b border-slate-200">
+                        <table class="w-full text-sm min-w-[580px]">
+                            <thead class="text-xs text-slate-500 border-b border-slate-200 bg-slate-50/50">
+                                <tr>
                                     <th class="px-4 py-2 text-left font-semibold">Akun COA</th>
-                                    <th class="px-4 py-2 text-left font-semibold">Keterangan</th>
+                                    <th class="px-4 py-2 text-left font-semibold">Keterangan Baris</th>
                                     <th class="px-4 py-2 text-right font-semibold w-36">Debit</th>
                                     <th class="px-4 py-2 text-right font-semibold w-36">Kredit</th>
                                     <th class="px-4 py-2 w-10"></th>
@@ -330,7 +343,7 @@ const statusColor = (s) => ({ 'posted': 'bg-emerald-100 text-emerald-700', 'void
                             <tbody>
                                 <tr v-for="(item, idx) in jurnalkanForm.items" :key="idx" class="border-b border-slate-100">
                                     <td class="px-4 py-2">
-                                        <select v-model="item.coa_id" class="border-gray-300 rounded-lg text-sm w-full shadow-sm">
+                                        <select v-model="item.coa_id" class="border-gray-300 rounded-lg text-sm w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                             <option value="" disabled>Pilih Akun...</option>
                                             <option v-for="c in coas" :key="c.id" :value="c.id">{{ c.code }} – {{ c.name }}</option>
                                         </select>
@@ -340,19 +353,22 @@ const statusColor = (s) => ({ 'posted': 'bg-emerald-100 text-emerald-700', 'void
                                         <TextInput type="text" class="block w-full text-sm" v-model="item.description" placeholder="Opsional" />
                                     </td>
                                     <td class="px-4 py-2">
-                                        <TextInput type="number" class="block w-full text-sm text-right" v-model="item.debit" min="0" step="0.01" @focus="item.debit = item.debit == 0 ? '' : item.debit" />
+                                        <TextInput type="number" class="block w-full text-sm text-right" v-model="item.debit" min="0" step="0.01"
+                                            @focus="item.debit = (item.debit == 0 ? '' : item.debit)" />
                                     </td>
                                     <td class="px-4 py-2">
-                                        <TextInput type="number" class="block w-full text-sm text-right" v-model="item.credit" min="0" step="0.01" @focus="item.credit = item.credit == 0 ? '' : item.credit" />
+                                        <TextInput type="number" class="block w-full text-sm text-right" v-model="item.credit" min="0" step="0.01"
+                                            @focus="item.credit = (item.credit == 0 ? '' : item.credit)" />
                                     </td>
                                     <td class="px-4 py-2 text-center">
-                                        <button @click="removeJurnalItem(idx)" type="button" :disabled="jurnalkanForm.items.length <= 2" class="p-1 text-rose-400 hover:text-rose-600 disabled:opacity-30 disabled:cursor-not-allowed rounded">
+                                        <button @click="removeJurnalItem(idx)" type="button" :disabled="jurnalkanForm.items.length <= 2"
+                                            class="p-1 text-rose-400 hover:text-rose-600 disabled:opacity-30 disabled:cursor-not-allowed rounded">
                                             <Trash2 class="w-3.5 h-3.5" />
                                         </button>
                                     </td>
                                 </tr>
                             </tbody>
-                            <tfoot class="bg-slate-50 border-t-2 border-slate-200">
+                            <tfoot class="bg-slate-50 border-t-2 border-slate-300">
                                 <tr>
                                     <td colspan="2" class="px-4 py-2.5 text-xs font-bold text-slate-500 uppercase text-right">Total</td>
                                     <td class="px-4 py-2.5 text-right font-bold text-sm" :class="isJurnalBalanced ? 'text-emerald-600' : 'text-rose-500'">{{ formatRupiah(jurnalDebitTotal) }}</td>
@@ -364,21 +380,23 @@ const statusColor = (s) => ({ 'posted': 'bg-emerald-100 text-emerald-700', 'void
                     </div>
                     <InputError class="p-3" :message="jurnalkanForm.errors.items" />
                 </div>
-                <p v-if="!isJurnalBalanced" class="text-xs text-rose-500 mt-2">Total Debit dan Kredit harus seimbang dan lebih dari 0.</p>
+                <p v-if="!isJurnalBalanced" class="text-xs text-rose-500 mb-4">⚠ Total Debit dan Kredit harus seimbang dan lebih dari 0.</p>
 
-                <div class="flex justify-end gap-3 mt-5">
+                <div class="flex justify-end gap-3">
                     <SecondaryButton @click="closeJurnalkanModal">Batal</SecondaryButton>
-                    <PrimaryButton @click="submitJurnal" :disabled="jurnalkanForm.processing || !isJurnalBalanced" :class="{ 'opacity-50 cursor-not-allowed': jurnalkanForm.processing || !isJurnalBalanced }">
+                    <PrimaryButton @click="submitJurnal" :disabled="jurnalkanForm.processing || !isJurnalBalanced"
+                        :class="{ 'opacity-50 cursor-not-allowed': jurnalkanForm.processing || !isJurnalBalanced }">
                         {{ jurnalkanForm.processing ? 'Menyimpan...' : 'Simpan Jurnal' }}
                     </PrimaryButton>
                 </div>
             </div>
         </Modal>
 
-        <!-- ═══ Modal: Manual Journal ═══ -->
+        <!-- ══════ Modal: Jurnal Manual ══════ -->
         <Modal :show="isManualModalOpen" @close="closeManualModal" maxWidth="5xl">
             <div class="p-6">
-                <h2 class="text-lg font-bold text-gray-900 mb-5">Tambah Jurnal Manual</h2>
+                <h2 class="text-lg font-bold text-gray-900 mb-1">Tambah Jurnal Manual</h2>
+                <p class="text-xs text-slate-400 mb-5">Untuk penyesuaian, depresiasi, atau transaksi non-sistem lainnya.</p>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
                     <div>
@@ -388,24 +406,24 @@ const statusColor = (s) => ({ 'posted': 'bg-emerald-100 text-emerald-700', 'void
                     </div>
                     <div>
                         <InputLabel for="mdesc" value="Keterangan Umum" />
-                        <TextInput id="mdesc" type="text" class="mt-1 block w-full" v-model="manualForm.description" placeholder="Cth: Penyesuaian depresiasi..." />
+                        <TextInput id="mdesc" type="text" class="mt-1 block w-full" v-model="manualForm.description" placeholder="Cth: Penyesuaian depresiasi..." required />
                         <InputError class="mt-1" :message="manualForm.errors.description" />
                     </div>
                 </div>
 
-                <div class="border border-slate-200 rounded-xl overflow-hidden">
+                <div class="border border-slate-200 rounded-xl overflow-hidden mb-4">
                     <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-                        <p class="text-sm font-semibold text-slate-700">Detail Akun</p>
-                        <button @click="addManualItem" type="button" class="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-semibold">
+                        <p class="text-sm font-semibold text-slate-700">Baris Akun</p>
+                        <button @click="addManualItem" type="button" class="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-semibold px-2 py-1 rounded hover:bg-indigo-50">
                             <Plus class="w-3.5 h-3.5" /> Tambah Baris
                         </button>
                     </div>
                     <div class="overflow-x-auto">
-                        <table class="w-full text-sm min-w-[600px]">
-                            <thead class="bg-slate-50/50">
-                                <tr class="text-xs text-slate-500 border-b border-slate-200">
+                        <table class="w-full text-sm min-w-[580px]">
+                            <thead class="text-xs text-slate-500 border-b border-slate-200 bg-slate-50/50">
+                                <tr>
                                     <th class="px-4 py-2 text-left font-semibold">Akun COA</th>
-                                    <th class="px-4 py-2 text-left font-semibold">Keterangan</th>
+                                    <th class="px-4 py-2 text-left font-semibold">Keterangan Baris</th>
                                     <th class="px-4 py-2 text-right font-semibold w-36">Debit</th>
                                     <th class="px-4 py-2 text-right font-semibold w-36">Kredit</th>
                                     <th class="px-4 py-2 w-10"></th>
@@ -414,7 +432,7 @@ const statusColor = (s) => ({ 'posted': 'bg-emerald-100 text-emerald-700', 'void
                             <tbody>
                                 <tr v-for="(item, idx) in manualForm.items" :key="idx" class="border-b border-slate-100">
                                     <td class="px-4 py-2">
-                                        <select v-model="item.coa_id" class="border-gray-300 rounded-lg text-sm w-full shadow-sm">
+                                        <select v-model="item.coa_id" class="border-gray-300 rounded-lg text-sm w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                                             <option value="" disabled>Pilih Akun...</option>
                                             <option v-for="c in coas" :key="c.id" :value="c.id">{{ c.code }} – {{ c.name }}</option>
                                         </select>
@@ -424,19 +442,22 @@ const statusColor = (s) => ({ 'posted': 'bg-emerald-100 text-emerald-700', 'void
                                         <TextInput type="text" class="block w-full text-sm" v-model="item.description" placeholder="Opsional" />
                                     </td>
                                     <td class="px-4 py-2">
-                                        <TextInput type="number" class="block w-full text-sm text-right" v-model="item.debit" min="0" step="0.01" @focus="item.debit = item.debit == 0 ? '' : item.debit" />
+                                        <TextInput type="number" class="block w-full text-sm text-right" v-model="item.debit" min="0" step="0.01"
+                                            @focus="item.debit = (item.debit == 0 ? '' : item.debit)" />
                                     </td>
                                     <td class="px-4 py-2">
-                                        <TextInput type="number" class="block w-full text-sm text-right" v-model="item.credit" min="0" step="0.01" @focus="item.credit = item.credit == 0 ? '' : item.credit" />
+                                        <TextInput type="number" class="block w-full text-sm text-right" v-model="item.credit" min="0" step="0.01"
+                                            @focus="item.credit = (item.credit == 0 ? '' : item.credit)" />
                                     </td>
                                     <td class="px-4 py-2 text-center">
-                                        <button @click="removeManualItem(idx)" type="button" :disabled="manualForm.items.length <= 2" class="p-1 text-rose-400 hover:text-rose-600 disabled:opacity-30 disabled:cursor-not-allowed rounded">
+                                        <button @click="removeManualItem(idx)" type="button" :disabled="manualForm.items.length <= 2"
+                                            class="p-1 text-rose-400 hover:text-rose-600 disabled:opacity-30 disabled:cursor-not-allowed rounded">
                                             <Trash2 class="w-3.5 h-3.5" />
                                         </button>
                                     </td>
                                 </tr>
                             </tbody>
-                            <tfoot class="bg-slate-50 border-t-2 border-slate-200">
+                            <tfoot class="bg-slate-50 border-t-2 border-slate-300">
                                 <tr>
                                     <td colspan="2" class="px-4 py-2.5 text-xs font-bold text-slate-500 uppercase text-right">Total</td>
                                     <td class="px-4 py-2.5 text-right font-bold text-sm" :class="isManualBalanced ? 'text-emerald-600' : 'text-rose-500'">{{ formatRupiah(manualTotalDebit) }}</td>
@@ -448,15 +469,22 @@ const statusColor = (s) => ({ 'posted': 'bg-emerald-100 text-emerald-700', 'void
                     </div>
                     <InputError class="p-3" :message="manualForm.errors.items" />
                 </div>
-                <p v-if="!isManualBalanced" class="text-xs text-rose-500 mt-2">Total Debit dan Kredit harus seimbang dan lebih dari 0.</p>
+                <p v-if="!isManualBalanced" class="text-xs text-rose-500 mb-4">⚠ Total Debit dan Kredit harus seimbang dan lebih dari 0.</p>
 
-                <div class="flex justify-end gap-3 mt-5">
+                <div class="flex justify-end gap-3">
                     <SecondaryButton @click="closeManualModal">Batal</SecondaryButton>
-                    <PrimaryButton @click="submitManual" :disabled="manualForm.processing || !isManualBalanced" :class="{ 'opacity-50 cursor-not-allowed': manualForm.processing || !isManualBalanced }">
+                    <PrimaryButton @click="submitManual" :disabled="manualForm.processing || !isManualBalanced"
+                        :class="{ 'opacity-50 cursor-not-allowed': manualForm.processing || !isManualBalanced }">
                         {{ manualForm.processing ? 'Menyimpan...' : 'Simpan Jurnal' }}
                     </PrimaryButton>
                 </div>
             </div>
         </Modal>
+
     </AuthenticatedLayout>
 </template>
+
+<style scoped>
+.slide-down-enter-active, .slide-down-leave-active { transition: all 0.2s ease; }
+.slide-down-enter-from, .slide-down-leave-to { opacity: 0; transform: translateY(-8px); }
+</style>

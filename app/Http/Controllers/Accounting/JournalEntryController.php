@@ -48,7 +48,7 @@ class JournalEntryController extends Controller
         $journals = $journalsQuery->get();
 
         // Collect all source transactions
-        $allJournalRefs = JournalEntry::whereNotNull('reference_type')->get()->keyBy(function ($j) {
+        $allJournalRefs = JournalEntry::whereNotNull('reference_type')->where('status', '!=', 'void')->get()->keyBy(function ($j) {
             return $j->reference_type . '_' . $j->reference_id;
         });
 
