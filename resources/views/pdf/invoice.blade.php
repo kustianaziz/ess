@@ -206,8 +206,9 @@
             <li>Pembayaran dilakukan melalui Transfer Via Rekening Perusahaan yang tercantum dalam invoice.</li>
             <li>Keterlambatan dan ketidakjelasan pembayaran akan mengakibatkan tidak tercatatnya di akunting kami.</li>
             <li>Harap mencantumkan nomor invoice dan email bukti pembayaran.</li>
-            <li>Konfirmasi tagihan/pembayaran silahkan email ke: <b>fourizal75@gmail.com</b> atau <b>aisitinuralisah6@gmail.com</b> (finance).</li>
-            <li>Kontak Person: Rizal 082118844325 / Siti Nuralisah 081312703928 (whatsapp).</li>
+            <li>Konfirmasi tagihan/pembayaran silahkan menghubungi:<br>
+            <b>aisitinuralisah6@gmail.com</b> (finance)<br>
+            Siti Nuralisah <b>081312703928</b> (whatsapp)</li>
         </ul>
         <div class="footer-quote">We'll Make It Real. There Is No Best Only Better.</div>
     </div>
