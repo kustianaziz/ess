@@ -14,6 +14,8 @@ use App\Models\ReimbursementRequest;
 use App\Models\OperationalRequest;
 use App\Models\BusinessTripSettlement;
 use App\Models\MonthlyBillPayment;
+use App\Models\AssetDepreciation;
+use App\Models\Asset;
 use App\Models\AccountingPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -68,8 +70,8 @@ class JournalEntryController extends Controller
 
         $transactions = collect();
 
-        // 1. Kas Operasional (Cash Transactions)
-        foreach (CashTransaction::where('status', 'posted')->get() as $ct) {
+        // 1. Kas Operasional — HANYA yang MANDIRI (source_type IS NULL = bukan turunan dari request lain)
+        foreach (CashTransaction::where('status', 'posted')->whereNull('source_type')->get() as $ct) {
             $refKey = CashTransaction::class . '_' . $ct->id;
             $transactions->push([
                 'id'               => 'ct_' . $ct->id,
@@ -204,6 +206,23 @@ class JournalEntryController extends Controller
             ]);
         }
 
+        // 9. Penyusutan Aset (AssetDepreciation)
+        foreach (AssetDepreciation::with('asset')->get() as $dep) {
+            $refKey = AssetDepreciation::class . '_' . $dep->id;
+            $transactions->push([
+                'id'               => 'dep_' . $dep->id,
+                'source_type'      => AssetDepreciation::class,
+                'source_label'     => 'Penyusutan Aset',
+                'source_id'        => $dep->id,
+                'date'             => sprintf('%04d-%02d-01', $dep->period_year, $dep->period_month),
+                'description'      => '[PENYUSUTAN] ' . ($dep->asset->name ?? 'Aset') . ' - ' . $dep->period_month . '/' . $dep->period_year,
+                'amount'           => $dep->depreciation_amount,
+                'reference_number' => 'DEP-' . str_pad($dep->id, 4, '0', STR_PAD_LEFT),
+                'is_journalled'    => $allJournalRefs->has($refKey),
+                'type'             => 'out',
+            ]);
+        }
+
         // Filter pending
         $pendingTransactions = $transactions->where('is_journalled', false);
         if ($sourceType) {
@@ -218,7 +237,7 @@ class JournalEntryController extends Controller
         $pendingTransactions = $pendingTransactions->sortByDesc('date')->values();
 
         $sourceTypes = [
-            ['value' => CashTransaction::class,       'label' => 'Kas Operasional'],
+            ['value' => CashTransaction::class,       'label' => 'Kas Operasional (Mandiri)'],
             ['value' => Invoice::class,               'label' => 'Invoice / Piutang'],
             ['value' => InvoicePayment::class,        'label' => 'Pembayaran Invoice'],
             ['value' => VendorPayment::class,         'label' => 'Pembayaran Vendor (Renewal)'],
@@ -226,6 +245,7 @@ class JournalEntryController extends Controller
             ['value' => OperationalRequest::class,    'label' => 'Biaya Operasional (Konsumsi)'],
             ['value' => BusinessTripSettlement::class,'label' => 'Perjalanan Dinas'],
             ['value' => MonthlyBillPayment::class,    'label' => 'Tagihan Bulanan'],
+            ['value' => AssetDepreciation::class,     'label' => 'Penyusutan Aset'],
         ];
 
         return Inertia::render('Accounting/Journals/Index', [
