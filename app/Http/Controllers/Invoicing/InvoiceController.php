@@ -89,6 +89,7 @@ class InvoiceController extends Controller
                 'total_amount' => $validated['total_amount'],
                 'notes' => $validated['notes'],
                 'status' => 'draft',
+                'created_by' => auth()->id(),
             ]);
 
             foreach ($validated['items'] as $item) {
