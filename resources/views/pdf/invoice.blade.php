@@ -184,14 +184,14 @@
                 </div>
                 
                 <!-- Signature & Stamp Area -->
-                <div style="position: relative; height: {{ (isset($invoice->customer->service->signature_image) && $invoice->customer->service->signature_image != '') || (isset($invoice->customer->service->stamp_image) && $invoice->customer->service->stamp_image != '') ? '80px' : '45px' }}; margin: 0 auto; width: 100%;">
+                <div style="position: relative; height: {{ (isset($invoice->customer->service->signature_image) && $invoice->customer->service->signature_image != '') || (isset($invoice->customer->service->stamp_image) && $invoice->customer->service->stamp_image != '') ? '110px' : '45px' }}; margin: 0 auto; width: 100%;">
                     
                     @if(isset($invoice->customer->service->stamp_image) && $invoice->customer->service->stamp_image != '')
-                        <img src="{{ storage_path('app/public/' . $invoice->customer->service->stamp_image) }}" style="max-height: 65px; width: auto; position: absolute; left: 10%; top: 5px; opacity: 0.85; z-index: 1;" alt="Stamp">
+                        <img src="{{ storage_path('app/public/' . $invoice->customer->service->stamp_image) }}" style="max-height: 75px; width: auto; position: absolute; left: 10%; top: 15px; opacity: 0.85; z-index: 1;" alt="Stamp">
                     @endif
 
                     @if(isset($invoice->customer->service->signature_image) && $invoice->customer->service->signature_image != '')
-                        <img src="{{ storage_path('app/public/' . $invoice->customer->service->signature_image) }}" style="max-height: 70px; width: auto; position: absolute; left: 35%; top: 0px; z-index: 2;" alt="Signature">
+                        <img src="{{ storage_path('app/public/' . $invoice->customer->service->signature_image) }}" style="max-height: 110px; width: auto; position: absolute; left: 25%; top: 0px; z-index: 2;" alt="Signature">
                     @endif
 
                 </div>
