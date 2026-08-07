@@ -161,6 +161,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('renewals/{renewalRequest}/mark-paid-customer', [\App\Http\Controllers\Renewal\RenewalRequestController::class, 'markPaidCustomer'])->name('renewals.mark-paid-customer');
         Route::post('renewals/{renewalRequest}/vendor-payment', [\App\Http\Controllers\Renewal\VendorPaymentController::class, 'store'])->name('renewals.vendor-payment.store');
         Route::post('renewals/{renewalRequest}/complete', [\App\Http\Controllers\Renewal\RenewalRequestController::class, 'complete'])->name('renewals.complete');
+        
+        // Cancellation Routes
+        Route::post('renewals/{renewalRequest}/undo-complete', [\App\Http\Controllers\Renewal\RenewalRequestController::class, 'undoComplete'])->name('renewals.undo-complete');
+        Route::post('renewals/{renewalRequest}/undo-paid-vendor', [\App\Http\Controllers\Renewal\RenewalRequestController::class, 'undoPaidVendor'])->name('renewals.undo-paid-vendor');
+        Route::post('renewals/{renewalRequest}/undo-paid-customer', [\App\Http\Controllers\Renewal\RenewalRequestController::class, 'undoPaidCustomer'])->name('renewals.undo-paid-customer');
+        Route::post('renewals/{renewalRequest}/undo-invoice', [\App\Http\Controllers\Renewal\RenewalRequestController::class, 'undoInvoice'])->name('renewals.undo-invoice');
     });
 });
 

@@ -79,6 +79,30 @@ const submitComplete = () => {
   })
 }
 
+// ============ UNDO METHODS ============
+import { router } from '@inertiajs/vue3'
+
+const undoComplete = () => {
+    if(confirm('Batalkan penyelesaian renewal ini? Status akan kembali menjadi Vendor Dibayar.')) {
+        router.post(route('renewal.renewals.undo-complete', props.renewal.id), {}, { preserveScroll: true })
+    }
+}
+const undoPaidVendor = () => {
+    if(confirm('Batalkan pembayaran ke vendor? Transaksi kas akan dikembalikan dan pembayaran dihapus.')) {
+        router.post(route('renewal.renewals.undo-paid-vendor', props.renewal.id), {}, { preserveScroll: true })
+    }
+}
+const undoPaidCustomer = () => {
+    if(confirm('Batalkan pembayaran dari klien? Transaksi kas akan ditarik kembali.')) {
+        router.post(route('renewal.renewals.undo-paid-customer', props.renewal.id), {}, { preserveScroll: true })
+    }
+}
+const undoInvoice = () => {
+    if(confirm('Batalkan dan hapus invoice tagihan klien ini?')) {
+        router.post(route('renewal.renewals.undo-invoice', props.renewal.id), {}, { preserveScroll: true })
+    }
+}
+
 // Status steps config
 const steps = [
   { key: 'pending', label: 'Dibuat', icon: '📋' },
@@ -151,10 +175,16 @@ const currentStep = (status) => stepOrder.indexOf(status)
       <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2"><FileText class="w-4 h-4 text-indigo-500" /> Invoice ke Klien</h2>
-          <button v-if="!renewal.invoice && renewal.status === 'pending'" @click="showInvoiceModal = true"
-            class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 flex items-center gap-1.5 shadow-md">
-            <Plus class="w-3.5 h-3.5" /> Buat Invoice
-          </button>
+          <div class="flex gap-2">
+            <button v-if="renewal.invoice && renewal.status === 'invoiced_customer'" @click="undoInvoice"
+              class="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 text-xs font-bold hover:bg-rose-100 flex items-center gap-1.5 transition-colors">
+              <RefreshCw class="w-3.5 h-3.5" /> Batal Invoice
+            </button>
+            <button v-if="!renewal.invoice && renewal.status === 'pending'" @click="showInvoiceModal = true"
+              class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 flex items-center gap-1.5 shadow-md">
+              <Plus class="w-3.5 h-3.5" /> Buat Invoice
+            </button>
+          </div>
         </div>
         <div v-if="renewal.invoice" class="space-y-2">
           <div class="flex flex-wrap justify-between gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100">
@@ -170,10 +200,16 @@ const currentStep = (status) => stepOrder.indexOf(status)
             </div>
           </div>
           <!-- Mark Paid Customer -->
-          <button v-if="renewal.status === 'invoiced_customer'" @click="showClientPaymentModal = true"
-            class="w-full py-2 rounded-xl bg-sky-600 text-white text-xs font-bold hover:bg-sky-700 flex items-center justify-center gap-2">
-            <CheckCircle2 class="w-4 h-4" /> Tandai Klien Sudah Membayar
-          </button>
+          <div class="flex flex-col gap-2">
+            <button v-if="renewal.status === 'invoiced_customer'" @click="showClientPaymentModal = true"
+              class="w-full py-2 rounded-xl bg-sky-600 text-white text-xs font-bold hover:bg-sky-700 flex items-center justify-center gap-2">
+              <CheckCircle2 class="w-4 h-4" /> Tandai Klien Sudah Membayar
+            </button>
+            <button v-if="renewal.status === 'paid_customer'" @click="undoPaidCustomer"
+              class="w-full py-2 rounded-xl border border-rose-200 text-rose-600 bg-rose-50 hover:bg-rose-100 text-xs font-bold flex items-center justify-center gap-2 transition-colors">
+              <RefreshCw class="w-4 h-4" /> Batal Bayar Klien
+            </button>
+          </div>
         </div>
         <div v-else class="py-4 text-center text-slate-400 text-sm italic">Belum ada invoice untuk renewal ini.</div>
       </div>
@@ -182,10 +218,16 @@ const currentStep = (status) => stepOrder.indexOf(status)
       <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2"><DollarSign class="w-4 h-4 text-rose-500" /> Pembayaran ke Vendor</h2>
-          <button v-if="!renewal.vendor_payment && renewal.status === 'paid_customer'" @click="showVendorModal = true"
-            class="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 flex items-center gap-1.5 shadow-md">
-            <Plus class="w-3.5 h-3.5" /> Catat Pembayaran Vendor
-          </button>
+          <div class="flex gap-2">
+            <button v-if="renewal.vendor_payment && renewal.status === 'paid_vendor'" @click="undoPaidVendor"
+              class="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 text-xs font-bold hover:bg-rose-100 flex items-center gap-1.5 transition-colors">
+              <RefreshCw class="w-3.5 h-3.5" /> Batal Bayar Vendor
+            </button>
+            <button v-if="!renewal.vendor_payment && renewal.status === 'paid_customer'" @click="showVendorModal = true"
+              class="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 flex items-center gap-1.5 shadow-md">
+              <Plus class="w-3.5 h-3.5" /> Catat Pembayaran Vendor
+            </button>
+          </div>
         </div>
         <div v-if="renewal.vendor_payment" class="space-y-3">
           <div class="flex flex-wrap justify-between gap-2 p-3 bg-rose-50 rounded-xl border border-rose-100">
@@ -216,15 +258,21 @@ const currentStep = (status) => stepOrder.indexOf(status)
       </div>
 
       <!-- Completed Info -->
-      <div v-if="renewal.status === 'completed'" class="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-center gap-4">
-        <CheckCircle2 class="w-10 h-10 text-emerald-600 shrink-0" />
-        <div>
-          <p class="font-black text-emerald-800 text-base">Renewal Selesai! 🎉</p>
-          <p class="text-sm text-emerald-700 mt-0.5">
-            Domain <strong>{{ renewal.domain?.name }}</strong> berhasil diperpanjang.
-            Expired baru: <strong>{{ formatDate(renewal.new_expired_date) }}</strong>
-          </p>
+      <div v-if="renewal.status === 'completed'" class="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+          <CheckCircle2 class="w-10 h-10 text-emerald-600 shrink-0" />
+          <div>
+            <p class="font-black text-emerald-800 text-base">Renewal Selesai! 🎉</p>
+            <p class="text-sm text-emerald-700 mt-0.5">
+              Domain <strong>{{ renewal.domain?.name }}</strong> berhasil diperpanjang.
+              Expired baru: <strong>{{ formatDate(renewal.new_expired_date) }}</strong>
+            </p>
+          </div>
         </div>
+        <button @click="undoComplete"
+          class="px-4 py-2 rounded-xl border border-rose-200 text-rose-600 bg-rose-50 hover:bg-rose-100 text-xs font-bold flex items-center gap-2 transition-colors">
+          <RefreshCw class="w-4 h-4" /> Batal Selesai
+        </button>
       </div>
     </div>
 

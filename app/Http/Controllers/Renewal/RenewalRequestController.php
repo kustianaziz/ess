@@ -200,4 +200,106 @@ class RenewalRequestController extends Controller
 
         return redirect()->back()->with('success', 'Renewal selesai! Tanggal expired domain telah diperbarui.');
     }
+
+    public function undoComplete(RenewalRequest $renewalRequest)
+    {
+        if ($renewalRequest->status !== 'completed') return back()->with('error', 'Status tidak valid.');
+        
+        DB::transaction(function () use ($renewalRequest) {
+            $renewalRequest->domain->update([
+                'expired_date' => $renewalRequest->old_expired_date,
+                // Status domain dibiarkan atau diupdate jika perlu
+            ]);
+            $renewalRequest->update([
+                'status' => 'paid_vendor',
+                'new_expired_date' => null,
+            ]);
+        });
+        return back()->with('success', 'Penyelesaian renewal dibatalkan.');
+    }
+
+    public function undoPaidVendor(RenewalRequest $renewalRequest)
+    {
+        if ($renewalRequest->status !== 'paid_vendor') return back()->with('error', 'Status tidak valid.');
+        $vendorPayment = $renewalRequest->vendorPayment;
+        if (!$vendorPayment) return back()->with('error', 'Pembayaran vendor tidak ditemukan.');
+
+        $isJournalled = \App\Models\JournalEntry::where('reference_type', \App\Models\VendorPayment::class)
+            ->where('reference_id', $vendorPayment->id)->where('status', '!=', 'void')->exists();
+        if ($isJournalled) return back()->with('error', 'Gagal: Pembayaran ini sudah dibukukan di jurnal.');
+
+        DB::transaction(function () use ($renewalRequest, $vendorPayment) {
+            $cashTx = \App\Models\CashTransaction::where('source_type', \App\Models\VendorPayment::class)
+                ->where('source_id', $vendorPayment->id)->first();
+            if ($cashTx) {
+                $cashAcc = \App\Models\CashAccount::find($cashTx->cash_account_id);
+                if ($cashAcc) {
+                    $cashAcc->current_balance += $cashTx->amount; // kembalikan uang
+                    $cashAcc->save();
+                }
+                $cashTx->delete();
+            }
+            $vendorPayment->delete();
+            $renewalRequest->update([
+                'status' => 'paid_customer',
+                'vendor_payment_id' => null,
+            ]);
+        });
+        return back()->with('success', 'Pembayaran vendor dibatalkan.');
+    }
+
+    public function undoPaidCustomer(RenewalRequest $renewalRequest)
+    {
+        if ($renewalRequest->status !== 'paid_customer') return back()->with('error', 'Status tidak valid.');
+        $invoice = $renewalRequest->invoice;
+        if (!$invoice || $invoice->payments->count() === 0) return back()->with('error', 'Invoice/Pembayaran tidak ditemukan.');
+        
+        $payment = $invoice->payments->first(); // asumsikan 1 pembayaran penuh
+        $isJournalled = \App\Models\JournalEntry::where('reference_type', \App\Models\InvoicePayment::class)
+            ->where('reference_id', $payment->id)->where('status', '!=', 'void')->exists();
+        if ($isJournalled) return back()->with('error', 'Gagal: Pembayaran klien ini sudah dibukukan di jurnal.');
+
+        DB::transaction(function () use ($renewalRequest, $invoice, $payment) {
+            $cashTx = \App\Models\CashTransaction::where('source_type', \App\Models\InvoicePayment::class)
+                ->where('source_id', $payment->id)->first();
+            if ($cashTx) {
+                $cashAcc = \App\Models\CashAccount::find($cashTx->cash_account_id);
+                if ($cashAcc) {
+                    $cashAcc->current_balance -= $cashTx->amount; // tarik uang kembali
+                    $cashAcc->save();
+                }
+                $cashTx->delete();
+            }
+            $payment->delete();
+            
+            $invoice->update([
+                'status' => 'sent',
+                'paid_amount' => 0
+            ]);
+
+            $renewalRequest->update(['status' => 'invoiced_customer']);
+        });
+        return back()->with('success', 'Pembayaran klien dibatalkan.');
+    }
+
+    public function undoInvoice(RenewalRequest $renewalRequest)
+    {
+        if ($renewalRequest->status !== 'invoiced_customer') return back()->with('error', 'Status tidak valid.');
+        $invoice = $renewalRequest->invoice;
+        if (!$invoice) return back()->with('error', 'Invoice tidak ditemukan.');
+
+        $isJournalled = \App\Models\JournalEntry::where('reference_type', \App\Models\Invoice::class)
+            ->where('reference_id', $invoice->id)->where('status', '!=', 'void')->exists();
+        if ($isJournalled) return back()->with('error', 'Gagal: Invoice ini sudah dibukukan di jurnal (Piutang).');
+
+        DB::transaction(function () use ($renewalRequest, $invoice) {
+            $invoice->items()->delete();
+            $invoice->delete();
+            $renewalRequest->update([
+                'status' => 'pending',
+                'invoice_id' => null,
+            ]);
+        });
+        return back()->with('success', 'Invoice dibatalkan dan dihapus.');
+    }
 }
