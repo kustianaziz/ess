@@ -184,19 +184,19 @@
                 </div>
                 
                 <!-- Signature & Stamp Area -->
-                <div style="position: relative; height: {{ (isset($invoice->customer->service->signature_image) && $invoice->customer->service->signature_image != '') || (isset($invoice->customer->service->stamp_image) && $invoice->customer->service->stamp_image != '') ? '110px' : '45px' }}; margin: 0 auto; width: 100%; text-align: center;">
+                <div style="position: relative; {{ (isset($invoice->customer->service->signature_image) && $invoice->customer->service->signature_image != '') || (isset($invoice->customer->service->stamp_image) && $invoice->customer->service->stamp_image != '') ? 'min-height: 80px;' : 'height: 45px;' }} margin: 0 auto; width: 100%; text-align: center;">
                     
                     @if(isset($invoice->customer->service->stamp_image) && $invoice->customer->service->stamp_image != '')
                         <img src="{{ storage_path('app/public/' . $invoice->customer->service->stamp_image) }}" style="max-height: 75px; width: auto; position: absolute; left: 10px; top: 15px; opacity: 0.85; z-index: 1;" alt="Stamp">
                     @endif
 
                     @if(isset($invoice->customer->service->signature_image) && $invoice->customer->service->signature_image != '')
-                        <img src="{{ storage_path('app/public/' . $invoice->customer->service->signature_image) }}" style="max-height: 110px; width: auto; position: relative; z-index: 2; margin: 0 auto;" alt="Signature">
+                        <img src="{{ storage_path('app/public/' . $invoice->customer->service->signature_image) }}" style="max-height: 120px; width: auto; position: relative; z-index: 2; margin: 0 auto; display: block;" alt="Signature">
                     @endif
 
                 </div>
                 
-                <div class="sign-name" style="margin-top: 5px;">
+                <div class="sign-name" style="margin-top: -5px;">
                     {{ isset($invoice->customer->service->signature_name) && $invoice->customer->service->signature_name != '' ? $invoice->customer->service->signature_name : 'Fourizal Novyansyah' }}
                 </div>
                 <div class="sign-role">Finance</div>
