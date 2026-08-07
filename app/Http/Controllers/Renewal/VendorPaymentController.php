@@ -43,8 +43,7 @@ class VendorPaymentController extends Controller
             ]);
 
             // 3. Buat CashTransaction (pengeluaran ke vendor)
-            $count = CashTransaction::whereYear('created_at', date('Y'))->whereMonth('created_at', date('m'))->count() + 1;
-            $txNumber = 'KAS/' . date('Y/m/') . str_pad($count, 4, '0', STR_PAD_LEFT);
+            $txNumber = app(\App\Actions\Shared\GenerateRequestNumberAction::class)->execute('KAS', 'cash_transactions', 'transaction_number');
 
             CashTransaction::create([
                 'transaction_number' => $txNumber,
