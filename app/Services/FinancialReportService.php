@@ -70,7 +70,7 @@ class FinancialReportService
                 }
                 
                 // Calculate net balance based on normal balance
-                if (in_array(strtolower($node->normal_balance), ['credit', 'kredit']) || str_starts_with($node->code, '2') || str_starts_with($node->code, '3') || str_starts_with($node->code, '4') || str_starts_with($node->code, '6')) {
+                if (in_array(strtolower($node->normal_balance), ['credit', 'kredit'])) {
                     $node->balance = $node->raw_credit - $node->raw_debit;
                 } else {
                     $node->balance = $node->raw_debit - $node->raw_credit;

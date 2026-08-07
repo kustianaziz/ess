@@ -119,19 +119,20 @@ class FinancialReportController extends Controller
         $reportData = $this->reportService->getCoaTreeWithBalances($startDate, $endDate, null, $level, $showZero);
         $coas = collect($reportData['flat']);
 
-        $filterByCategory = function($prefix) use ($coas) {
-            $items = $coas->filter(function($c) use ($prefix) {
-                return str_starts_with($c['code'], $prefix);
+        $filterByType = function($type) use ($coas) {
+            $items = $coas->filter(function($c) use ($type) {
+                return $c['type'] === $type;
             })->values();
-            $total = collect($items)->sum('balance');
+            $total = collect($items)->where('is_header', false)->sum('balance');
             return ['items' => $items, 'total' => $total];
         };
 
-        $revenues = $filterByCategory('4');
-        $expenses = $filterByCategory('5');
-        $otherRevenues = $filterByCategory('6');
-        $otherExpenses = $filterByCategory('7');
-        $taxes = $filterByCategory('8');
+        $revenues = $filterByType('pendapatan');
+        $expenses = $filterByType('beban');
+        
+        $otherRevenues = ['items' => [], 'total' => 0];
+        $otherExpenses = ['items' => [], 'total' => 0];
+        $taxes = ['items' => [], 'total' => 0];
 
         $grossProfit = $revenues['total'] - $expenses['total'];
         $operatingProfit = $grossProfit + $otherRevenues['total'] - $otherExpenses['total'];
@@ -173,21 +174,21 @@ class FinancialReportController extends Controller
         $reportData = $this->reportService->getCoaTreeWithBalances(null, null, $asOfDate, $level, $showZero);
         $coas = collect($reportData['flat']);
 
-        $filterByCategory = function($prefix) use ($coas) {
-            $items = $coas->filter(function($c) use ($prefix) {
-                return str_starts_with($c['code'], $prefix);
+        $filterByType = function($type) use ($coas) {
+            $items = $coas->filter(function($c) use ($type) {
+                return $c['type'] === $type;
             })->values()->toArray();
-            $total = collect($items)->sum('balance');
+            $total = collect($items)->where('is_header', false)->sum('balance');
             return ['items' => $items, 'total' => $total];
         };
 
-        $assets = $filterByCategory('1');
-        $liabilities = $filterByCategory('2');
-        $equities = $filterByCategory('3');
+        $assets = $filterByType('aset');
+        $liabilities = $filterByType('hutang');
+        $equities = $filterByType('modal');
 
         // Retained Earnings (Net Profit from beginning of time until asOfDate)
-        $revenueCoas = Coa::where('code', 'like', '4%')->orWhere('code', 'like', '6%')->get()->pluck('id');
-        $expenseCoas = Coa::where('code', 'like', '5%')->orWhere('code', 'like', '7%')->orWhere('code', 'like', '8%')->get()->pluck('id');
+        $revenueCoas = Coa::where('type', 'pendapatan')->get()->pluck('id');
+        $expenseCoas = Coa::where('type', 'beban')->get()->pluck('id');
 
         $totalRevenue = JournalItem::whereIn('coa_id', $revenueCoas)
             ->whereHas('journalEntry', function($q) use ($asOfDate) {
