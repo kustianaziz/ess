@@ -111,10 +111,73 @@ class RenewalRequestController extends Controller
         return redirect()->back()->with('success', 'Invoice berhasil dibuat dan dihubungkan ke renewal ini.');
     }
 
-    public function markPaidCustomer(RenewalRequest $renewalRequest)
+    public function markPaidCustomer(Request $request, RenewalRequest $renewalRequest)
     {
-        $renewalRequest->update(['status' => 'paid_customer']);
-        return redirect()->back()->with('success', 'Status diperbarui: Pelanggan sudah membayar.');
+        $validated = $request->validate([
+            'cash_account_id' => 'required|exists:cash_accounts,id',
+            'payment_date' => 'required|date',
+        ]);
+
+        \DB::transaction(function () use ($validated, $renewalRequest) {
+            $invoice = $renewalRequest->invoice;
+            
+            if ($invoice) {
+                // Buat Payment untuk Invoice tersebut
+                $payment = $invoice->payments()->create([
+                    'amount' => $invoice->total_amount,
+                    'payment_date' => $validated['payment_date'],
+                    'payment_method' => 'transfer',
+                    'recorded_by' => \Illuminate\Support\Facades\Auth::id() ?? 1,
+                ]);
+
+                // Update Invoice
+                $invoice->paid_amount = $invoice->total_amount;
+                $invoice->status = 'paid';
+                $invoice->save();
+
+                // Update CashAccount balance
+                $cashAccount = CashAccount::findOrFail($validated['cash_account_id']);
+                $cashAccount->current_balance += $invoice->total_amount;
+                $cashAccount->save();
+
+                // Create CashTransaction
+                $count = \App\Models\CashTransaction::whereYear('created_at', date('Y'))->whereMonth('created_at', date('m'))->count() + 1;
+                $txNumber = 'KAS/' . date('Y/m/') . str_pad($count, 4, '0', STR_PAD_LEFT);
+
+                $cashAccount->transactions()->create([
+                    'transaction_number' => $txNumber,
+                    'type' => 'in',
+                    'category' => 'lainnya',
+                    'amount' => $invoice->total_amount,
+                    'transaction_date' => $validated['payment_date'],
+                    'description' => 'Payment for Invoice #' . $invoice->invoice_number . ' (Renewal)',
+                    'source_type' => \App\Models\InvoicePayment::class,
+                    'source_id' => $payment->id,
+                    'status' => 'posted',
+                    'created_by' => \Illuminate\Support\Facades\Auth::id() ?? 1,
+                ]);
+
+                // Jurnal Pelunasan Piutang
+                $kasCoa = \App\Models\Coa::where('code', '1.01.01.001')->first();
+                $piutangCoa = \App\Models\Coa::where('code', '1.02.01')->first();
+                
+                if ($kasCoa && $piutangCoa) {
+                    app(\App\Actions\Accounting\RecordJournalAction::class)->execute(
+                        $validated['payment_date'],
+                        'Pelunasan Invoice Renewal ' . $invoice->invoice_number,
+                        [
+                            ['coa_id' => $kasCoa->id, 'debit' => $invoice->total_amount, 'credit' => 0],
+                            ['coa_id' => $piutangCoa->id, 'debit' => 0, 'credit' => $invoice->total_amount],
+                        ],
+                        $payment
+                    );
+                }
+            }
+
+            $renewalRequest->update(['status' => 'paid_customer']);
+        });
+
+        return redirect()->back()->with('success', 'Pembayaran dari klien telah dicatat dan masuk ke kas.');
     }
 
     public function complete(Request $request, RenewalRequest $renewalRequest)

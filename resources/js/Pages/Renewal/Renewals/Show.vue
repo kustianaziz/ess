@@ -14,6 +14,19 @@ const showInvoiceModal = ref(false)
 const ppnMode = ref('exclude')
 const ppnRate = ref(11)
 
+// ============ MODAL: Client Payment ============
+const showClientPaymentModal = ref(false)
+const clientPaymentForm = useForm({
+  payment_date: new Date().toISOString().split('T')[0],
+  cash_account_id: ''
+})
+
+const submitClientPayment = () => {
+  clientPaymentForm.post(route('renewal.renewals.mark-paid-customer', props.renewal.id), {
+    onSuccess: () => { showClientPaymentModal.value = false; clientPaymentForm.reset() }
+  })
+}
+
 const invoiceForm = useForm({
   invoice_date: new Date().toISOString().split('T')[0],
   due_date: '',
@@ -157,10 +170,10 @@ const currentStep = (status) => stepOrder.indexOf(status)
             </div>
           </div>
           <!-- Mark Paid Customer -->
-          <Link v-if="renewal.status === 'invoiced_customer' && renewal.invoice.status !== 'paid'" :href="route('invoicing.invoices.show', renewal.invoice.id)"
+          <button v-if="renewal.status === 'invoiced_customer'" @click="showClientPaymentModal = true"
             class="w-full py-2 rounded-xl bg-sky-600 text-white text-xs font-bold hover:bg-sky-700 flex items-center justify-center gap-2">
-            <CheckCircle2 class="w-4 h-4" /> Catat Pembayaran Invoice
-          </Link>
+            <CheckCircle2 class="w-4 h-4" /> Tandai Klien Sudah Membayar
+          </button>
         </div>
         <div v-else class="py-4 text-center text-slate-400 text-sm italic">Belum ada invoice untuk renewal ini.</div>
       </div>
@@ -212,6 +225,33 @@ const currentStep = (status) => stepOrder.indexOf(status)
             Expired baru: <strong>{{ formatDate(renewal.new_expired_date) }}</strong>
           </p>
         </div>
+      </div>
+    </div>
+
+    <!-- ===== MODAL CLIENT PAYMENT ===== -->
+    <div v-if="showClientPaymentModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+      <div class="bg-white w-full max-w-sm rounded-2xl shadow-xl overflow-hidden">
+        <div class="flex items-center justify-between p-4 border-b border-slate-100">
+          <h3 class="font-bold text-lg text-slate-900">Pembayaran dari Klien</h3>
+          <button @click="showClientPaymentModal = false"><X class="w-5 h-5 text-slate-400" /></button>
+        </div>
+        <form @submit.prevent="submitClientPayment" class="p-4 space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Bayar</label>
+            <input v-model="clientPaymentForm.payment_date" type="date" required class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Masuk ke Kas/Bank</label>
+            <select v-model="clientPaymentForm.cash_account_id" required class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 text-sm">
+              <option value="">Pilih Kas/Bank...</option>
+              <option v-for="acc in cashAccounts" :key="acc.id" :value="acc.id">{{ acc.name }} - {{ acc.code }}</option>
+            </select>
+          </div>
+          <div class="pt-2 flex gap-2">
+            <button type="button" @click="showClientPaymentModal = false" class="flex-1 py-2 rounded-xl bg-slate-100 text-slate-600 font-bold text-sm">Batal</button>
+            <button type="submit" :disabled="clientPaymentForm.processing" class="flex-1 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm">Catat & Lunas</button>
+          </div>
+        </form>
       </div>
     </div>
 

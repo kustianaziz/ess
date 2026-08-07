@@ -29,7 +29,7 @@ class InvoicePaymentController extends Controller
                 'amount' => $validated['amount'],
                 'payment_date' => $validated['payment_date'],
                 'payment_method' => $validated['payment_method'],
-                'cash_account_id' => $validated['cash_account_id'],
+                'recorded_by' => \Illuminate\Support\Facades\Auth::id() ?? 1,
             ]);
 
             // Update Invoice paid_amount and status
@@ -47,14 +47,19 @@ class InvoicePaymentController extends Controller
             $cashAccount->save();
 
             // Create CashTransaction
+            $count = \App\Models\CashTransaction::whereYear('created_at', date('Y'))->whereMonth('created_at', date('m'))->count() + 1;
+            $txNumber = 'KAS/' . date('Y/m/') . str_pad($count, 4, '0', STR_PAD_LEFT);
             $cashAccount->transactions()->create([
+                'transaction_number' => $txNumber,
                 'type' => 'in',
                 'category' => 'lainnya',
                 'amount' => $validated['amount'],
                 'transaction_date' => $validated['payment_date'],
-                'description' => 'Payment for Invoice #' . $invoice->id,
+                'description' => 'Payment for Invoice #' . $invoice->invoice_number,
                 'source_type' => InvoicePayment::class,
                 'source_id' => $payment->id,
+                'status' => 'posted',
+                'created_by' => \Illuminate\Support\Facades\Auth::id() ?? 1,
             ]);
 
             // Handle File Uploads
