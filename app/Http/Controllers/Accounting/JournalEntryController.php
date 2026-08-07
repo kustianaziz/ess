@@ -90,10 +90,11 @@ class JournalEntryController extends Controller
         // 2. Penerbitan Invoice (Piutang)
         foreach (Invoice::whereIn('status', ['sent', 'partial', 'paid', 'overdue'])->with('customer')->get() as $inv) {
             $refKey = Invoice::class . '_' . $inv->id;
+            $isRenewal = $inv->source_type === 'renewal';
             $transactions->push([
                 'id'               => 'inv_' . $inv->id,
-                'source_type'      => Invoice::class,
-                'source_label'     => 'Invoice / Piutang',
+                'source_type'      => Invoice::class . ($isRenewal ? '_renewal' : '_general'),
+                'source_label'     => $isRenewal ? 'Invoice Renewal' : 'Invoice Tagihan',
                 'source_id'        => $inv->id,
                 'date'             => $inv->invoice_date,
                 'description'      => '[PIUTANG] ' . $inv->invoice_number . ' - ' . ($inv->customer->name ?? ''),
@@ -101,16 +102,18 @@ class JournalEntryController extends Controller
                 'reference_number' => $inv->invoice_number,
                 'is_journalled'    => $allJournalRefs->has($refKey),
                 'type'             => 'in',
+                'original_source_type' => Invoice::class
             ]);
         }
 
         // 3. Pembayaran Invoice (Penerimaan Kas)
         foreach (InvoicePayment::with('invoice')->get() as $ip) {
             $refKey = InvoicePayment::class . '_' . $ip->id;
+            $isRenewal = $ip->invoice && $ip->invoice->source_type === 'renewal';
             $transactions->push([
                 'id'               => 'ip_' . $ip->id,
-                'source_type'      => InvoicePayment::class,
-                'source_label'     => 'Pembayaran Invoice',
+                'source_type'      => InvoicePayment::class . ($isRenewal ? '_renewal' : '_general'),
+                'source_label'     => $isRenewal ? 'Pelunasan Renewal' : 'Pelunasan Tagihan',
                 'source_id'        => $ip->id,
                 'date'             => $ip->payment_date,
                 'description'      => '[PENERIMAAN KAS] Invoice ' . ($ip->invoice->invoice_number ?? '-'),
@@ -118,6 +121,7 @@ class JournalEntryController extends Controller
                 'reference_number' => 'INV-PAY-' . str_pad($ip->id, 4, '0', STR_PAD_LEFT),
                 'is_journalled'    => $allJournalRefs->has($refKey),
                 'type'             => 'in',
+                'original_source_type' => InvoicePayment::class
             ]);
         }
 
@@ -225,8 +229,11 @@ class JournalEntryController extends Controller
 
         // Filter pending
         $pendingTransactions = $transactions->where('is_journalled', false);
+        // Apply Source Filter if any
         if ($sourceType) {
-            $pendingTransactions = $pendingTransactions->where('source_type', $sourceType);
+            $pendingTransactions = $pendingTransactions->filter(function ($t) use ($sourceType) {
+                return $t['source_type'] === $sourceType || (isset($t['original_source_type']) && $t['original_source_type'] === $sourceType);
+            });
         }
         if ($dateFrom) {
             $pendingTransactions = $pendingTransactions->filter(fn($t) => $t['date'] && $t['date'] >= $dateFrom);
@@ -238,8 +245,10 @@ class JournalEntryController extends Controller
 
         $sourceTypes = [
             ['value' => CashTransaction::class,       'label' => 'Kas Operasional (Mandiri)'],
-            ['value' => Invoice::class,               'label' => 'Invoice / Piutang'],
-            ['value' => InvoicePayment::class,        'label' => 'Pembayaran Invoice'],
+            ['value' => Invoice::class . '_general',  'label' => 'Invoice Tagihan'],
+            ['value' => Invoice::class . '_renewal',  'label' => 'Invoice Renewal'],
+            ['value' => InvoicePayment::class . '_general', 'label' => 'Pelunasan Tagihan'],
+            ['value' => InvoicePayment::class . '_renewal', 'label' => 'Pelunasan Renewal'],
             ['value' => VendorPayment::class,         'label' => 'Pembayaran Vendor (Renewal)'],
             ['value' => ReimbursementRequest::class,  'label' => 'Reimbursement'],
             ['value' => OperationalRequest::class,    'label' => 'Biaya Operasional (Konsumsi)'],
