@@ -19,7 +19,7 @@ class GenerateRequestNumberAction
         return DB::transaction(function () use ($searchPrefix, $tableName, $columnName) {
             $latest = DB::table($tableName)
                 ->where($columnName, 'like', "{$searchPrefix}%")
-                ->orderByDesc('id')
+                ->orderByDesc($columnName)
                 ->lockForUpdate()
                 ->first();
 
