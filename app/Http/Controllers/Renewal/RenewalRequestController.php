@@ -16,7 +16,7 @@ class RenewalRequestController extends Controller
 {
     public function index()
     {
-        $renewals = RenewalRequest::with(['domain.customer', 'domain.vendor', 'invoice'])
+        $renewals = RenewalRequest::with(['domain.customer', 'domain.vendor', 'invoice', 'vendorPayment'])
             ->latest()->get();
 
         return Inertia::render('Renewal/Renewals/Index', [

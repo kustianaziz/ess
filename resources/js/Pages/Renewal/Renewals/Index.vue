@@ -57,6 +57,7 @@ const formatDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: '2-
               <th class="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Domain / Hosting</th>
               <th class="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Klien</th>
               <th class="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Periode</th>
+              <th class="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Vendor</th>
               <th class="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Invoice</th>
               <th class="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Status</th>
               <th class="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Aksi</th>
@@ -71,6 +72,11 @@ const formatDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: '2-
                 </td>
                 <td class="px-4 py-3 text-sm font-semibold text-slate-700">{{ r.domain?.customer?.name || '-' }}</td>
                 <td class="px-4 py-3 text-sm text-slate-600">{{ r.period_year }} Tahun</td>
+                <td class="px-4 py-3">
+                  <div class="text-sm font-semibold text-slate-700">{{ r.domain?.vendor?.name || '-' }}</div>
+                  <div v-if="r.vendorPayment" class="text-[11px] font-bold text-emerald-600 mt-0.5">Lunas ({{ formatDate(r.vendorPayment.payment_date) }})</div>
+                  <div v-else class="text-[11px] font-bold text-rose-500 mt-0.5">Belum Dibayar</div>
+                </td>
                 <td class="px-4 py-3">
                   <span v-if="r.invoice" class="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-lg">{{ r.invoice.invoice_number }}</span>
                   <span v-else class="text-xs text-slate-400 italic">Belum ada invoice</span>

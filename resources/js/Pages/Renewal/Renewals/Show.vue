@@ -157,10 +157,10 @@ const currentStep = (status) => stepOrder.indexOf(status)
             </div>
           </div>
           <!-- Mark Paid Customer -->
-          <button v-if="renewal.status === 'invoiced_customer'" @click="() => useForm({}).post(route('renewal.renewals.mark-paid-customer', renewal.id))"
+          <Link v-if="renewal.status === 'invoiced_customer' && renewal.invoice.status !== 'paid'" :href="route('invoicing.invoices.show', renewal.invoice.id)"
             class="w-full py-2 rounded-xl bg-sky-600 text-white text-xs font-bold hover:bg-sky-700 flex items-center justify-center gap-2">
-            <CheckCircle2 class="w-4 h-4" /> Tandai Klien Sudah Membayar
-          </button>
+            <CheckCircle2 class="w-4 h-4" /> Catat Pembayaran Invoice
+          </Link>
         </div>
         <div v-else class="py-4 text-center text-slate-400 text-sm italic">Belum ada invoice untuk renewal ini.</div>
       </div>

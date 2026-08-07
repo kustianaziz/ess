@@ -69,6 +69,30 @@ class InvoicePaymentController extends Controller
                     ]);
                 }
             }
+
+            // Update Renewal Status if source is renewal
+            if ($invoice->source_type === 'renewal' && $invoice->status === 'paid') {
+                $renewal = \App\Models\RenewalRequest::find($invoice->source_id);
+                if ($renewal && $renewal->status === 'invoiced_customer') {
+                    $renewal->update(['status' => 'paid_customer']);
+                }
+            }
+
+            // Create Journal Entry
+            $kasCoa = \App\Models\Coa::where('code', '1.01.01.001')->first(); // Kas Operasional default
+            $piutangCoa = \App\Models\Coa::where('code', '1.02.01')->first(); // Piutang Usaha
+            
+            if ($kasCoa && $piutangCoa) {
+                app(\App\Actions\Accounting\RecordJournalAction::class)->execute(
+                    $validated['payment_date'],
+                    'Pelunasan Invoice ' . $invoice->invoice_number,
+                    [
+                        ['coa_id' => $kasCoa->id, 'debit' => $validated['amount'], 'credit' => 0],
+                        ['coa_id' => $piutangCoa->id, 'debit' => 0, 'credit' => $validated['amount']],
+                    ],
+                    $payment
+                );
+            }
         });
 
         return redirect()->back()->with('success', 'Payment recorded successfully.');
