@@ -37,11 +37,13 @@ class FinancialReportService
         
         if ($asOfDate) {
             $query->whereHas('journalEntry', function($q) use ($asOfDate) {
-                $q->where('date', '<=', $asOfDate);
+                $q->where('date', '<=', $asOfDate)
+                  ->where('status', '!=', 'void');
             });
         } else {
             $query->whereHas('journalEntry', function($q) use ($startDate, $endDate) {
-                $q->whereBetween('date', [$startDate, $endDate]);
+                $q->whereBetween('date', [$startDate, $endDate])
+                  ->where('status', '!=', 'void');
             });
         }
 

@@ -53,7 +53,9 @@ class PaymentController extends Controller
             $amount = match($type) {
                 'reimbursement' => (float)$model->amount,
                 'operasional' => (float)$model->estimated_cost,
-                'perjalanan-dinas' => (float)($validated['disbursed_budget'] ?? $model->estimated_budget),
+                'perjalanan-dinas' => !empty($validated['allowance_breakdown']) 
+                    ? (float)collect($validated['allowance_breakdown'])->sum('amount') 
+                    : (float)($validated['disbursed_budget'] ?? $model->estimated_budget),
                 default => 0,
             };
 

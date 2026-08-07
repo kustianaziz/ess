@@ -17,6 +17,8 @@ class BusinessTripRequest extends Model
     protected $fillable = [
         'request_number',
         'user_id',
+        'is_delegated',
+        'assigned_to',
         'assignment_letter_number',
         'destination',
         'target_institution',
@@ -45,11 +47,17 @@ class BusinessTripRequest extends Model
         'submitted_at' => 'datetime',
         'paid_at' => 'datetime',
         'status' => RequestStatus::class,
+        'is_delegated' => 'boolean',
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function assignee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
     }
 
     public function paidBy(): BelongsTo

@@ -120,8 +120,11 @@ class RequestHistoryController extends Controller
 
         // 4. Perjalanan Dinas
         if (!$typeFilter || $typeFilter === 'perjalanan-dinas') {
-            $query = \App\Models\BusinessTripRequest::with(['user.division', 'settlement'])
-                ->where('user_id', $user->id);
+            $query = \App\Models\BusinessTripRequest::with(['user.division', 'settlement', 'assignee'])
+                ->where(function($q) use ($user) {
+                    $q->where('user_id', $user->id)
+                      ->orWhere('assigned_to', $user->id);
+                });
 
             if ($statusFilter) {
                 $query->where('status', $statusFilter);
@@ -268,7 +271,7 @@ class RequestHistoryController extends Controller
                 'created_at' => $item->created_at->translatedFormat('d F Y H:i'),
             ];
         } elseif ($type === 'perjalanan-dinas') {
-            $item = \App\Models\BusinessTripRequest::with(['user.division', 'attachments', 'approvals.approver', 'statusHistories.changedBy', 'settlement.expenseItems'])
+            $item = \App\Models\BusinessTripRequest::with(['user.division', 'attachments', 'approvals.approver', 'statusHistories.changedBy', 'settlement.expenseItems', 'settlement.attachments', 'assignee'])
                 ->findOrFail($id);
             $requestData = [
                 'id' => $item->id,
@@ -282,6 +285,8 @@ class RequestHistoryController extends Controller
                     'position' => $item->user->position ?? '-',
                 ],
                 'details' => array_filter([
+                    'Tipe Pengajuan' => $item->is_delegated ? 'Penugasan Tim' : 'Pengajuan Sendiri',
+                    'Ditugaskan Kepada' => $item->is_delegated ? $item->assignee?->name : null,
                     'Kota / Tujuan' => $item->destination,
                     'Instansi / Perusahaan Tujuan' => $item->target_institution,
                     'Tujuan Kegiatan' => $item->purpose,
@@ -307,6 +312,7 @@ class RequestHistoryController extends Controller
                     'trip_report' => $item->settlement->trip_report,
                     'status' => $item->settlement->status,
                     'expense_items' => $item->settlement->expenseItems,
+                    'attachments' => $item->settlement->attachments,
                 ] : null,
                 'status' => $item->status->value,
                 'status_label' => $item->status->label(),

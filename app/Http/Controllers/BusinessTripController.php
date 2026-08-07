@@ -23,6 +23,7 @@ class BusinessTripController extends Controller
     public function create(Request $request): Response
     {
         $user = $request->user()->load('division');
+        $subordinates = $user->subordinates()->select('id', 'name', 'position', 'nik')->get();
 
         return Inertia::render('Pengajuan/PerjalananDinas/Create', [
             'applicant' => [
@@ -32,6 +33,7 @@ class BusinessTripController extends Controller
                 'position' => $user->position ?? '-',
                 'submission_date' => now()->translatedFormat('d F Y'),
             ],
+            'subordinates' => $subordinates,
         ]);
     }
 
@@ -51,17 +53,24 @@ class BusinessTripController extends Controller
             'estimated_budget' => 'required|numeric|min:0',
             'attachments' => 'nullable|array',
             'action' => 'required|in:draft,submit',
+            'is_delegated' => 'boolean',
+            'assigned_to' => 'nullable|exists:users,id',
         ]);
 
         $user = $request->user();
         $isSubmit = $validated['action'] === 'submit';
-        $status = $isSubmit ? RequestStatus::SUBMITTED : RequestStatus::DRAFT;
+        $isDelegated = $request->boolean('is_delegated');
+        
+        $status = $isSubmit ? ($isDelegated ? RequestStatus::APPROVED : RequestStatus::SUBMITTED) : RequestStatus::DRAFT;
+        $currentLevel = $isSubmit ? ($isDelegated ? 2 : 1) : 0;
 
         $tripRequest = DB::transaction(function () use (
             $validated,
             $user,
             $status,
+            $currentLevel,
             $isSubmit,
+            $isDelegated,
             $generateRequestNumber,
             $recordStatusHistory
         ) {
@@ -70,6 +79,8 @@ class BusinessTripController extends Controller
             $trip = BusinessTripRequest::create([
                 'request_number' => $requestNumber,
                 'user_id' => $user->id,
+                'is_delegated' => $isDelegated,
+                'assigned_to' => $isDelegated ? $validated['assigned_to'] : null,
                 'assignment_letter_number' => $validated['assignment_letter_number'] ?? null,
                 'destination' => $validated['destination'],
                 'target_institution' => $validated['target_institution'] ?? null,
@@ -79,7 +90,7 @@ class BusinessTripController extends Controller
                 'transportation_type' => $validated['transportation_type'] ?? 'Pesawat / Kendaraan Umum',
                 'estimated_budget' => $validated['estimated_budget'],
                 'status' => $status,
-                'current_approval_level' => $isSubmit ? 1 : 0,
+                'current_approval_level' => $currentLevel,
                 'submitted_at' => $isSubmit ? now() : null,
             ]);
 
@@ -98,27 +109,33 @@ class BusinessTripController extends Controller
             }
 
             // Record status history
-            $recordStatusHistory->execute(
-                $trip,
-                null,
-                $status->value,
-                $user->id,
-                $isSubmit ? 'Pengajuan perjalanan dinas disubmit.' : 'Pengajuan perjalanan dinas disimpan sebagai draft.'
-            );
+            $historyNote = $isSubmit ? 'Pengajuan perjalanan dinas dikirim.' : 'Disimpan sebagai draf.';
+            if ($isDelegated && $isSubmit) {
+                $historyNote = 'Penugasan perjalanan dinas dari atasan (Otomatis disetujui Level 1 & 2).';
+            }
 
-            // Create initial approval records if submitted
-            if ($isSubmit) {
+            $recordStatusHistory->execute($trip, null, $status->value, $user->id, $historyNote);
+
+            if ($isSubmit && !$isDelegated) {
+                // Initialize approval chain
                 app(\App\Actions\Shared\CreateInitialApprovalAction::class)->execute($trip, $user, 'perjalanan-dinas');
+            } elseif ($isSubmit && $isDelegated && $trip->assigned_to) {
+                $assignee = User::find($trip->assigned_to);
+                if ($assignee) {
+                    Notification::send($assignee, new \App\Notifications\TaskDelegatedNotification(
+                        'perjalanan-dinas',
+                        $trip->id,
+                        $trip->request_number,
+                        $user->name
+                    ));
+                }
             }
 
             return $trip;
         });
 
-        $msg = $isSubmit
-            ? "Pengajuan Perjalanan Dinas {$tripRequest->request_number} berhasil dikirim!"
-            : "Draft Perjalanan Dinas {$tripRequest->request_number} berhasil disimpan.";
-
-        return redirect()->route('riwayat-pengajuan.index')->with('success', $msg);
+        $message = $isSubmit ? ($isDelegated ? 'Penugasan tim berhasil dibuat dan disetujui otomatis!' : 'Pengajuan berhasil dikirim!') : 'Draf berhasil disimpan!';
+        return redirect()->route('riwayat-pengajuan.index')->with('success', $message);
     }
 
     public function settlementCreate(Request $request, int $id): Response
@@ -126,7 +143,10 @@ class BusinessTripController extends Controller
         $user = $request->user();
         $tripRequest = BusinessTripRequest::with(['user.division', 'attachments'])
             ->where('id', $id)
-            ->where('user_id', $user->id)
+            ->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhere('assigned_to', $user->id);
+            })
             ->firstOrFail();
 
         return Inertia::render('Pengajuan/PerjalananDinas/Settlement', [
@@ -137,8 +157,9 @@ class BusinessTripController extends Controller
                 'purpose' => $tripRequest->purpose,
                 'start_date' => $tripRequest->start_date->format('Y-m-d'),
                 'end_date' => $tripRequest->end_date->format('Y-m-d'),
-                'estimated_budget' => $tripRequest->estimated_budget,
-                'estimated_budget_formatted' => 'Rp ' . number_format($tripRequest->estimated_budget, 0, ',', '.'),
+                'estimated_budget' => $tripRequest->disbursed_budget ?? 0,
+                'estimated_budget_formatted' => 'Rp ' . number_format($tripRequest->disbursed_budget ?? 0, 0, ',', '.'),
+                'allowance_breakdown' => $tripRequest->allowance_breakdown ?? [],
             ],
             'applicant' => [
                 'name' => $user->name,
@@ -156,7 +177,10 @@ class BusinessTripController extends Controller
     ): RedirectResponse {
         $user = $request->user();
         $tripRequest = BusinessTripRequest::where('id', $id)
-            ->where('user_id', $user->id)
+            ->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhere('assigned_to', $user->id);
+            })
             ->firstOrFail();
 
         $validated = $request->validate([
@@ -170,7 +194,7 @@ class BusinessTripController extends Controller
         ]);
 
         $totalActualCost = collect($validated['expense_items'])->sum('amount');
-        $advanceAmount = $tripRequest->estimated_budget;
+        $advanceAmount = $tripRequest->disbursed_budget ?? 0;
         $differenceAmount = $totalActualCost - $advanceAmount; // positive = less paid, negative = refund to company
 
         DB::transaction(function () use (
@@ -182,7 +206,7 @@ class BusinessTripController extends Controller
             $differenceAmount,
             $generateRequestNumber
         ) {
-            $settlementNumber = $generateRequestNumber->execute('PD-SL', 'business_trip_settlements');
+            $settlementNumber = $generateRequestNumber->execute('PD-SL', 'business_trip_settlements', 'settlement_number');
 
             $settlement = BusinessTripSettlement::create([
                 'settlement_number' => $settlementNumber,

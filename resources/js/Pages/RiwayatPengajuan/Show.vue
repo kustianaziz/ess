@@ -379,6 +379,78 @@ const submitApproval = () => {
         </div>
       </div>
 
+      <!-- Settlement Details Card -->
+      <div v-if="requestData.settlement" class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center gap-2">
+          <FileText class="w-4 h-4 text-emerald-500" />
+          Laporan Pertanggungjawaban (Settlement)
+        </h3>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs mb-4">
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+            <span class="text-slate-400 block mb-0.5">Total Realisasi</span>
+            <span class="font-bold text-slate-800">{{ requestData.settlement.total_actual_cost }}</span>
+          </div>
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+            <span class="text-slate-400 block mb-0.5">Uang Muka Diterima</span>
+            <span class="font-bold text-slate-800">{{ requestData.settlement.advance_amount }}</span>
+          </div>
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-100" :class="requestData.settlement.difference_raw > 0 ? 'bg-amber-50 border-amber-100' : (requestData.settlement.difference_raw < 0 ? 'bg-emerald-50 border-emerald-100' : '')">
+            <span class="text-slate-500 block mb-0.5 font-medium">{{ requestData.settlement.difference_raw > 0 ? 'Kurang Bayar Ke Karyawan' : (requestData.settlement.difference_raw < 0 ? 'Karyawan Kembalikan Sisa' : 'Pas') }}</span>
+            <span class="font-bold text-slate-800" :class="requestData.settlement.difference_raw > 0 ? 'text-amber-700' : (requestData.settlement.difference_raw < 0 ? 'text-emerald-700' : '')">{{ requestData.settlement.difference_amount }}</span>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <h4 class="text-xs font-bold text-slate-700">Laporan Kegiatan</h4>
+          <p class="text-xs text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100 leading-relaxed whitespace-pre-wrap">{{ requestData.settlement.trip_report }}</p>
+        </div>
+
+        <div class="space-y-2 pt-2">
+          <h4 class="text-xs font-bold text-slate-700">Rincian Realisasi</h4>
+          <div class="overflow-x-auto rounded-lg border border-slate-200">
+            <table class="w-full text-left text-[11px] whitespace-nowrap">
+              <thead class="bg-slate-50 text-slate-500 uppercase font-bold">
+                <tr>
+                  <th class="px-4 py-2 border-b border-slate-200">Tanggal</th>
+                  <th class="px-4 py-2 border-b border-slate-200">Kategori</th>
+                  <th class="px-4 py-2 border-b border-slate-200">Keterangan</th>
+                  <th class="px-4 py-2 border-b border-slate-200 text-right">Nominal (Rp)</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 text-slate-700 font-medium">
+                <tr v-for="ex in requestData.settlement.expense_items" :key="ex.id" class="hover:bg-slate-50/50">
+                  <td class="px-4 py-2">{{ ex.expense_date }}</td>
+                  <td class="px-4 py-2 uppercase">{{ ex.category }}</td>
+                  <td class="px-4 py-2 truncate max-w-[200px]" :title="ex.description">{{ ex.description }}</td>
+                  <td class="px-4 py-2 text-right font-bold">{{ new Intl.NumberFormat('id-ID').format(ex.amount || 0) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Settlement Attachments -->
+        <div v-if="requestData.settlement.attachments && requestData.settlement.attachments.length > 0" class="pt-4 space-y-3">
+          <h4 class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+            <Paperclip class="w-3.5 h-3.5" />
+            Lampiran Nota / Bukti Transfer
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <a
+              v-for="file in requestData.settlement.attachments"
+              :key="file.id"
+              :href="`/storage/${file.file_path}`"
+              target="_blank"
+              class="p-2.5 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 flex items-center gap-2 transition-colors"
+            >
+              <FileText class="w-4 h-4 text-indigo-500 shrink-0" />
+              <span class="font-medium text-slate-700 truncate w-full">{{ file.file_name }}</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
       <!-- Timeline & Audit Trail -->
       <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6 pb-2 border-b border-slate-100 flex items-center gap-2">

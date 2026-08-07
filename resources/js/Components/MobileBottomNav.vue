@@ -41,6 +41,9 @@ const userRoles = computed(() => {
   if (Array.isArray(roles)) {
     return roles.map(r => (typeof r === 'string' ? r : (r.name || r)));
   }
+  if (typeof roles === 'object') {
+    return Object.values(roles).map(r => (typeof r === 'string' ? r : (r.name || r)));
+  }
   if (typeof roles === 'string') return [roles];
   return [];
 });
@@ -146,7 +149,7 @@ const isCurrentRoute = (routeName) => {
         </div>
 
         <!-- SECTION: DASHBOARD EKSEKUTIF -->
-        <div v-if="isHrdOrAdmin" class="space-y-2">
+        <div v-if="isLevel1OrAbove" class="space-y-2">
           <Link
             :href="route('executive.dashboard')"
             @click="showQuickMenu = false"
@@ -261,10 +264,11 @@ const isCurrentRoute = (routeName) => {
         </div>
 
         <!-- SECTION 3: MODUL KEUANGAN & KAS (HRD & FINANCE LEVEL 2) -->
-        <div v-if="isHrdOrAdmin" class="space-y-2 pt-2 border-t border-slate-100">
+        <div v-if="isLevel1OrAbove" class="space-y-2 pt-2 border-t border-slate-100">
           <span class="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">3. Modul Keuangan & Pencairan Kas</span>
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
             <Link
+              v-if="isHrdOrAdmin"
               :href="route('keuangan.pencairan.index')"
               @click="showQuickMenu = false"
               class="p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 flex items-center gap-2.5 hover:bg-emerald-100/80 transition-all"
@@ -293,6 +297,7 @@ const isCurrentRoute = (routeName) => {
             </Link>
 
             <Link
+              v-if="isHrdOrAdmin"
               :href="route('keuangan.tagihan-bulanan.index')"
               @click="showQuickMenu = false"
               class="p-3 rounded-2xl bg-amber-50/80 border border-amber-200 flex items-center gap-2.5 hover:bg-amber-100/80 transition-all col-span-2 sm:col-span-1"
@@ -391,7 +396,7 @@ const isCurrentRoute = (routeName) => {
         </div>
 
         <!-- SECTION 6: REKAPITULASI & LAPORAN (HRD & ADMIN) -->
-        <div v-if="isHrdOrAdmin" class="space-y-2 pt-2 border-t border-slate-100">
+        <div v-if="isLevel1OrAbove" class="space-y-2 pt-2 border-t border-slate-100">
           <span class="text-[11px] font-bold text-indigo-600 uppercase tracking-wider block">4. Rekapitulasi & Laporan Perusahaan</span>
           <Link
             :href="route('admin.reports.index')"
@@ -409,10 +414,11 @@ const isCurrentRoute = (routeName) => {
         </div>
 
         <!-- SECTION 9: AKUNTANSI (HRD & ADMIN) -->
-        <div v-if="isHrdOrAdmin" class="space-y-2 pt-2 border-t border-slate-100">
+        <div v-if="isLevel1OrAbove" class="space-y-2 pt-2 border-t border-slate-100">
           <span class="text-[11px] font-bold text-indigo-600 uppercase tracking-wider block">5. Akuntansi</span>
           <div class="grid grid-cols-2 gap-2">
             <Link
+              v-if="isHrdOrAdmin"
               :href="route('accounting.coas.index')"
               @click="showQuickMenu = false"
               class="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center gap-3 hover:bg-indigo-100/70 transition-all"
@@ -427,6 +433,7 @@ const isCurrentRoute = (routeName) => {
             </Link>
             
             <Link
+              v-if="isHrdOrAdmin"
               :href="route('accounting.assets.index')"
               @click="showQuickMenu = false"
               class="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center gap-3 hover:bg-indigo-100/70 transition-all"
@@ -441,6 +448,7 @@ const isCurrentRoute = (routeName) => {
             </Link>
 
             <Link
+              v-if="isHrdOrAdmin"
               :href="route('accounting.periods.index')"
               @click="showQuickMenu = false"
               class="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center gap-3 hover:bg-indigo-100/70 transition-all"
@@ -455,6 +463,7 @@ const isCurrentRoute = (routeName) => {
             </Link>
 
             <Link
+              v-if="isHrdOrAdmin"
               :href="route('accounting.beginning-balances.index')"
               @click="showQuickMenu = false"
               class="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center gap-3 hover:bg-indigo-100/70 transition-all"
@@ -469,6 +478,7 @@ const isCurrentRoute = (routeName) => {
             </Link>
 
             <Link
+              v-if="isHrdOrAdmin"
               :href="route('accounting.journals.index')"
               @click="showQuickMenu = false"
               class="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center gap-3 hover:bg-indigo-100/70 transition-all"

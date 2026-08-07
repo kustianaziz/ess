@@ -143,7 +143,7 @@ class ReportController extends Controller
 
         // 6. Query Renewals
         if ($type === 'all' || $type === 'renewal-domain') {
-            $q = RenewalRequest::with(['domain', 'processedBy.division']);
+            $q = RenewalRequest::with(['domain', 'processor.division']);
             if ($startDate) $q->whereDate('created_at', '>=', $startDate);
             if ($endDate) $q->whereDate('created_at', '<=', $endDate);
             // Renewal status doesn't match generic status exactly, but we can filter
@@ -157,7 +157,7 @@ class ReportController extends Controller
                 }
             }
             if ($divisionId !== 'all') {
-                $q->whereHas('processedBy', fn($uq) => $uq->where('division_id', $divisionId));
+                $q->whereHas('processor', fn($uq) => $uq->where('division_id', $divisionId));
             }
             $renewals = $q->latest()->get();
         }
@@ -233,8 +233,8 @@ class ReportController extends Controller
                 'applicant_nik' => $item->user?->nik ?? '-',
                 'division_name' => $item->user?->division?->name ?? '-',
                 'date' => $item->departure_date?->format('d/m/Y') ?? $item->created_at->format('d/m/Y'),
-                'amount_formatted' => 'Rp ' . number_format($item->estimated_cost ?? 0, 0, ',', '.'),
-                'amount_raw' => $item->estimated_cost ?? 0,
+                'amount_formatted' => 'Rp ' . number_format($item->disbursed_budget ?? $item->estimated_budget ?? 0, 0, ',', '.'),
+                'amount_raw' => $item->disbursed_budget ?? $item->estimated_budget ?? 0,
                 'status' => $item->status->value,
                 'status_label' => $item->status->label(),
                 'created_at' => $item->created_at->format('d/m/Y H:i'),
@@ -267,9 +267,9 @@ class ReportController extends Controller
                 'type' => 'renewal-domain',
                 'type_label' => 'Renewal Domain/Hosting',
                 'category' => $item->domain?->type ?? 'Domain/Hosting',
-                'applicant_name' => $item->processedBy?->name ?? 'Admin',
-                'applicant_nik' => $item->processedBy?->nik ?? '-',
-                'division_name' => $item->processedBy?->division?->name ?? 'IT',
+                'applicant_name' => $item->processor?->name ?? 'Admin',
+                'applicant_nik' => $item->processor?->nik ?? '-',
+                'division_name' => $item->processor?->division?->name ?? 'IT',
                 'date' => $item->created_at->format('d/m/Y'),
                 'amount_formatted' => '-',
                 'amount_raw' => 0,
@@ -291,7 +291,7 @@ class ReportController extends Controller
             'total_leave_days' => $leaves->whereIn('status.value', ['approved', 'completed'])->sum('total_days'),
 
             'total_business_trip_count' => $businessTrips->count(),
-            'total_business_trip_amount' => $businessTrips->whereIn('status.value', ['approved', 'paid', 'completed'])->sum('estimated_cost'),
+            'total_business_trip_amount' => $businessTrips->whereIn('status.value', ['approved', 'paid', 'completed'])->sum(fn($bt) => $bt->disbursed_budget ?? $bt->estimated_budget ?? 0),
 
             'total_monthly_bill_count' => $monthlyBills->count(),
             'total_monthly_bill_amount' => $monthlyBills->where('status', 'paid')->sum('bill_amount'),

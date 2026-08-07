@@ -281,6 +281,17 @@ const getBadgeColor = (type) => {
                 <span class="text-[11px] text-slate-500 font-medium">{{ item.paid_at }}</span>
               </div>
             </div>
+
+            <!-- Tombol Buka Detail / Bukti -->
+            <div class="pt-2 border-t border-slate-50">
+              <a
+                :href="route('riwayat-pengajuan.show', { type: item.type, id: item.id })"
+                target="_blank"
+                class="block w-full text-center py-2 rounded-xl bg-slate-50 text-indigo-600 hover:bg-slate-100 text-xs font-bold transition-colors border border-slate-100"
+              >
+                Lihat Detail & Bukti Lampiran →
+              </a>
+            </div>
           </div>
         </div>
       </div>

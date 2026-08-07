@@ -386,7 +386,18 @@ const exportWordUrl = computed(() => {
             </thead>
             <tbody class="divide-y divide-slate-100 font-medium">
               <tr v-for="item in detailList" :key="item.type + item.id" class="hover:bg-slate-50/70">
-                <td class="py-3 px-4 font-bold text-slate-900">{{ item.request_number }}</td>
+                <td class="py-3 px-4 font-bold text-slate-900">
+                  <a
+                    v-if="item.type !== 'tagihan-bulanan' && item.type !== 'renewal-domain'"
+                    :href="route('riwayat-pengajuan.show', { type: item.type, id: item.id })"
+                    target="_blank"
+                    class="text-indigo-600 hover:text-indigo-700 hover:underline transition-colors"
+                    title="Buka Rincian Detail"
+                  >
+                    {{ item.request_number }}
+                  </a>
+                  <span v-else>{{ item.request_number }}</span>
+                </td>
                 <td class="py-3 px-4 text-slate-500 whitespace-nowrap">{{ item.date }}</td>
                 <td class="py-3 px-4">
                   <span class="font-bold text-slate-800 block">{{ item.applicant_name }}</span>

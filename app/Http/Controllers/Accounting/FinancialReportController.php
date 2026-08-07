@@ -42,7 +42,8 @@ class FinancialReportController extends Controller
                 // Get Beginning Balance (before startDate)
                 $pastItems = JournalItem::where('coa_id', $coaId)
                     ->whereHas('journalEntry', function($q) use ($startDate) {
-                        $q->where('date', '<', $startDate);
+                        $q->where('date', '<', $startDate)
+                          ->where('status', '!=', 'void');
                     })->get();
                 
                 $beginningBalance = $pastItems->sum('debit') - $pastItems->sum('credit');
@@ -53,7 +54,8 @@ class FinancialReportController extends Controller
                 $items = JournalItem::with('journalEntry')
                     ->where('coa_id', $coaId)
                     ->whereHas('journalEntry', function($q) use ($startDate, $endDate) {
-                        $q->whereBetween('date', [$startDate, $endDate]);
+                        $q->whereBetween('date', [$startDate, $endDate])
+                          ->where('status', '!=', 'void');
                     })
                     ->get()
                     ->sortBy(function($item) {
@@ -246,21 +248,105 @@ class FinancialReportController extends Controller
         $showZero = filter_var($request->input('show_zero', true), FILTER_VALIDATE_BOOLEAN);
         $showCode = filter_var($request->input('show_code', false), FILTER_VALIDATE_BOOLEAN);
 
+        // Get beginning cash
+        $beginningCashItems = \App\Models\JournalItem::whereHas('coa', function($q) {
+            $q->where('code', 'like', '1.01%');
+        })->whereHas('journalEntry', function($q) use ($startDate) {
+            $q->where('date', '<', $startDate)->where('status', '!=', 'void');
+        })->get();
+        
+        $beginningCash = $beginningCashItems->sum('debit') - $beginningCashItems->sum('credit');
+
+        // Get all journal entries that involve cash
+        $cashJournalIds = \App\Models\JournalItem::whereHas('coa', function($q) {
+            $q->where('code', 'like', '1.01%');
+        })->whereHas('journalEntry', function($q) use ($startDate, $endDate) {
+            $q->whereBetween('date', [$startDate, $endDate])->where('status', '!=', 'void');
+        })->pluck('journal_entry_id')->unique();
+
+        $operating = [];
+        $investing = [];
+        $financing = [];
+
+        $items = \App\Models\JournalItem::with('coa')
+            ->whereIn('journal_entry_id', $cashJournalIds)
+            ->whereHas('coa', function($q) {
+                $q->where('code', 'not like', '1.01%'); // non-cash items
+            })
+            ->get();
+
+        foreach($items as $item) {
+            $coa = $item->coa;
+            $amount = $item->credit - $item->debit; // Cash inflow from this item
+            
+            if ($amount == 0) continue;
+
+            $category = 'Operating';
+            if ($coa->type == 'pendapatan' || $coa->type == 'beban') {
+                $category = 'Operating';
+            } else if ($coa->type == 'aset') {
+                if (str_starts_with($coa->code, '1.05') || str_starts_with($coa->code, '1.06')) {
+                    $category = 'Investing';
+                } else {
+                    $category = 'Operating';
+                }
+            } else if ($coa->type == 'hutang') {
+                if (str_starts_with($coa->code, '2.02') || str_starts_with($coa->code, '2.03')) {
+                    $category = 'Financing';
+                } else {
+                    $category = 'Operating';
+                }
+            } else if ($coa->type == 'modal') {
+                $category = 'Financing';
+            }
+
+            $desc = $coa->name;
+            if ($category === 'Operating') {
+                if (!isset($operating[$desc])) $operating[$desc] = 0;
+                $operating[$desc] += $amount;
+            } else if ($category === 'Investing') {
+                if (!isset($investing[$desc])) $investing[$desc] = 0;
+                $investing[$desc] += $amount;
+            } else if ($category === 'Financing') {
+                if (!isset($financing[$desc])) $financing[$desc] = 0;
+                $financing[$desc] += $amount;
+            }
+        }
+
+        $formatActivities = function($arr) {
+            $res = [];
+            foreach($arr as $desc => $amount) {
+                $res[] = ['description' => $desc, 'amount' => $amount];
+            }
+            return $res;
+        };
+
+        $operatingActivities = $formatActivities($operating);
+        $investingActivities = $formatActivities($investing);
+        $financingActivities = $formatActivities($financing);
+
+        $operatingTotal = array_sum($operating);
+        $investingTotal = array_sum($investing);
+        $financingTotal = array_sum($financing);
+        
+        $netIncrease = $operatingTotal + $investingTotal + $financingTotal;
+        $endingCash = $beginningCash + $netIncrease;
+
         $data = [
             'filters' => [
                 'start_date' => $startDate, 'end_date' => $endDate,
                 'level' => $level, 'show_zero' => $showZero, 'show_code' => $showCode
             ],
             'maxLevel' => 5,
-            'operatingActivities' => [],
-            'investingActivities' => [],
-            'financingActivities' => [],
-            'operatingTotal' => 0,
-            'investingTotal' => 0,
-            'financingTotal' => 0,
-            'netIncrease' => 0,
-            'beginningCash' => 0,
-            'endingCash' => 0,
+            'operatingActivities' => $operatingActivities,
+            'investingActivities' => $investingActivities,
+            'financingActivities' => $financingActivities,
+            'operatingTotal' => $operatingTotal,
+            'investingTotal' => $investingTotal,
+            'financingTotal' => $financingTotal,
+            'netIncrease' => $netIncrease,
+            'beginningCash' => $beginningCash,
+            'endingCash' => $endingCash,
         ];
 
         if ($request->input('export') === 'pdf') {

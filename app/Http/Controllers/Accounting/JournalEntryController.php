@@ -186,7 +186,7 @@ class JournalEntryController extends Controller
                 'source_id'        => $bt->id,
                 'date'             => $bt->created_at,
                 'description'      => '[PERJADIN] ' . ($bt->settlement_number ?? '-') . ' - ' . ($bt->businessTripRequest->user->name ?? ''),
-                'amount'           => $bt->total_amount ?? 0,
+                'amount'           => $bt->total_actual_cost ?? 0,
                 'reference_number' => $bt->settlement_number ?? 'BT-' . $bt->id,
                 'is_journalled'    => $allJournalRefs->has($refKey),
                 'type'             => 'out',
@@ -367,8 +367,21 @@ class JournalEntryController extends Controller
         if ($journal->status === 'void') {
             return back()->withErrors(['message' => 'Jurnal ini sudah dibatalkan.']);
         }
-        $journal->update(['status' => 'void']);
-        return back()->with('success', 'Jurnal ' . $journal->journal_number . ' berhasil dibatalkan (void).');
+
+        // Period check
+        $period = \App\Models\AccountingPeriod::whereDate('start_date', '<=', $journal->date)
+            ->whereDate('end_date', '>=', $journal->date)
+            ->first();
+
+        if ($period && $period->is_closed) {
+            return back()->withErrors(['message' => 'Tidak dapat membatalkan jurnal pada periode yang sudah ditutup.']);
+        }
+
+        DB::transaction(function () use ($journal) {
+            $journal->update(['status' => 'void']);
+        });
+
+        return back()->with('success', 'Jurnal ' . $journal->journal_number . ' berhasil dibatalkan dan dihapus dari buku besar.');
     }
 
     public function show($id)

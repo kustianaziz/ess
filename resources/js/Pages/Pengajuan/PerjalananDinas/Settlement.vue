@@ -27,14 +27,22 @@ const props = defineProps({
 
 const form = useForm({
   trip_report: '',
-  expense_items: [
-    {
-      category: 'tiket',
-      description: 'Tiket Pesawat / Kereta / Transportasi',
-      amount: 0,
-      expense_date: props.tripRequest.start_date
-    }
-  ],
+  expense_items: (props.tripRequest.allowance_breakdown && props.tripRequest.allowance_breakdown.length > 0)
+    ? props.tripRequest.allowance_breakdown.map(item => ({
+        category: 'lainnya',
+        description: item.item_name,
+        disbursed_amount: item.amount,
+        amount: 0,
+        expense_date: props.tripRequest.start_date
+      }))
+    : [
+        {
+          category: 'tiket',
+          description: 'Tiket Pesawat / Kereta / Transportasi',
+          amount: 0,
+          expense_date: props.tripRequest.start_date
+        }
+      ],
   attachments: []
 })
 
@@ -178,7 +186,7 @@ const submitForm = () => {
                   </select>
                 </div>
 
-                <div class="sm:col-span-4">
+                <div class="sm:col-span-3">
                   <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Keterangan Nota / Struk</label>
                   <input
                     v-model="item.description"
@@ -186,6 +194,9 @@ const submitForm = () => {
                     placeholder="mis: Hotel Santika 2 Malam"
                     class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-800"
                   />
+                  <div v-if="item.disbursed_amount !== undefined" class="mt-1 text-[10px] font-medium text-slate-500">
+                    Dicairkan: <span class="font-bold text-blue-600">{{ formatCurrency(item.disbursed_amount) }}</span>
+                  </div>
                 </div>
 
                 <div class="sm:col-span-2">
@@ -198,7 +209,7 @@ const submitForm = () => {
                 </div>
 
                 <div class="sm:col-span-2">
-                  <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nominal (Rp)</label>
+                  <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Realisasi (Rp)</label>
                   <input
                     v-model.number="item.amount"
                     type="number"
@@ -206,6 +217,16 @@ const submitForm = () => {
                     placeholder="0"
                     class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs font-bold text-slate-900"
                   />
+                </div>
+
+                <div class="sm:col-span-2">
+                  <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Sisa (Rp)</label>
+                  <div
+                    class="w-full px-3 py-2 rounded-lg bg-slate-100 border border-slate-200 text-xs font-bold"
+                    :class="item.disbursed_amount !== undefined && (item.disbursed_amount - item.amount) < 0 ? 'text-amber-600' : 'text-slate-700'"
+                  >
+                    {{ item.disbursed_amount !== undefined ? formatCurrency(item.disbursed_amount - item.amount) : '-' }}
+                  </div>
                 </div>
 
                 <div class="sm:col-span-1 flex justify-end">

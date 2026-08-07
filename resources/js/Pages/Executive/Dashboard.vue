@@ -446,25 +446,26 @@ const leaveSeries = shallowRef([{ name: 'Jumlah Pengajuan', data: (props.leaves_
               <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl flex flex-col">
                 <h4 class="text-sm font-bold text-slate-800 mb-4">Top 5 Klien Terbesar</h4>
                 <div class="space-y-3 flex-1">
-                  <div v-for="(customer, index) in top_customers" :key="customer.id" class="flex items-center gap-4 p-3 rounded-xl bg-white border border-slate-100 hover:shadow-sm transition-all">
+                  <div v-for="(customer, index) in top_customers" :key="customer.id" class="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 p-3 rounded-xl bg-white border border-slate-100 hover:shadow-sm transition-all">
                     <div class="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm font-bold shrink-0">
                       {{ index + 1 }}
                     </div>
-                    <div class="flex-1 min-w-0">
+                    <div class="flex-1 min-w-[50%]">
                       <p class="text-sm font-bold text-slate-800 truncate">{{ customer.name }}</p>
                       <p class="text-[10px] sm:text-xs text-slate-500 truncate mb-1">{{ customer.email }}</p>
-                      <div class="flex items-center gap-2 text-[10px]" v-if="customer.invoices && customer.invoices.length > 0">
-                        <span class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-medium">Inv: Sudah</span>
-                        <span :class="customer.invoices[0].status === 'paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'" class="px-1.5 py-0.5 rounded font-medium">
+                      <div class="flex flex-wrap items-center gap-1.5 text-[10px]" v-if="customer.invoices && customer.invoices.length > 0">
+                        <span class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-medium whitespace-nowrap">Inv: Sudah</span>
+                        <span :class="customer.invoices[0].status === 'paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'" class="px-1.5 py-0.5 rounded font-medium whitespace-nowrap">
                           Bayar: {{ customer.invoices[0].status === 'paid' ? 'Sudah' : 'Belum' }}
                         </span>
                       </div>
-                      <div class="flex items-center gap-2 text-[10px]" v-else>
-                        <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-medium">Inv: Belum</span>
+                      <div class="flex items-center gap-1.5 text-[10px]" v-else>
+                        <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-medium whitespace-nowrap">Inv: Belum</span>
                       </div>
                     </div>
-                    <div class="text-right shrink-0">
-                      <p class="text-sm font-black text-emerald-600">{{ formatRupiah(customer.total_revenue) }}</p>
+                    <div class="w-full sm:w-auto text-right shrink-0 mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-50 flex justify-between sm:block items-center">
+                      <span class="text-[10px] font-bold text-slate-400 sm:hidden uppercase">Total</span>
+                      <p class="text-sm sm:text-base font-black text-emerald-600">{{ formatRupiah(customer.total_revenue) }}</p>
                     </div>
                   </div>
                   <div v-if="!top_customers.length" class="text-xs text-slate-500 italic text-center mt-10">Belum ada data pendapatan klien.</div>

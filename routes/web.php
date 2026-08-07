@@ -76,14 +76,14 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Laporan & Agregasi (HRD / Finance & Admin)
-    Route::middleware('role:admin|hrd_finance')->prefix('admin/reports')->name('admin.reports.')->group(function () {
+    Route::middleware('role:admin|hrd_finance|manager')->prefix('admin/reports')->name('admin.reports.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\ReportController::class, 'index'])->name('index');
         Route::get('/export-excel', [\App\Http\Controllers\Admin\ReportController::class, 'exportExcel'])->name('export-excel');
         Route::get('/export-word', [\App\Http\Controllers\Admin\ReportController::class, 'exportWord'])->name('export-word');
     });
 
     // Modul Keuangan (Kas Operasional & Tagihan Bulanan)
-    Route::middleware('role:admin|hrd_finance')->prefix('keuangan')->name('keuangan.')->group(function () {
+    Route::middleware('role:admin|hrd_finance|manager')->prefix('keuangan')->name('keuangan.')->group(function () {
         // Kas Operasional
         Route::get('/kas-operasional', [\App\Http\Controllers\CashOperationalController::class, 'dashboard'])->name('kas-operasional.dashboard');
         Route::post('/kas-operasional/accounts', [\App\Http\Controllers\CashOperationalController::class, 'storeAccount'])->name('kas-operasional.accounts.store');
@@ -105,7 +105,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Modul Akuntansi
-    Route::middleware('role:admin|hrd_finance')->prefix('accounting')->name('accounting.')->group(function () {
+    Route::middleware('role:admin|hrd_finance|manager')->prefix('accounting')->name('accounting.')->group(function () {
         Route::resource('journals', \App\Http\Controllers\Accounting\JournalEntryController::class)->only(['index', 'store', 'show']);
         Route::post('journals/{journal}/void', [\App\Http\Controllers\Accounting\JournalEntryController::class, 'void'])->name('journals.void');
         Route::resource('coas', \App\Http\Controllers\Accounting\CoaController::class)->except(['create', 'show', 'edit']);

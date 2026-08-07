@@ -23,6 +23,10 @@ const props = defineProps({
   applicant: {
     type: Object,
     required: true
+  },
+  subordinates: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -38,7 +42,9 @@ const form = useForm({
   assignment_letter_number: '',
   estimated_budget: 0,
   attachments: [],
-  action: 'submit'
+  action: 'submit',
+  is_delegated: false,
+  assigned_to: ''
 })
 
 // Format Rupiah Input
@@ -66,13 +72,17 @@ const formatDate = (dateStr) => {
 
 // Step Validation
 const isStep1Valid = computed(() => {
-  return (
+  const baseValid = (
     form.destination.trim() !== '' &&
     form.purpose.trim() !== '' &&
     form.start_date !== '' &&
     form.end_date !== '' &&
     form.estimated_budget >= 0
   )
+  if (form.is_delegated) {
+    return baseValid && form.assigned_to !== ''
+  }
+  return baseValid
 })
 
 const nextStep = () => {
@@ -172,6 +182,43 @@ const submitForm = (actionType) => {
               <div>
                 <span class="text-slate-400 block font-medium">Tanggal Pengajuan</span>
                 <span class="font-semibold text-slate-800">{{ applicant.submission_date }}</span>
+              </div>
+            </div>
+
+            <!-- TIPE PENGAJUAN (DELEGASI) -->
+            <div v-if="subordinates && subordinates.length > 0" class="bg-blue-50/50 border border-blue-100 rounded-xl p-4 sm:p-5 mt-4">
+              <h3 class="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 pb-2 border-b border-blue-200/50">
+                Tipe Pengajuan
+              </h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-2">Untuk Siapa Pengajuan Ini?</label>
+                  <div class="flex gap-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" v-model="form.is_delegated" :value="false" class="text-blue-600 focus:ring-blue-500" />
+                      <span class="text-xs sm:text-sm text-slate-700 font-medium">Diri Sendiri</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" v-model="form.is_delegated" :value="true" class="text-blue-600 focus:ring-blue-500" />
+                      <span class="text-xs sm:text-sm text-slate-700 font-medium">Tugaskan ke Tim</span>
+                    </label>
+                  </div>
+                </div>
+                <div v-if="form.is_delegated">
+                  <label class="block text-xs font-bold text-slate-700 mb-1.5">Pilih Anggota Tim <span class="text-rose-500">*</span></label>
+                  <select
+                    v-model="form.assigned_to"
+                    class="w-full text-xs sm:text-sm border-blue-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  >
+                    <option value="" disabled>Pilih anggota tim...</option>
+                    <option v-for="sub in subordinates" :key="sub.id" :value="sub.id">
+                      {{ sub.name }} ({{ sub.position || 'Staff' }})
+                    </option>
+                  </select>
+                  <span v-if="form.errors.assigned_to" class="text-[11px] text-rose-500 mt-1 block">
+                    {{ form.errors.assigned_to }}
+                  </span>
+                </div>
               </div>
             </div>
 

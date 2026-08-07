@@ -37,16 +37,31 @@ const isCurrentRoute = (routeName) => {
   return route().current(routeName) || route().current(routeName + '.*');
 };
 
-const isAdmin = computed(() => {
+const userRoles = computed(() => {
   const roles = page.props.auth.user?.roles || [];
-  const roleArray = Array.isArray(roles) ? roles : [roles];
-  return roleArray.includes('admin');
+  if (Array.isArray(roles)) {
+    return roles.map(r => (typeof r === 'string' ? r : (r.name || r)));
+  }
+  if (typeof roles === 'object') {
+    return Object.values(roles).map(r => (typeof r === 'string' ? r : (r.name || r)));
+  }
+  if (typeof roles === 'string') return [roles];
+  return [];
 });
 
+const isAdmin = computed(() => userRoles.value.includes('admin'));
+
 const isHrdOrAdmin = computed(() => {
-  const roles = page.props.auth.user?.roles || [];
-  const roleArray = Array.isArray(roles) ? roles : [roles];
-  return roleArray.includes('admin') || roleArray.includes('hrd_finance');
+  return userRoles.value.includes('admin') || userRoles.value.includes('hrd_finance');
+});
+
+const isLevel1OrAbove = computed(() => {
+  return (
+    userRoles.value.includes('admin') ||
+    userRoles.value.includes('hrd_finance') ||
+    userRoles.value.includes('manager') ||
+    !page.props.auth.user?.manager_id
+  );
 });
 </script>
 
@@ -79,7 +94,7 @@ const isHrdOrAdmin = computed(() => {
             <span>Beranda ESS</span>
           </Link>
           <Link
-            v-if="isHrdOrAdmin"
+            v-if="isLevel1OrAbove"
             :href="route('executive.dashboard')"
             class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
             :class="isCurrentRoute('executive.dashboard') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
@@ -134,12 +149,13 @@ const isHrdOrAdmin = computed(() => {
         </div>
 
         <!-- Section: KEUANGAN (OPERASIONAL & TAGIHAN) -->
-        <div v-if="isHrdOrAdmin">
+        <div v-if="isLevel1OrAbove">
           <p class="px-3.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">
             KEUANGAN
           </p>
           <div class="space-y-1">
             <Link
+              v-if="isHrdOrAdmin"
               :href="route('keuangan.pencairan.index')"
               class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
               :class="isCurrentRoute('keuangan.pencairan') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
@@ -158,6 +174,7 @@ const isHrdOrAdmin = computed(() => {
             </Link>
 
             <Link
+              v-if="isHrdOrAdmin"
               :href="route('keuangan.tagihan-bulanan.index')"
               class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
               :class="isCurrentRoute('keuangan.tagihan-bulanan') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
@@ -228,12 +245,13 @@ const isHrdOrAdmin = computed(() => {
         </div>
 
         <!-- Section: AKUNTANSI -->
-        <div v-if="isHrdOrAdmin">
+        <div v-if="isLevel1OrAbove">
           <p class="px-3.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2 mt-4">
             AKUNTANSI
           </p>
           <div class="space-y-1">
             <Link
+              v-if="isHrdOrAdmin"
               :href="route('accounting.coas.index')"
               class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
               :class="isCurrentRoute('accounting.coas') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
@@ -242,6 +260,7 @@ const isHrdOrAdmin = computed(() => {
               <span>Master COA</span>
             </Link>
             <Link
+              v-if="isHrdOrAdmin"
               :href="route('accounting.assets.index')"
               class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
               :class="isCurrentRoute('accounting.assets') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
@@ -250,6 +269,7 @@ const isHrdOrAdmin = computed(() => {
               <span>Master Aset</span>
             </Link>
             <Link
+              v-if="isHrdOrAdmin"
               :href="route('accounting.periods.index')"
               class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
               :class="isCurrentRoute('accounting.periods') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
@@ -258,6 +278,7 @@ const isHrdOrAdmin = computed(() => {
               <span>Master Periode</span>
             </Link>
             <Link
+              v-if="isHrdOrAdmin"
               :href="route('accounting.beginning-balances.index')"
               class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
               :class="isCurrentRoute('accounting.beginning-balances') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
@@ -266,6 +287,7 @@ const isHrdOrAdmin = computed(() => {
               <span>Neraca Awal</span>
             </Link>
             <Link
+              v-if="isHrdOrAdmin"
               :href="route('accounting.journals.index')"
               class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
               :class="isCurrentRoute('accounting.journals') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
@@ -361,7 +383,7 @@ const isHrdOrAdmin = computed(() => {
             </Link>
 
             <Link
-              v-if="isHrdOrAdmin"
+              v-if="isLevel1OrAbove"
               :href="route('admin.reports.index')"
               class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
               :class="isCurrentRoute('admin.reports') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
