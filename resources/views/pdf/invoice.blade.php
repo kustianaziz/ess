@@ -196,7 +196,7 @@
 
                 </div>
                 
-                <div class="sign-name" style="margin-top: -5px;">
+                <div class="sign-name" style="margin-top: -25px; position: relative; z-index: 3;">
                     {{ isset($invoice->customer->service->signature_name) && $invoice->customer->service->signature_name != '' ? $invoice->customer->service->signature_name : 'Fourizal Novyansyah' }}
                 </div>
                 <div class="sign-role">Finance</div>
