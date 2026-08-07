@@ -18,7 +18,7 @@ class ExecutiveDashboardController extends Controller
         $period = $request->query('period', 'monthly'); // daily, weekly, monthly
 
         // Financial KPIs
-        $revenueTotal = InvoicePayment::sum('amount') + CashTransaction::where('type', 'in')->where('category', '!=', 'mutasi')->sum('amount');
+        $revenueTotal = InvoicePayment::sum('amount') + CashTransaction::where('type', 'in')->where('category', '!=', 'mutasi')->whereNull('source_type')->sum('amount');
         $piutangTotal = \App\Models\Invoice::whereNotIn('status', ['paid', 'cancelled'])->get()->sum(function($inv) {
             return $inv->total_amount - $inv->paid_amount;
         });
@@ -26,12 +26,8 @@ class ExecutiveDashboardController extends Controller
         $expenseTotal = VendorPayment::sum('amount') 
             + ReimbursementRequest::whereIn('status', ['paid', 'completed'])->sum('amount')
             + OperationalRequest::whereIn('status', ['paid', 'completed'])->sum('estimated_cost')
-            + \App\Models\BusinessTripRequest::whereIn('status', ['paid', 'completed'])->sum('disbursed_budget');
-            
-        $cashExpense = CashTransaction::where('type', 'out')->where('category', '!=', 'mutasi')->sum('amount');
-        if ($cashExpense > $expenseTotal) {
-            $expenseTotal = $cashExpense;
-        }
+            + \App\Models\BusinessTripRequest::whereIn('status', ['paid', 'completed'])->sum('disbursed_budget')
+            + CashTransaction::where('type', 'out')->where('category', '!=', 'mutasi')->whereNull('source_type')->sum('amount');
 
         // Category Breakdown
         $defaultExpenseCats = [
@@ -41,25 +37,11 @@ class ExecutiveDashboardController extends Controller
             'Perjalanan Dinas' => 0,
             'Pembayaran Bulanan' => 0
         ];
-        
-        $cashTransactions = CashTransaction::where('type', 'out')->where('category', '!=', 'mutasi')->selectRaw('category, sum(amount) as total')->groupBy('category')->get();
-        if ($cashTransactions->count() > 0) {
-            foreach ($cashTransactions as $ct) {
-                $cat = strtolower($ct->category);
-                $mappedName = 'Operasional';
-                if ($cat === 'perjalanan_dinas' || $cat === 'perjalanan dinas') $mappedName = 'Perjalanan Dinas';
-                elseif ($cat === 'reimburse' || $cat === 'reimbursement') $mappedName = 'Reimbursement';
-                elseif ($cat === 'pembayaran_bulanan' || $cat === 'pembayaran bulanan') $mappedName = 'Pembayaran Bulanan';
-                elseif (in_array($cat, ['lainnya', 'vendor_renewal', 'vendor renewal'])) $mappedName = 'Vendor Renewal';
-                
-                $defaultExpenseCats[$mappedName] += (float)$ct->total;
-            }
-        } else {
-            $defaultExpenseCats['Vendor Renewal'] = (float)\App\Models\VendorPayment::sum('amount');
-            $defaultExpenseCats['Reimbursement'] = (float)\App\Models\ReimbursementRequest::whereIn('status', ['paid', 'completed'])->sum('amount');
-            $defaultExpenseCats['Operasional'] = (float)\App\Models\OperationalRequest::whereIn('status', ['paid', 'completed'])->sum('estimated_cost');
-            $defaultExpenseCats['Perjalanan Dinas'] = (float)\App\Models\BusinessTripRequest::whereIn('status', ['paid', 'completed'])->sum('disbursed_budget');
-        }
+        $defaultExpenseCats['Vendor Renewal'] = (float)\App\Models\VendorPayment::sum('amount');
+        $defaultExpenseCats['Reimbursement'] = (float)\App\Models\ReimbursementRequest::whereIn('status', ['paid', 'completed'])->sum('amount');
+        $defaultExpenseCats['Operasional'] = (float)\App\Models\OperationalRequest::whereIn('status', ['paid', 'completed'])->sum('estimated_cost');
+        $defaultExpenseCats['Perjalanan Dinas'] = (float)\App\Models\BusinessTripRequest::whereIn('status', ['paid', 'completed'])->sum('disbursed_budget');
+        $defaultExpenseCats['Pembayaran Bulanan'] = (float)CashTransaction::where('type', 'out')->where('category', '!=', 'mutasi')->whereNull('source_type')->sum('amount');
 
         $expenseByCategory = [];
         foreach ($defaultExpenseCats as $k => $v) {
@@ -81,7 +63,7 @@ class ExecutiveDashboardController extends Controller
             $defaultRevCats[$cat] = (float)$rev->total;
         }
 
-        $cashInTrans = CashTransaction::where('type', 'in')->where('category', '!=', 'mutasi')->sum('amount');
+        $cashInTrans = CashTransaction::where('type', 'in')->where('category', '!=', 'mutasi')->whereNull('source_type')->sum('amount');
         $defaultRevCats['Transaksi Lainnya'] = (float)$cashInTrans;
 
         $revenueByCategory = [];
@@ -170,7 +152,7 @@ class ExecutiveDashboardController extends Controller
                 $defaults[$cat] = (float)$r->total;
             }
             if ($cashInQuery) {
-                 $defaults['Transaksi Lainnya'] = (float)(clone $cashInQuery)->where('category', '!=', 'mutasi')->sum('amount');
+                 $defaults['Transaksi Lainnya'] = (float)(clone $cashInQuery)->where('category', '!=', 'mutasi')->whereNull('source_type')->sum('amount');
             }
             $res = [];
             foreach ($defaults as $k => $v) {
@@ -179,32 +161,14 @@ class ExecutiveDashboardController extends Controller
             return $res;
         };
 
-        $getExpCat = function($query) {
-            $defaults = [
-                'Vendor Renewal' => 0,
-                'Reimbursement' => 0,
-                'Operasional' => 0,
-                'Perjalanan Dinas' => 0,
-                'Pembayaran Bulanan' => 0
+        $getExpCat = function($queryVendor, $queryReimb, $queryOp, $queryBt, $queryCash) {
+            return [
+                ['category' => 'Vendor Renewal', 'total' => (float)(clone $queryVendor)->sum('amount')],
+                ['category' => 'Reimbursement', 'total' => (float)(clone $queryReimb)->sum('amount')],
+                ['category' => 'Operasional', 'total' => (float)(clone $queryOp)->sum('estimated_cost')],
+                ['category' => 'Perjalanan Dinas', 'total' => (float)(clone $queryBt)->sum('disbursed_budget')],
+                ['category' => 'Lainnya', 'total' => (float)(clone $queryCash)->where('category', '!=', 'mutasi')->whereNull('source_type')->sum('amount')],
             ];
-            $data = (clone $query)->where('category', '!=', 'mutasi')->selectRaw('category, sum(amount) as total')
-                ->groupBy('category')
-                ->get();
-            foreach ($data as $ct) {
-                $cat = strtolower($ct->category);
-                $mappedName = 'Operasional';
-                if ($cat === 'perjalanan_dinas' || $cat === 'perjalanan dinas') $mappedName = 'Perjalanan Dinas';
-                elseif ($cat === 'reimburse' || $cat === 'reimbursement') $mappedName = 'Reimbursement';
-                elseif ($cat === 'pembayaran_bulanan' || $cat === 'pembayaran bulanan') $mappedName = 'Pembayaran Bulanan';
-                elseif (in_array($cat, ['lainnya', 'vendor_renewal', 'vendor renewal'])) $mappedName = 'Vendor Renewal';
-                
-                $defaults[$mappedName] += (float)$ct->total;
-            }
-            $res = [];
-            foreach ($defaults as $k => $v) {
-                $res[] = ['category' => $k, 'total' => $v];
-            }
-            return $res;
         };
         
         $bounds = [];
@@ -215,13 +179,17 @@ class ExecutiveDashboardController extends Controller
                 
                 $rQuery = InvoicePayment::whereDate('payment_date', $date);
                 $rCashInQuery = CashTransaction::where('type', 'in')->whereDate('transaction_date', $date);
-                $eQuery = CashTransaction::where('type', 'out')->where('category', '!=', 'mutasi')->whereDate('transaction_date', $date);
+                $eQueryVendor = VendorPayment::whereDate('payment_date', $date);
+                $eQueryReimb = ReimbursementRequest::whereIn('status', ['paid', 'completed'])->whereDate('updated_at', $date);
+                $eQueryOp = OperationalRequest::whereIn('status', ['paid', 'completed'])->whereDate('updated_at', $date);
+                $eQueryBt = \App\Models\BusinessTripRequest::whereIn('status', ['paid', 'completed'])->whereDate('updated_at', $date);
+                $eQueryCash = CashTransaction::where('type', 'out')->whereDate('transaction_date', $date);
                 
-                $revenueData[] = (clone $rQuery)->sum('amount') + (clone $rCashInQuery)->where('category', '!=', 'mutasi')->sum('amount');
-                $expenseData[] = (clone $eQuery)->sum('amount');
+                $revenueData[] = (clone $rQuery)->sum('amount') + (clone $rCashInQuery)->where('category', '!=', 'mutasi')->whereNull('source_type')->sum('amount');
+                $expenseData[] = (clone $eQueryVendor)->sum('amount') + (clone $eQueryReimb)->sum('amount') + (clone $eQueryOp)->sum('estimated_cost') + (clone $eQueryBt)->sum('disbursed_budget') + (clone $eQueryCash)->where('category', '!=', 'mutasi')->whereNull('source_type')->sum('amount');
                 
                 $revenueCategories[] = $getRevCat($rQuery, $rCashInQuery);
-                $expenseCategories[] = $getExpCat($eQuery);
+                $expenseCategories[] = $getExpCat($eQueryVendor, $eQueryReimb, $eQueryOp, $eQueryBt, $eQueryCash);
                 $bounds[] = ['start' => $date->format('Y-m-d'), 'end' => $date->format('Y-m-d')];
             }
         } elseif ($period == 'weekly') {
@@ -232,13 +200,17 @@ class ExecutiveDashboardController extends Controller
                 
                 $rQuery = InvoicePayment::whereBetween('payment_date', [$start, $end]);
                 $rCashInQuery = CashTransaction::where('type', 'in')->whereBetween('transaction_date', [$start, $end]);
-                $eQuery = CashTransaction::where('type', 'out')->where('category', '!=', 'mutasi')->whereBetween('transaction_date', [$start, $end]);
+                $eQueryVendor = VendorPayment::whereBetween('payment_date', [$start, $end]);
+                $eQueryReimb = ReimbursementRequest::whereIn('status', ['paid', 'completed'])->whereBetween('updated_at', [$start, $end]);
+                $eQueryOp = OperationalRequest::whereIn('status', ['paid', 'completed'])->whereBetween('updated_at', [$start, $end]);
+                $eQueryBt = \App\Models\BusinessTripRequest::whereIn('status', ['paid', 'completed'])->whereBetween('updated_at', [$start, $end]);
+                $eQueryCash = CashTransaction::where('type', 'out')->whereBetween('transaction_date', [$start, $end]);
                 
-                $revenueData[] = (clone $rQuery)->sum('amount') + (clone $rCashInQuery)->where('category', '!=', 'mutasi')->sum('amount');
-                $expenseData[] = (clone $eQuery)->sum('amount');
+                $revenueData[] = (clone $rQuery)->sum('amount') + (clone $rCashInQuery)->where('category', '!=', 'mutasi')->whereNull('source_type')->sum('amount');
+                $expenseData[] = (clone $eQueryVendor)->sum('amount') + (clone $eQueryReimb)->sum('amount') + (clone $eQueryOp)->sum('estimated_cost') + (clone $eQueryBt)->sum('disbursed_budget') + (clone $eQueryCash)->where('category', '!=', 'mutasi')->whereNull('source_type')->sum('amount');
                 
                 $revenueCategories[] = $getRevCat($rQuery, $rCashInQuery);
-                $expenseCategories[] = $getExpCat($eQuery);
+                $expenseCategories[] = $getExpCat($eQueryVendor, $eQueryReimb, $eQueryOp, $eQueryBt, $eQueryCash);
                 $bounds[] = ['start' => $start->format('Y-m-d'), 'end' => $end->format('Y-m-d')];
             }
         } else {
@@ -249,13 +221,17 @@ class ExecutiveDashboardController extends Controller
                 
                 $rQuery = InvoicePayment::whereYear('payment_date', $date->year)->whereMonth('payment_date', $date->month);
                 $rCashInQuery = CashTransaction::where('type', 'in')->whereYear('transaction_date', $date->year)->whereMonth('transaction_date', $date->month);
-                $eQuery = CashTransaction::where('type', 'out')->where('category', '!=', 'mutasi')->whereYear('transaction_date', $date->year)->whereMonth('transaction_date', $date->month);
+                $eQueryVendor = VendorPayment::whereYear('payment_date', $date->year)->whereMonth('payment_date', $date->month);
+                $eQueryReimb = ReimbursementRequest::whereIn('status', ['paid', 'completed'])->whereYear('updated_at', $date->year)->whereMonth('updated_at', $date->month);
+                $eQueryOp = OperationalRequest::whereIn('status', ['paid', 'completed'])->whereYear('updated_at', $date->year)->whereMonth('updated_at', $date->month);
+                $eQueryBt = \App\Models\BusinessTripRequest::whereIn('status', ['paid', 'completed'])->whereYear('updated_at', $date->year)->whereMonth('updated_at', $date->month);
+                $eQueryCash = CashTransaction::where('type', 'out')->whereYear('transaction_date', $date->year)->whereMonth('transaction_date', $date->month);
                 
-                $revenueData[] = (clone $rQuery)->sum('amount') + (clone $rCashInQuery)->where('category', '!=', 'mutasi')->sum('amount');
-                $expenseData[] = (clone $eQuery)->sum('amount');
+                $revenueData[] = (clone $rQuery)->sum('amount') + (clone $rCashInQuery)->where('category', '!=', 'mutasi')->whereNull('source_type')->sum('amount');
+                $expenseData[] = (clone $eQueryVendor)->sum('amount') + (clone $eQueryReimb)->sum('amount') + (clone $eQueryOp)->sum('estimated_cost') + (clone $eQueryBt)->sum('disbursed_budget') + (clone $eQueryCash)->where('category', '!=', 'mutasi')->whereNull('source_type')->sum('amount');
                 
                 $revenueCategories[] = $getRevCat($rQuery, $rCashInQuery);
-                $expenseCategories[] = $getExpCat($eQuery);
+                $expenseCategories[] = $getExpCat($eQueryVendor, $eQueryReimb, $eQueryOp, $eQueryBt, $eQueryCash);
                 $bounds[] = ['start' => $date->copy()->startOfMonth()->format('Y-m-d'), 'end' => $date->copy()->endOfMonth()->format('Y-m-d')];
             }
         }
