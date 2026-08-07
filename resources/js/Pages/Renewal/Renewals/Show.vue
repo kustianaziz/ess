@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { Head, useForm, Link } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import { RefreshCw, ArrowLeft, Globe, CheckCircle2, FileText, Plus, Trash2, X, Upload, DollarSign } from 'lucide-vue-next'
+import { RefreshCw, ArrowLeft, Globe, CheckCircle2, FileText, Plus, Trash2, X, Upload, DollarSign, Download } from 'lucide-vue-next'
 
 const props = defineProps({ renewal: Object, cashAccounts: Array })
 
@@ -176,7 +176,7 @@ const currentStep = (status) => stepOrder.indexOf(status)
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2"><FileText class="w-4 h-4 text-indigo-500" /> Invoice ke Klien</h2>
           <div class="flex gap-2">
-            <a v-if="renewal.invoice" :href="route('invoicing.invoices.pdf', renewal.invoice.id)" target="_blank"
+            <a v-if="renewal.invoice" :href="route('invoices.pdf', renewal.invoice.id)" target="_blank"
               class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors">
               <Download class="w-3.5 h-3.5" /> Cetak PDF
             </a>
