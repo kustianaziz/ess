@@ -63,189 +63,281 @@ class JournalEntryController extends Controller
         if ($dateTo)   $journalsQuery->whereDate('date', '<=', $dateTo);
         $journals = $journalsQuery->get();
 
-        // Build ref map (exclude voided)
-        $allJournalRefs = JournalEntry::whereNotNull('reference_type')->where('status', '!=', 'void')->get()->keyBy(function ($j) {
-            return $j->reference_type . '_' . $j->reference_id;
-        });
+        // Build ref map (exclude voided) by grouping mapped reference IDs from JournalEntry
+        $journalledRefs = JournalEntry::whereNotNull('reference_type')
+            ->where('status', '!=', 'void')
+            ->get(['reference_type', 'reference_id'])
+            ->groupBy('reference_type')
+            ->map(function ($items) {
+                return $items->pluck('reference_id')->toArray();
+            })
+            ->toArray();
+
+        $getUnjournalledIds = function ($class) use ($journalledRefs) {
+            return $journalledRefs[$class] ?? [];
+        };
+
+        $shouldQuery = function($type) use ($sourceType) {
+            if (!$sourceType) return true;
+            return $sourceType === $type;
+        };
 
         $transactions = collect();
 
         // 1. Kas Operasional — HANYA yang MANDIRI (source_type IS NULL = bukan turunan dari request lain)
-        foreach (CashTransaction::where('status', 'posted')->whereNull('source_type')->get() as $ct) {
-            $refKey = CashTransaction::class . '_' . $ct->id;
-            $transactions->push([
-                'id'               => 'ct_' . $ct->id,
-                'source_type'      => CashTransaction::class,
-                'source_label'     => 'Kas Operasional',
-                'source_id'        => $ct->id,
-                'date'             => $ct->transaction_date,
-                'description'      => ($ct->type == 'in' ? '[KAS MASUK] ' : '[KAS KELUAR] ') . $ct->description,
-                'amount'           => $ct->amount,
-                'reference_number' => $ct->transaction_number ?? 'KAS-' . $ct->id,
-                'is_journalled'    => $allJournalRefs->has($refKey),
-                'type'             => $ct->type,
-            ]);
+        if ($shouldQuery(CashTransaction::class)) {
+            $ctQuery = CashTransaction::where('status', 'posted')->whereNull('source_type');
+            $exclude = $getUnjournalledIds(CashTransaction::class);
+            if (!empty($exclude)) $ctQuery->whereNotIn('id', $exclude);
+            if ($dateFrom) $ctQuery->where('transaction_date', '>=', $dateFrom);
+            if ($dateTo)   $ctQuery->where('transaction_date', '<=', $dateTo);
+
+            foreach ($ctQuery->get() as $ct) {
+                $transactions->push([
+                    'id'               => 'ct_' . $ct->id,
+                    'source_type'      => CashTransaction::class,
+                    'source_label'     => 'Kas Operasional',
+                    'source_id'        => $ct->id,
+                    'date'             => $ct->transaction_date,
+                    'description'      => ($ct->type == 'in' ? '[KAS MASUK] ' : '[KAS KELUAR] ') . $ct->description,
+                    'amount'           => $ct->amount,
+                    'reference_number' => $ct->transaction_number ?? 'KAS-' . $ct->id,
+                    'is_journalled'    => false,
+                    'type'             => $ct->type,
+                ]);
+            }
         }
 
         // 2. Penerbitan Invoice (Piutang)
-        foreach (Invoice::whereIn('status', ['sent', 'partial', 'paid', 'overdue'])->with('customer')->get() as $inv) {
-            $isRenewal = $inv->source_type === 'renewal';
-            $sourceTypeString = Invoice::class . ($isRenewal ? '_renewal' : '_general');
-            $refKey = $sourceTypeString . '_' . $inv->id;
-            
-            $transactions->push([
-                'id'               => 'inv_' . $inv->id,
-                'source_type'      => $sourceTypeString,
-                'source_label'     => $isRenewal ? 'Invoice Renewal' : 'Invoice Tagihan',
-                'source_id'        => $inv->id,
-                'date'             => $inv->invoice_date,
-                'description'      => '[PIUTANG] ' . $inv->invoice_number . ' - ' . ($inv->customer->name ?? ''),
-                'amount'           => $inv->total_amount,
-                'reference_number' => $inv->invoice_number,
-                'is_journalled'    => $allJournalRefs->has($refKey),
-                'type'             => 'in',
-                'original_source_type' => Invoice::class
-            ]);
+        if ($shouldQuery(Invoice::class . '_general') || $shouldQuery(Invoice::class . '_renewal')) {
+            $invQuery = Invoice::whereIn('status', ['sent', 'partial', 'paid', 'overdue'])->with('customer');
+            if ($dateFrom) $invQuery->where('invoice_date', '>=', $dateFrom);
+            if ($dateTo)   $invQuery->where('invoice_date', '<=', $dateTo);
+
+            foreach ($invQuery->get() as $inv) {
+                $isRenewal = $inv->source_type === 'renewal';
+                $classType = Invoice::class . ($isRenewal ? '_renewal' : '_general');
+
+                if (!$shouldQuery($classType)) continue;
+
+                $exclude = $getUnjournalledIds($classType);
+                if (in_array($inv->id, $exclude)) continue;
+
+                $transactions->push([
+                    'id'               => 'inv_' . $inv->id,
+                    'source_type'      => $classType,
+                    'source_label'     => $isRenewal ? 'Invoice Renewal' : 'Invoice Tagihan',
+                    'source_id'        => $inv->id,
+                    'date'             => $inv->invoice_date,
+                    'description'      => '[PIUTANG] ' . $inv->invoice_number . ' - ' . ($inv->customer->name ?? ''),
+                    'amount'           => $inv->total_amount,
+                    'reference_number' => $inv->invoice_number,
+                    'is_journalled'    => false,
+                    'type'             => 'in',
+                    'original_source_type' => Invoice::class
+                ]);
+            }
         }
 
         // 3. Pembayaran Invoice (Penerimaan Kas)
-        foreach (InvoicePayment::with('invoice')->get() as $ip) {
-            $isRenewal = $ip->invoice && $ip->invoice->source_type === 'renewal';
-            $sourceTypeString = InvoicePayment::class . ($isRenewal ? '_renewal' : '_general');
-            $refKey = $sourceTypeString . '_' . $ip->id;
+        if ($shouldQuery(InvoicePayment::class . '_general') || $shouldQuery(InvoicePayment::class . '_renewal')) {
+            $ipQuery = InvoicePayment::with('invoice');
+            if ($dateFrom) $ipQuery->where('payment_date', '>=', $dateFrom);
+            if ($dateTo)   $ipQuery->where('payment_date', '<=', $dateTo);
 
-            $transactions->push([
-                'id'               => 'ip_' . $ip->id,
-                'source_type'      => $sourceTypeString,
-                'source_label'     => $isRenewal ? 'Pelunasan Renewal' : 'Pelunasan Tagihan',
-                'source_id'        => $ip->id,
-                'date'             => $ip->payment_date,
-                'description'      => '[PENERIMAAN KAS] Invoice ' . ($ip->invoice->invoice_number ?? '-'),
-                'amount'           => $ip->amount,
-                'reference_number' => 'INV-PAY-' . str_pad($ip->id, 4, '0', STR_PAD_LEFT),
-                'is_journalled'    => $allJournalRefs->has($refKey),
-                'type'             => 'in',
-                'original_source_type' => InvoicePayment::class
-            ]);
+            foreach ($ipQuery->get() as $ip) {
+                $isRenewal = $ip->invoice && $ip->invoice->source_type === 'renewal';
+                $classType = InvoicePayment::class . ($isRenewal ? '_renewal' : '_general');
+
+                if (!$shouldQuery($classType)) continue;
+
+                $exclude = $getUnjournalledIds($classType);
+                if (in_array($ip->id, $exclude)) continue;
+
+                $transactions->push([
+                    'id'               => 'ip_' . $ip->id,
+                    'source_type'      => $classType,
+                    'source_label'     => $isRenewal ? 'Pelunasan Renewal' : 'Pelunasan Tagihan',
+                    'source_id'        => $ip->id,
+                    'date'             => $ip->payment_date,
+                    'description'      => '[PENERIMAAN KAS] Invoice ' . ($ip->invoice->invoice_number ?? '-'),
+                    'amount'           => $ip->amount,
+                    'reference_number' => 'INV-PAY-' . str_pad($ip->id, 4, '0', STR_PAD_LEFT),
+                    'is_journalled'    => false,
+                    'type'             => 'in',
+                    'original_source_type' => InvoicePayment::class
+                ]);
+            }
         }
 
         // 4. Pembayaran Vendor Renewal
-        foreach (VendorPayment::with('vendor')->get() as $vp) {
-            $refKey = VendorPayment::class . '_' . $vp->id;
-            $transactions->push([
-                'id'               => 'vp_' . $vp->id,
-                'source_type'      => VendorPayment::class,
-                'source_label'     => 'Pembayaran Vendor',
-                'source_id'        => $vp->id,
-                'date'             => $vp->payment_date,
-                'description'      => '[PEMBAYARAN VENDOR] ' . ($vp->vendor->name ?? '-'),
-                'amount'           => $vp->amount,
-                'reference_number' => 'VEND-' . str_pad($vp->id, 4, '0', STR_PAD_LEFT),
-                'is_journalled'    => $allJournalRefs->has($refKey),
-                'type'             => 'out',
-            ]);
+        if ($shouldQuery(VendorPayment::class)) {
+            $vpQuery = VendorPayment::with('vendor');
+            $exclude = $getUnjournalledIds(VendorPayment::class);
+            if (!empty($exclude)) $vpQuery->whereNotIn('id', $exclude);
+            if ($dateFrom) $vpQuery->where('payment_date', '>=', $dateFrom);
+            if ($dateTo)   $vpQuery->where('payment_date', '<=', $dateTo);
+
+            foreach ($vpQuery->get() as $vp) {
+                $transactions->push([
+                    'id'               => 'vp_' . $vp->id,
+                    'source_type'      => VendorPayment::class,
+                    'source_label'     => 'Pembayaran Vendor',
+                    'source_id'        => $vp->id,
+                    'date'             => $vp->payment_date,
+                    'description'      => '[PEMBAYARAN VENDOR] ' . ($vp->vendor->name ?? '-'),
+                    'amount'           => $vp->amount,
+                    'reference_number' => 'VEND-' . str_pad($vp->id, 4, '0', STR_PAD_LEFT),
+                    'is_journalled'    => false,
+                    'type'             => 'out',
+                ]);
+            }
         }
 
         // 5. Reimburse (paid)
-        foreach (ReimbursementRequest::where('status', 'paid')->with('user')->get() as $rb) {
-            $refKey = ReimbursementRequest::class . '_' . $rb->id;
-            $transactions->push([
-                'id'               => 'rb_' . $rb->id,
-                'source_type'      => ReimbursementRequest::class,
-                'source_label'     => 'Reimbursement',
-                'source_id'        => $rb->id,
-                'date'             => $rb->paid_at ?? $rb->expense_date,
-                'description'      => '[REIMBURSE] ' . ($rb->request_number ?? '-') . ' - ' . ($rb->user->name ?? ''),
-                'amount'           => $rb->amount,
-                'reference_number' => $rb->request_number ?? 'RB-' . $rb->id,
-                'is_journalled'    => $allJournalRefs->has($refKey),
-                'type'             => 'out',
-            ]);
+        if ($shouldQuery(ReimbursementRequest::class)) {
+            $rbQuery = ReimbursementRequest::where('status', 'paid')->with('user');
+            $exclude = $getUnjournalledIds(ReimbursementRequest::class);
+            if (!empty($exclude)) $rbQuery->whereNotIn('id', $exclude);
+            
+            if ($dateFrom) {
+                $rbQuery->where(function($q) use ($dateFrom) {
+                    $q->where('paid_at', '>=', $dateFrom)->orWhere('expense_date', '>=', $dateFrom);
+                });
+            }
+            if ($dateTo) {
+                $rbQuery->where(function($q) use ($dateTo) {
+                    $q->where('paid_at', '<=', $dateTo)->orWhere('expense_date', '<=', $dateTo);
+                });
+            }
+
+            foreach ($rbQuery->get() as $rb) {
+                $transactions->push([
+                    'id'               => 'rb_' . $rb->id,
+                    'source_type'      => ReimbursementRequest::class,
+                    'source_label'     => 'Reimbursement',
+                    'source_id'        => $rb->id,
+                    'date'             => $rb->paid_at ?? $rb->expense_date,
+                    'description'      => '[REIMBURSE] ' . ($rb->request_number ?? '-') . ' - ' . ($rb->user->name ?? ''),
+                    'amount'           => $rb->amount,
+                    'reference_number' => $rb->request_number ?? 'RB-' . $rb->id,
+                    'is_journalled'    => false,
+                    'type'             => 'out',
+                ]);
+            }
         }
 
         // 6. Konsumsi / Operasional (paid)
-        foreach (OperationalRequest::where('status', 'paid')->with('user')->get() as $op) {
-            $refKey = OperationalRequest::class . '_' . $op->id;
-            $transactions->push([
-                'id'               => 'op_' . $op->id,
-                'source_type'      => OperationalRequest::class,
-                'source_label'     => 'Biaya Operasional',
-                'source_id'        => $op->id,
-                'date'             => $op->paid_at ?? $op->activity_date,
-                'description'      => '[OPERASIONAL] ' . ($op->request_number ?? '-') . ' - ' . ($op->activity_name ?? ''),
-                'amount'           => $op->estimated_cost,
-                'reference_number' => $op->request_number ?? 'OP-' . $op->id,
-                'is_journalled'    => $allJournalRefs->has($refKey),
-                'type'             => 'out',
-            ]);
+        if ($shouldQuery(OperationalRequest::class)) {
+            $opQuery = OperationalRequest::where('status', 'paid')->with('user');
+            $exclude = $getUnjournalledIds(OperationalRequest::class);
+            if (!empty($exclude)) $opQuery->whereNotIn('id', $exclude);
+            
+            if ($dateFrom) {
+                $opQuery->where(function($q) use ($dateFrom) {
+                    $q->where('paid_at', '>=', $dateFrom)->orWhere('activity_date', '>=', $dateFrom);
+                });
+            }
+            if ($dateTo) {
+                $opQuery->where(function($q) use ($dateTo) {
+                    $q->where('paid_at', '<=', $dateTo)->orWhere('activity_date', '<=', $dateTo);
+                });
+            }
+
+            foreach ($opQuery->get() as $op) {
+                $transactions->push([
+                    'id'               => 'op_' . $op->id,
+                    'source_type'      => OperationalRequest::class,
+                    'source_label'     => 'Biaya Operasional',
+                    'source_id'        => $op->id,
+                    'date'             => $op->paid_at ?? $op->activity_date,
+                    'description'      => '[OPERASIONAL] ' . ($op->request_number ?? '-') . ' - ' . ($op->activity_name ?? ''),
+                    'amount'           => $op->estimated_cost,
+                    'reference_number' => $op->request_number ?? 'OP-' . $op->id,
+                    'is_journalled'    => false,
+                    'type'             => 'out',
+                ]);
+            }
         }
 
         // 7. Perjalanan Dinas (settlement)
-        foreach (BusinessTripSettlement::with('businessTripRequest.user')->whereHas('businessTripRequest')->get() as $bt) {
-            $refKey = BusinessTripSettlement::class . '_' . $bt->id;
-            $transactions->push([
-                'id'               => 'bt_' . $bt->id,
-                'source_type'      => BusinessTripSettlement::class,
-                'source_label'     => 'Perjalanan Dinas',
-                'source_id'        => $bt->id,
-                'date'             => $bt->created_at,
-                'description'      => '[PERJADIN] ' . ($bt->settlement_number ?? '-') . ' - ' . ($bt->businessTripRequest->user->name ?? ''),
-                'amount'           => $bt->total_actual_cost ?? 0,
-                'reference_number' => $bt->settlement_number ?? 'BT-' . $bt->id,
-                'is_journalled'    => $allJournalRefs->has($refKey),
-                'type'             => 'out',
-            ]);
+        if ($shouldQuery(BusinessTripSettlement::class)) {
+            $btQuery = BusinessTripSettlement::with('businessTripRequest.user')->whereHas('businessTripRequest');
+            $exclude = $getUnjournalledIds(BusinessTripSettlement::class);
+            if (!empty($exclude)) $btQuery->whereNotIn('id', $exclude);
+            if ($dateFrom) $btQuery->where('created_at', '>=', $dateFrom);
+            if ($dateTo)   $btQuery->where('created_at', '<=', $dateTo);
+
+            foreach ($btQuery->get() as $bt) {
+                $transactions->push([
+                    'id'               => 'bt_' . $bt->id,
+                    'source_type'      => BusinessTripSettlement::class,
+                    'source_label'     => 'Perjalanan Dinas',
+                    'source_id'        => $bt->id,
+                    'date'             => $bt->created_at,
+                    'description'      => '[PERJADIN] ' . ($bt->settlement_number ?? '-') . ' - ' . ($bt->businessTripRequest->user->name ?? ''),
+                    'amount'           => $bt->total_actual_cost ?? 0,
+                    'reference_number' => $bt->settlement_number ?? 'BT-' . $bt->id,
+                    'is_journalled'    => false,
+                    'type'             => 'out',
+                ]);
+            }
         }
 
         // 8. Tagihan Bulanan (MonthlyBillPayment)
-        foreach (MonthlyBillPayment::with('billType')->where('status', 'paid')->get() as $mb) {
-            $refKey = MonthlyBillPayment::class . '_' . $mb->id;
-            $transactions->push([
-                'id'               => 'mb_' . $mb->id,
-                'source_type'      => MonthlyBillPayment::class,
-                'source_label'     => 'Tagihan Bulanan',
-                'source_id'        => $mb->id,
-                'date'             => $mb->payment_date,
-                'description'      => '[TAGIHAN] ' . ($mb->billType->name ?? '-') . ' (' . ($mb->billType->vendor_name ?? '-') . ') - ' . str_pad($mb->period_month, 2, '0', STR_PAD_LEFT) . '/' . $mb->period_year,
-                'amount'           => $mb->bill_amount,
-                'reference_number' => $mb->payment_reference ?? $mb->payment_number ?? ('TAG-' . $mb->id),
-                'is_journalled'    => $allJournalRefs->has($refKey),
-                'type'             => 'out',
-            ]);
+        if ($shouldQuery(MonthlyBillPayment::class)) {
+            $mbQuery = MonthlyBillPayment::with('billType')->where('status', 'paid');
+            $exclude = $getUnjournalledIds(MonthlyBillPayment::class);
+            if (!empty($exclude)) $mbQuery->whereNotIn('id', $exclude);
+            if ($dateFrom) $mbQuery->where('payment_date', '>=', $dateFrom);
+            if ($dateTo)   $mbQuery->where('payment_date', '<=', $dateTo);
+
+            foreach ($mbQuery->get() as $mb) {
+                $transactions->push([
+                    'id'               => 'mb_' . $mb->id,
+                    'source_type'      => MonthlyBillPayment::class,
+                    'source_label'     => 'Tagihan Bulanan',
+                    'source_id'        => $mb->id,
+                    'date'             => $mb->payment_date,
+                    'description'      => '[TAGIHAN] ' . ($mb->billType->name ?? '-') . ' (' . ($mb->billType->vendor_name ?? '-') . ') - ' . str_pad($mb->period_month, 2, '0', STR_PAD_LEFT) . '/' . $mb->period_year,
+                    'amount'           => $mb->bill_amount,
+                    'reference_number' => $mb->payment_reference ?? $mb->payment_number ?? ('TAG-' . $mb->id),
+                    'is_journalled'    => false,
+                    'type'             => 'out',
+                ]);
+            }
         }
 
         // 9. Penyusutan Aset (AssetDepreciation)
-        foreach (AssetDepreciation::with('asset')->get() as $dep) {
-            $refKey = AssetDepreciation::class . '_' . $dep->id;
-            $transactions->push([
-                'id'               => 'dep_' . $dep->id,
-                'source_type'      => AssetDepreciation::class,
-                'source_label'     => 'Penyusutan Aset',
-                'source_id'        => $dep->id,
-                'date'             => sprintf('%04d-%02d-01', $dep->period_year, $dep->period_month),
-                'description'      => '[PENYUSUTAN] ' . ($dep->asset->name ?? 'Aset') . ' - ' . $dep->period_month . '/' . $dep->period_year,
-                'amount'           => $dep->depreciation_amount,
-                'reference_number' => 'DEP-' . str_pad($dep->id, 4, '0', STR_PAD_LEFT),
-                'is_journalled'    => $allJournalRefs->has($refKey),
-                'type'             => 'out',
-            ]);
+        if ($shouldQuery(AssetDepreciation::class)) {
+            $depQuery = AssetDepreciation::with('asset');
+            $exclude = $getUnjournalledIds(AssetDepreciation::class);
+            if (!empty($exclude)) $depQuery->whereNotIn('id', $exclude);
+            
+            if ($dateFrom) {
+                $depQuery->where(DB::raw("CONCAT(period_year, '-', LPAD(period_month, 2, '0'), '-01')"), '>=', $dateFrom);
+            }
+            if ($dateTo) {
+                $depQuery->where(DB::raw("CONCAT(period_year, '-', LPAD(period_month, 2, '0'), '-01')"), '<=', $dateTo);
+            }
+
+            foreach ($depQuery->get() as $dep) {
+                $transactions->push([
+                    'id'               => 'dep_' . $dep->id,
+                    'source_type'      => AssetDepreciation::class,
+                    'source_label'     => 'Penyusutan Aset',
+                    'source_id'        => $dep->id,
+                    'date'             => sprintf('%04d-%02d-01', $dep->period_year, $dep->period_month),
+                    'description'      => '[PENYUSUTAN] ' . ($dep->asset->name ?? 'Aset') . ' - ' . $dep->period_month . '/' . $dep->period_year,
+                    'amount'           => $dep->depreciation_amount,
+                    'reference_number' => 'DEP-' . str_pad($dep->id, 4, '0', STR_PAD_LEFT),
+                    'is_journalled'    => false,
+                    'type'             => 'out',
+                ]);
+            }
         }
 
-        // Filter pending
-        $pendingTransactions = $transactions->where('is_journalled', false);
-        // Apply Source Filter if any
-        if ($sourceType) {
-            $pendingTransactions = $pendingTransactions->filter(function ($t) use ($sourceType) {
-                return $t['source_type'] === $sourceType || (isset($t['original_source_type']) && $t['original_source_type'] === $sourceType);
-            });
-        }
-        if ($dateFrom) {
-            $pendingTransactions = $pendingTransactions->filter(fn($t) => $t['date'] && $t['date'] >= $dateFrom);
-        }
-        if ($dateTo) {
-            $pendingTransactions = $pendingTransactions->filter(fn($t) => $t['date'] && $t['date'] <= $dateTo);
-        }
-        $pendingTransactions = $pendingTransactions->sortByDesc('date')->values();
+        $pendingTransactions = $transactions->sortByDesc('date')->values();
 
         $sourceTypes = [
             ['value' => CashTransaction::class,       'label' => 'Kas Operasional (Mandiri)'],

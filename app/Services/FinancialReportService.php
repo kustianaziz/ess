@@ -31,30 +31,27 @@ class FinancialReportService
         $tree = $build(null, 1);
         $maxLevel = count($flatList) > 0 ? collect($flatList)->max('level') : 1;
 
-        // Calculate raw balances for detail COAs
+        // Calculate raw balances for detail COAs using native SQL grouping and aggregation for high performance
         $balances = [];
-        $query = JournalItem::with('journalEntry', 'coa');
         
-        if ($asOfDate) {
-            $query->whereHas('journalEntry', function($q) use ($asOfDate) {
-                $q->where('date', '<=', $asOfDate)
-                  ->where('status', '!=', 'void');
-            });
-        } else {
-            $query->whereHas('journalEntry', function($q) use ($startDate, $endDate) {
-                $q->whereBetween('date', [$startDate, $endDate])
-                  ->where('status', '!=', 'void');
-            });
-        }
+        $balQuery = JournalItem::selectRaw('coa_id, SUM(debit) as total_debit, SUM(credit) as total_credit')
+            ->whereHas('journalEntry', function($q) use ($asOfDate, $startDate, $endDate) {
+                $q->where('status', '!=', 'void');
+                if ($asOfDate) {
+                    $q->where('date', '<=', $asOfDate);
+                } else {
+                    $q->whereBetween('date', [$startDate, $endDate]);
+                }
+            })
+            ->groupBy('coa_id');
 
-        $items = $query->get();
+        $balancesList = $balQuery->get();
 
-        foreach ($items as $item) {
-            if (!isset($balances[$item->coa_id])) {
-                $balances[$item->coa_id] = ['debit' => 0, 'credit' => 0];
-            }
-            $balances[$item->coa_id]['debit'] += $item->debit;
-            $balances[$item->coa_id]['credit'] += $item->credit;
+        foreach ($balancesList as $b) {
+            $balances[$b->coa_id] = [
+                'debit' => (float)$b->total_debit,
+                'credit' => (float)$b->total_credit
+            ];
         }
 
         // Inject manual/dynamic balances (e.g. Laba Ditahan, Laba Tahun Berjalan)
