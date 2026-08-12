@@ -254,7 +254,7 @@ class FinancialReportController extends Controller
                 'name' => $retainedEarningsCoa->name,
                 'type' => 'modal',
                 'balance' => $retainedEarnings,
-                'level' => 2,
+                'level' => $retainedEarningsCoa->level,
                 'is_header' => false
             ];
         }
@@ -266,10 +266,13 @@ class FinancialReportController extends Controller
                 'name' => $currentEarningsCoa->name,
                 'type' => 'modal',
                 'balance' => $currentYearEarnings,
-                'level' => 2,
+                'level' => $currentEarningsCoa->level,
                 'is_header' => false
             ];
         }
+
+        // Sort by code so they are in perfect tree order
+        usort($equities['items'], fn($a, $b) => strcmp($a['code'], $b['code']));
 
         // Recalculate total equity and rollup header accounts so parent COAs show correct sums
         $recalculateHeaders = function(&$items) {
