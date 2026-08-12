@@ -28,6 +28,8 @@ class ServiceController extends Controller
             'stamp_image' => 'nullable|image|max:2048',
             'signature_name' => 'nullable|string|max:255',
             'bank_credentials' => 'nullable|string',
+            'address' => 'nullable|string',
+            'invoice_notes' => 'nullable|string',
         ]);
 
         if ($request->hasFile('logo')) {
@@ -58,6 +60,8 @@ class ServiceController extends Controller
             'stamp_image' => 'nullable|image|max:2048',
             'signature_name' => 'nullable|string|max:255',
             'bank_credentials' => 'nullable|string',
+            'address' => 'nullable|string',
+            'invoice_notes' => 'nullable|string',
         ]);
 
         if ($request->hasFile('logo')) {

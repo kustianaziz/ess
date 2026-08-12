@@ -20,7 +20,9 @@ const form = useForm({
   signature_image: null,
   stamp_image: null,
   signature_name: '',
-  bank_credentials: ''
+  bank_credentials: '',
+  address: '',
+  invoice_notes: ''
 })
 
 const openModal = (service = null) => {
@@ -35,6 +37,8 @@ const openModal = (service = null) => {
     form.stamp_image = null
     form.signature_name = service.signature_name || ''
     form.bank_credentials = service.bank_credentials || ''
+    form.address = service.address || ''
+    form.invoice_notes = service.invoice_notes || ''
   } else {
     isEditing.value = false
     form.reset()
@@ -168,8 +172,8 @@ const deleteService = (id) => {
 
     <!-- MODAL FORM -->
     <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-      <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden">
-        <div class="flex items-center justify-between p-4 border-b border-slate-100">
+      <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="flex items-center justify-between p-4 border-b border-slate-100 shrink-0">
           <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
             <span class="p-1.5 rounded-lg bg-teal-100 text-teal-600"><Layers class="w-4 h-4" /></span>
             {{ isEditing ? 'Edit Layanan' : 'Tambah Layanan Baru' }}
@@ -179,7 +183,7 @@ const deleteService = (id) => {
           </button>
         </div>
 
-        <form @submit.prevent="submit" class="p-4 space-y-4">
+        <form @submit.prevent="submit" class="p-4 space-y-4 overflow-y-auto custom-scrollbar flex-1">
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">Nama Layanan <span class="text-rose-500">*</span></label>
             <input
@@ -242,6 +246,26 @@ const deleteService = (id) => {
                 placeholder="Contoh: BCA 1234567890 a.n PT Contoh Sukses"
               ></textarea>
             </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Alamat Perusahaan (Opsional)</label>
+              <textarea
+                v-model="form.address"
+                rows="3"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm focus:border-teal-500 focus:ring-teal-500"
+                placeholder="Misal: Jl. Raya No. 123, Bandung..."
+              ></textarea>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Catatan Tambahan Invoice (Opsional)</label>
+              <textarea
+                v-model="form.invoice_notes"
+                rows="3"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm focus:border-teal-500 focus:ring-teal-500"
+                placeholder="Catatan pengiriman bukti, dsb..."
+              ></textarea>
+            </div>
           </div>
 
           <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
@@ -259,7 +283,7 @@ const deleteService = (id) => {
             </button>
           </div>
 
-          <div class="pt-4 border-t border-slate-100 flex justify-end gap-2">
+          <div class="pt-4 border-t border-slate-100 flex justify-end gap-2 shrink-0">
             <button
               type="button"
               @click="showModal = false"
