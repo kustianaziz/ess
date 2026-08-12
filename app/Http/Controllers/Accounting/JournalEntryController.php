@@ -384,6 +384,25 @@ class JournalEntryController extends Controller
         return back()->with('success', 'Jurnal ' . $journal->journal_number . ' berhasil dibatalkan dan dihapus dari buku besar.');
     }
 
+    public function destroy(JournalEntry $journal)
+    {
+        // Period check
+        $period = \App\Models\AccountingPeriod::whereDate('start_date', '<=', $journal->date)
+            ->whereDate('end_date', '>=', $journal->date)
+            ->first();
+
+        if ($period && $period->is_closed) {
+            return back()->withErrors(['message' => 'Tidak dapat menghapus jurnal pada periode yang sudah ditutup.']);
+        }
+
+        DB::transaction(function () use ($journal) {
+            $journal->items()->delete();
+            $journal->delete();
+        });
+
+        return back()->with('success', 'Jurnal ' . $journal->journal_number . ' berhasil dihapus secara permanen.');
+    }
+
     public function show($id)
     {
         $journal = JournalEntry::with(['items.coa', 'creator', 'poster'])->findOrFail($id);

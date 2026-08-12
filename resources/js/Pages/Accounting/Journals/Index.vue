@@ -136,6 +136,11 @@ const voidJournal = (journal) => {
     router.post(route('accounting.journals.void', journal.id), {}, { preserveScroll: true });
 };
 
+const deleteJournal = (journal) => {
+    if (!confirm(`HAPUS PERMANEN jurnal ${journal.journal_number}?\n\nPeringatan: Jurnal dan detail itemnya akan dihapus selamanya dari database dan pembukuan!`)) return;
+    router.delete(route('accounting.journals.destroy', journal.id), { preserveScroll: true });
+};
+
 const formatRupiah = (v) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(v || 0);
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
 const statusColor = (s) => ({ posted: 'bg-emerald-100 text-emerald-700', void: 'bg-rose-100 text-rose-600', draft: 'bg-amber-100 text-amber-700' }[s] ?? 'bg-slate-100 text-slate-600');
@@ -291,8 +296,12 @@ const statusColor = (s) => ({ posted: 'bg-emerald-100 text-emerald-700', void: '
                                                 <FileText class="w-4 h-4" />
                                             </Link>
                                             <button v-if="journal.status !== 'void'" @click="voidJournal(journal)"
-                                                class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition" title="Batalkan Jurnal">
+                                                class="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition" title="Batalkan Jurnal">
                                                 <Ban class="w-4 h-4" />
+                                            </button>
+                                            <button @click="deleteJournal(journal)"
+                                                class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition" title="Hapus Permanen">
+                                                <Trash2 class="w-4 h-4" />
                                             </button>
                                         </div>
                                     </td>
