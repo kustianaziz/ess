@@ -263,8 +263,7 @@
                         {{ isset($invoice->customer->service->signature_name) && $invoice->customer->service->signature_name != '' ? $invoice->customer->service->signature_name : 'Ucu Komarudin' }}
                     </div>
                     <div class="signature-role">
-                        {{ isset($invoice->customer->service) && $invoice->customer->service->name != '' ? 'Direktur Utama' : 'Direktur Utama' }}<br>
-                        {{ isset($invoice->customer->service) ? $invoice->customer->service->name : 'PT. Edu Media Digital' }}
+                        {{ isset($invoice->customer->service) && $invoice->customer->service->name != '' ? 'Direktur Utama' : 'Direktur Utama' }}
                     </div>
                 </div>
             </td>
