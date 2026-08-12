@@ -271,7 +271,23 @@ class FinancialReportController extends Controller
             ];
         }
 
-        // Recalculate total equity
+        // Recalculate total equity and rollup header accounts so parent COAs show correct sums
+        $recalculateHeaders = function(&$items) {
+            foreach ($items as &$parent) {
+                if ($parent['is_header']) {
+                    $sum = 0;
+                    foreach ($items as $child) {
+                        if (!$child['is_header'] && str_starts_with($child['code'], $parent['code'] . '.')) {
+                            $sum += $child['balance'];
+                        }
+                    }
+                    $parent['balance'] = $sum;
+                }
+            }
+        };
+
+        $recalculateHeaders($equities['items']);
+
         $totalEquity = 0;
         foreach ($equities['items'] as $item) {
             if (!$item['is_header']) {
