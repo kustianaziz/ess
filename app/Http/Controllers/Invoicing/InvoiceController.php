@@ -183,30 +183,9 @@ class InvoiceController extends Controller
     {
         \DB::transaction(function () use ($invoice) {
             $invoice->update(['status' => 'sent']);
-
-            // Piutang Usaha (1.02.01) - Debit
-            // Pendapatan Usaha Lainnya (4.01.04) or Webpraktis (4.01.03) - Kredit
-            $piutangCoa = \App\Models\Coa::where('code', '1.02.01')->first();
-            $pendapatanCoa = \App\Models\Coa::where('code', '4.01.04')->first();
-            
-            if ($invoice->source_type === 'renewal') {
-                $pendapatanCoa = \App\Models\Coa::where('code', '4.01.03')->first();
-            }
-            
-            if ($piutangCoa && $pendapatanCoa) {
-                app(\App\Actions\Accounting\RecordJournalAction::class)->execute(
-                    $invoice->invoice_date->format('Y-m-d'),
-                    'Posting Invoice ' . $invoice->invoice_number,
-                    [
-                        ['coa_id' => $piutangCoa->id, 'debit' => $invoice->total_amount, 'credit' => 0],
-                        ['coa_id' => $pendapatanCoa->id, 'debit' => 0, 'credit' => $invoice->total_amount],
-                    ],
-                    $invoice
-                );
-            }
         });
 
-        return redirect()->back()->with('success', 'Invoice telah di-posting dan dijurnal ke Piutang.');
+        return redirect()->back()->with('success', 'Invoice telah di-posting.');
     }
 
     public function downloadPdf(Invoice $invoice)

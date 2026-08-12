@@ -156,21 +156,6 @@ class RenewalRequestController extends Controller
                     'created_by' => \Illuminate\Support\Facades\Auth::id() ?? 1,
                 ]);
 
-                // Jurnal Pelunasan Piutang
-                $kasCoa = \App\Models\Coa::where('code', '1.01.01.001')->first();
-                $piutangCoa = \App\Models\Coa::where('code', '1.02.01')->first();
-                
-                if ($kasCoa && $piutangCoa) {
-                    app(\App\Actions\Accounting\RecordJournalAction::class)->execute(
-                        $validated['payment_date'],
-                        'Pelunasan Invoice Renewal ' . $invoice->invoice_number,
-                        [
-                            ['coa_id' => $kasCoa->id, 'debit' => $invoice->total_amount, 'credit' => 0],
-                            ['coa_id' => $piutangCoa->id, 'debit' => 0, 'credit' => $invoice->total_amount],
-                        ],
-                        $payment
-                    );
-                }
             }
 
             $renewalRequest->update(['status' => 'paid_customer']);

@@ -78,21 +78,6 @@ class VendorPaymentController extends Controller
                     ]);
                 }
             }
-            // 6. Buat Jurnal Akuntansi (Beban vs Kas)
-            $bebanCoa = \App\Models\Coa::where('code', '5.01.01')->first(); // HPP - Pembelian
-            $kasCoa = \App\Models\Coa::where('code', '1.01.01.001')->first();
-            
-            if ($bebanCoa && $kasCoa) {
-                app(\App\Actions\Accounting\RecordJournalAction::class)->execute(
-                    $request->payment_date,
-                    'Bayar Vendor Renewal: ' . $renewalRequest->domain->name,
-                    [
-                        ['coa_id' => $bebanCoa->id, 'debit' => $request->amount, 'credit' => 0],
-                        ['coa_id' => $kasCoa->id, 'debit' => 0, 'credit' => $request->amount],
-                    ],
-                    $vendorPayment
-                );
-            }
         });
 
         return redirect()->back()->with('success', 'Pembayaran vendor berhasil dicatat dan saldo kas telah dikurangi.');
