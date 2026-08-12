@@ -23,6 +23,7 @@ const form = useForm({
     { description: '', qty: 1, unit_price: 0 }
   ],
   subtotal: 0,
+  discount_amount: 0,
   tax_amount: 0,
   total_amount: 0,
   ppn_mode: 'exclude',
@@ -47,24 +48,25 @@ const calculateTotal = () => {
     rawSum += (item.qty * item.unit_price)
   })
 
+  let disc = Number(form.discount_amount) || 0
+  let afterDisc = rawSum - disc
+  if (afterDisc < 0) afterDisc = 0
+
   if (ppnMode.value === 'none') {
-    // Tanpa PPN
     form.subtotal = rawSum
     form.tax_amount = 0
-    form.total_amount = rawSum
+    form.total_amount = afterDisc
   } else if (ppnMode.value === 'exclude') {
-    // PPN ditambahkan di atas harga (harga belum termasuk PPN)
-    const tax = Math.round(rawSum * (ppnRate.value / 100))
+    const tax = Math.round(afterDisc * (ppnRate.value / 100))
     form.subtotal = rawSum
     form.tax_amount = tax
-    form.total_amount = rawSum + tax
+    form.total_amount = afterDisc + tax
   } else if (ppnMode.value === 'include') {
-    // Harga sudah termasuk PPN (PPN di-extract dari total)
-    const subtotalExcl = Math.round(rawSum / (1 + ppnRate.value / 100))
-    const tax = rawSum - subtotalExcl
-    form.subtotal = subtotalExcl
+    const subtotalExcl = Math.round(afterDisc / (1 + ppnRate.value / 100))
+    const tax = afterDisc - subtotalExcl
+    form.subtotal = Math.round(rawSum / (1 + ppnRate.value / 100)) // approximation for raw subtotal
     form.tax_amount = tax
-    form.total_amount = rawSum
+    form.total_amount = afterDisc
   }
 
   form.ppn_mode = ppnMode.value
@@ -258,6 +260,10 @@ const modeLabel = computed(() => {
                   <span v-if="ppnMode === 'include'" class="text-[10px] text-blue-500 font-bold">(harga jual ÷ PPN)</span>
                 </span>
                 <span class="font-bold text-slate-900">Rp {{ formatRp(form.subtotal) }}</span>
+              </div>
+              <div class="flex justify-between items-center mt-2">
+                <span class="font-semibold text-slate-500">Diskon (Rp)</span>
+                <input v-model.number="form.discount_amount" type="number" min="0" @input="calculateTotal" class="w-32 px-2 py-1 text-right rounded-lg border border-slate-300 bg-white text-sm font-bold focus:border-indigo-500" />
               </div>
               <div class="flex justify-between" v-if="ppnMode !== 'none'">
                 <span class="font-semibold text-slate-500">

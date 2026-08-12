@@ -196,7 +196,7 @@
                     </tr>
                     <tr>
                         <td class="totals-label">Diskon :</td>
-                        <td class="totals-val">-</td>
+                        <td class="totals-val">{{ $invoice->discount_amount > 0 ? number_format($invoice->discount_amount, 0, ',', '.') : '-' }}</td>
                     </tr>
                     @if($invoice->tax_amount > 0)
                     <tr>
