@@ -101,4 +101,62 @@ class InvoicePaymentController extends Controller
 
         return redirect()->back()->with('success', 'Payment recorded successfully.');
     }
+
+    public function destroy(Invoice $invoice, InvoicePayment $payment)
+    {
+        DB::transaction(function () use ($invoice, $payment) {
+            // Find cash transaction
+            $cashTx = \App\Models\CashTransaction::where('source_type', InvoicePayment::class)
+                ->where('source_id', $payment->id)
+                ->first();
+
+            if ($cashTx) {
+                // Revert cash account balance
+                $cashAccount = CashAccount::find($cashTx->cash_account_id);
+                if ($cashAccount) {
+                    $cashAccount->current_balance -= $cashTx->amount;
+                    $cashAccount->save();
+                }
+                $cashTx->delete();
+            }
+
+            // Revert Invoice paid_amount and status
+            $invoice->paid_amount -= $payment->amount;
+            if ($invoice->paid_amount <= 0) {
+                $invoice->paid_amount = 0;
+                $invoice->status = 'sent';
+            } else {
+                $invoice->status = 'partial';
+            }
+            $invoice->save();
+
+            // Revert Renewal Status if source is renewal
+            if ($invoice->source_type === 'renewal') {
+                $renewal = \App\Models\RenewalRequest::find($invoice->source_id);
+                if ($renewal && $renewal->status === 'paid_customer') {
+                    $renewal->update(['status' => 'invoiced_customer']);
+                }
+            }
+
+            // Delete Journal Entry
+            $journal = \App\Models\JournalEntry::where('reference_type', InvoicePayment::class)
+                ->where('reference_id', $payment->id)
+                ->first();
+            if ($journal) {
+                $journal->items()->delete();
+                $journal->delete();
+            }
+
+            // Delete attachments from storage & database
+            foreach ($payment->attachments as $attachment) {
+                Storage::disk('public')->delete($attachment->file_path);
+                $attachment->delete();
+            }
+
+            // Delete payment record
+            $payment->delete();
+        });
+
+        return redirect()->back()->with('success', 'Pembayaran invoice berhasil dibatalkan.');
+    }
 }

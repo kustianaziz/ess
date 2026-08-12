@@ -151,6 +151,7 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('invoices', \App\Http\Controllers\Invoicing\InvoiceController::class);
         Route::get('invoices/{invoice}/pdf', [\App\Http\Controllers\Invoicing\InvoiceController::class, 'downloadPdf'])->name('invoices.pdf');
         Route::post('invoices/{invoice}/payments', [\App\Http\Controllers\Invoicing\InvoicePaymentController::class, 'store'])->name('invoices.payments.store');
+        Route::delete('invoices/{invoice}/payments/{payment}', [\App\Http\Controllers\Invoicing\InvoicePaymentController::class, 'destroy'])->name('invoices.payments.destroy');
     });
 
     // Renewal Webpraktis Module

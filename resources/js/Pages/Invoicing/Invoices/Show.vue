@@ -81,6 +81,12 @@ const postInvoice = () => {
   }
 }
 
+const cancelPayment = (payment) => {
+  if (confirm(`Batalkan pembayaran sebesar ${formatRupiah(payment.amount)}?\n\nTindakan ini akan mengembalikan saldo kas dan memulihkan sisa tagihan pada invoice.`)) {
+    router.delete(route('invoicing.invoices.payments.destroy', [props.invoice.id, payment.id]), { preserveScroll: true })
+  }
+}
+
 const getStatusBadge = (status) => {
   switch (status) {
     case 'draft': return 'bg-slate-100 text-slate-700 border-slate-200'
@@ -268,21 +274,28 @@ const formatRupiah = (angka) => {
             <Clock class="w-4 h-4 text-slate-400" /> Riwayat Pembayaran Masuk
           </h3>
           <div class="space-y-3">
-            <div v-for="payment in invoice.payments" :key="payment.id" class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row justify-between gap-4">
+            <div v-for="payment in invoice.payments" :key="payment.id" class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <p class="font-bold text-emerald-700 text-base">{{ formatRupiah(payment.amount) }}</p>
                 <p class="text-xs font-semibold text-slate-600 mt-0.5">Tgl: {{ payment.payment_date }} | Via: {{ payment.payment_method }}</p>
                 <p class="text-[10px] text-slate-400 mt-1">Dicatat oleh: {{ payment.recorded_by_user?.name || 'Sistem' }}</p>
               </div>
               
-              <!-- Lampiran Bukti Pembayaran -->
-              <div v-if="payment.attachments && payment.attachments.length > 0" class="sm:text-right">
-                <span class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Bukti Transfer</span>
-                <div class="flex flex-wrap sm:justify-end gap-2">
-                  <a v-for="att in payment.attachments" :key="att.id" :href="`/storage/${att.file_path}`" target="_blank" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-indigo-600 hover:bg-indigo-50 transition-colors flex items-center gap-1 shadow-xs">
-                    <Download class="w-3 h-3" /> {{ att.file_name }}
-                  </a>
+              <div class="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                <!-- Lampiran Bukti Pembayaran -->
+                <div v-if="payment.attachments && payment.attachments.length > 0" class="sm:text-right">
+                  <span class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Bukti Transfer</span>
+                  <div class="flex flex-wrap sm:justify-end gap-2">
+                    <a v-for="att in payment.attachments" :key="att.id" :href="`/storage/${att.file_path}`" target="_blank" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-indigo-600 hover:bg-indigo-50 transition-colors flex items-center gap-1 shadow-xs">
+                      <Download class="w-3 h-3" /> {{ att.file_name }}
+                    </a>
+                  </div>
                 </div>
+
+                <!-- Batal Pembayaran Button -->
+                <button @click="cancelPayment(payment)" class="p-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 transition duration-150 flex items-center justify-center shadow-xs" title="Batalkan Pembayaran">
+                  <Trash2 class="w-4 h-4" />
+                </button>
               </div>
             </div>
           </div>
