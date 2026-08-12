@@ -4,219 +4,272 @@
     <meta charset="UTF-8">
     <title>Invoice - {{ $invoice->customer->name }}</title>
     <style>
-        /* Reset & Base */
-        body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #000; line-height: 1.3; margin: 0; padding: 20px; background: #fff; }
-        .container { width: 100%; max-width: 100%; margin: 0; background: #fff; padding: 0; }
-        
-        /* Helpers */
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-        .text-bold { font-weight: bold; }
-        
-        /* Header Section */
-        .header { width: 100%; margin-bottom: 30px; }
-        .header td { vertical-align: top; }
-        .header-left { width: 45%; } 
-        .header-right { width: 55%; text-align: right; }
-        
-        .logo-img { max-width: 180px; margin-bottom: 15px; display: block; }
-        
-        .client-box { margin-top: 10px; }
-        .client-label { font-size: 11px; color: #555; }
-        .client-name { font-size: 14px; font-weight: bold; text-transform: uppercase; margin: 3px 0; }
-        .client-address { font-size: 11px; color: #333; line-height: 1.4; max-width: 300px; }
-
-        .company-address { font-size: 10px; color: #555; margin-bottom: 15px; line-height: 1.4; }
-        
-        /* Summary Box */
-        .summary-table { width: 100%; border-collapse: collapse; margin-left: auto; }
-        .summary-table th, .summary-table td { border: 1px solid #000; padding: 6px; font-size: 11px; text-align: center; vertical-align: middle; }
-        .summary-table th { background-color: #eee; white-space: nowrap; }
-        .summary-table td { font-size: 12px; } 
-        
-        /* Invoice Title */
-        .invoice-title { font-size: 24px; font-weight: bold; text-align: left; margin: 30px 0 10px 0; color: #000; letter-spacing: 1px; border-bottom: 2px solid #000; padding-bottom: 5px; width: 100%; }
-        .tagihan-label { font-size: 14px; font-weight: bold; margin-bottom: 5px; display: block; }
-
-        /* Main Table */
-        .main-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        .main-table th, .main-table td { border: 1px solid #000; padding: 8px 10px; vertical-align: top; }
-        .main-table th { background-color: #e1f5fe; text-align: center; font-weight: bold; color: #000; }
-        
-        .col-no { width: 40px; text-align: center; }
-        .col-amount { width: 150px; text-align: right; }
-        .col-ket { width: 100px; text-align: center; }
-        .total-row td { background-color: #e1f5fe; font-weight: bold; }
-
-        /* Terbilang */
-        .terbilang-box { border-top: 1px solid #ccc; border-bottom: 1px solid #ccc; padding: 8px 0; margin-bottom: 30px; font-style: italic; font-weight: bold; font-size: 13px; }
-
-        /* Footer Section */
-        .footer-flex { width: 100%; }
-        .footer-flex td { vertical-align: top; }
-        .payment-info { width: 65%; font-size: 11px; }
-        .payment-info h4 { margin: 0 0 5px 0; font-size: 12px; text-decoration: underline; }
-        .bank-table td { padding: 2px 10px 2px 0; font-weight: bold; font-size: 11px; border: none !important; text-align: left; }
-        
-        /* Signature Box */
-        .signature-box { 
-            width: 35%; 
-            text-align: center; 
-            position: relative; 
-            margin-top: 10px;
+        @page { margin: 30px 40px; }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            color: #374151; /* Dark gray */
+            line-height: 1.4;
+            background: #fff;
         }
-        .sign-date { margin-bottom: 5px; font-size: 11px; }
-        .sign-company { font-weight: bold; font-size: 12px; margin-bottom: 45px; } /* Ruang untuk ttd jika tidak ada img */
-        .sign-name { font-weight: bold; text-decoration: underline; font-size: 12px; margin-top: 5px; }
-        .sign-role { font-size: 11px; }
-
-        /* Instructions */
-        .instructions { margin-top: 40px; font-size: 10px; color: #444; border-top: 2px solid #000; padding-top: 10px; }
-        .instructions ul { margin: 5px 0; padding-left: 15px; }
-        .instructions li { margin-bottom: 3px; }
+        table { width: 100%; border-collapse: collapse; }
         
-        .footer-quote { text-align: center; margin-top: 20px; font-style: italic; color: #009FE3; font-weight: bold; font-size: 11px; }
-
+        /* Header */
+        .header-table { margin-bottom: 20px; }
+        .header-table td { vertical-align: top; }
+        .header-left { width: 60%; }
+        .header-right { width: 40%; text-align: right; }
+        
+        .company-name { font-size: 20px; font-weight: bold; color: #000; margin-bottom: 5px; }
+        .invoice-title { font-size: 28px; font-weight: bold; color: #000; margin-bottom: 10px; text-transform: uppercase; }
+        
+        .header-info-table { width: 100%; font-size: 11px; margin-top: 10px;}
+        .header-info-table td { padding: 2px 0; }
+        .info-label { color: #555; width: 100px; }
+        .info-val { font-weight: bold; text-align: right; }
+        
+        /* Customer */
+        .customer-section { margin-bottom: 25px; }
+        .customer-title { font-size: 13px; font-weight: bold; margin-bottom: 5px; background: #F8FAFC; border-bottom: 2px solid #AFABAB; padding: 4px; display: inline-block; min-width: 200px; }
+        .customer-details { padding-left: 5px; font-size: 11px; }
+        
+        /* Items Table */
+        .items-table { width: 100%; margin-bottom: 10px; }
+        .items-table th {
+            background-color: #374151;
+            color: #ffffff;
+            font-weight: bold;
+            text-align: center;
+            padding: 8px 5px;
+            border: 1px solid #A6A6A6;
+        }
+        .items-table td {
+            padding: 8px 5px;
+            border-bottom: 1px solid #F2F2F2;
+            border-left: 1px solid #F2F2F2;
+            border-right: 1px solid #F2F2F2;
+            vertical-align: top;
+        }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-left { text-align: left; }
+        .font-bold { font-weight: bold; }
+        
+        /* Summary Section */
+        .summary-container { width: 100%; margin-bottom: 30px; }
+        .summary-container td { vertical-align: top; }
+        
+        .terbilang-label { font-weight: bold; font-size: 12px; margin-bottom: 5px; }
+        .terbilang-text { font-style: italic; background-color: #F8FAFC; padding: 10px; border-left: 3px solid #374151; font-size: 11px; }
+        
+        .totals-table { width: 100%; border-collapse: collapse; }
+        .totals-table td { padding: 5px; font-size: 11px; }
+        .totals-label { text-align: right; font-weight: bold; width: 60%; }
+        .totals-val { text-align: right; font-weight: bold; width: 40%; }
+        .totals-table tr.total-row td { background-color: #F2F2F2; border-top: 1px solid #AFABAB; border-bottom: 1px solid #AFABAB; font-size: 12px; }
+        
+        /* Footer */
+        .footer-table { width: 100%; margin-top: 20px; }
+        .footer-table td { vertical-align: top; }
+        .footer-title { font-weight: bold; font-size: 11px; border-bottom: 1px solid #AFABAB; padding-bottom: 3px; margin-bottom: 5px; }
+        .footer-content { font-size: 10px; }
+        
+        .signature-box { text-align: center; }
+        .signature-title { margin-bottom: 10px; }
+        .signature-name { font-weight: bold; margin-top: 5px; }
+        .signature-role { font-size: 10px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <table class="header">
+    <!-- HEADER -->
+    <table class="header-table">
         <tr>
             <td class="header-left">
-                @php
-                    $logo = public_path('logo_emd.png');
-                    if(isset($invoice->customer->service->logo) && $invoice->customer->service->logo != '') {
-                        $logo = storage_path('app/public/' . $invoice->customer->service->logo);
-                    }
-                @endphp
-                <img src="{{ $logo }}" alt="Logo" class="logo-img" style="max-height: 80px; width: auto;">
-                <div class="client-box">
-                    <div class="client-label">Kepada:</div>
-                    <div class="client-name">{{ $invoice->customer->name }}</div>
-                    <div class="client-address">
-                        Di Tempat<br>
-                        {{ $invoice->customer->address ?: '(Silahkan lengkapi data alamat di master client)' }}
-                    </div>
+                <table>
+                    <tr>
+                        <td style="width: 70px;">
+                            @php
+                                $logo = public_path('logo_emd.png');
+                                if(isset($invoice->customer->service->logo) && $invoice->customer->service->logo != '') {
+                                    $logo = storage_path('app/public/' . $invoice->customer->service->logo);
+                                }
+                            @endphp
+                            <img src="{{ $logo }}" style="max-height: 60px; max-width: 65px;" alt="Logo">
+                        </td>
+                        <td style="vertical-align: middle;">
+                            <div class="company-name">{{ isset($invoice->customer->service) ? $invoice->customer->service->name : 'Edu Media Digital' }}</div>
+                        </td>
+                    </tr>
+                </table>
+                <div style="margin-top: 15px; font-weight: bold; font-size: 12px;">No. {{ $invoice->invoice_number }}</div>
+                <div style="margin-top: 5px; font-size: 10px; color: #555;">
+                    @if(isset($invoice->customer->service) && $invoice->customer->service->address)
+                        {!! nl2br(e($invoice->customer->service->address)) !!}
+                    @else
+                        Wisma Bumiputera Bandung Lantai VII Suite 707<br>
+                        Jl. Asia Afrika No.141-149 Bandung, West Java, 40261<br>
+                        0822 5885 8864 : info@edumediadigital.co.id<br>
+                        www.edumediadigital.co.id
+                    @endif
                 </div>
             </td>
-
             <td class="header-right">
-                <div class="company-address">
-                    <b>Wisma Bumiputera Bandung</b><br>
-                    Jl. Asia Afrika No.141-149 Lantai 7 Suite 707, Kebon Pisang, Sumurbandung, Bandung City, West Java 40261<br>
-                    Phone: 022-20665633 Mobile: 082258858864
-                </div>
-                <table class="summary-table" style="float: right; width: auto;">
-                    <tr><th>Invoice Number</th><th>Due Date</th><th>Amount Due</th></tr>
+                <div class="invoice-title">INVOICE</div>
+                <table class="header-info-table">
                     <tr>
-                        <td style="white-space: nowrap;"><b>{{ $invoice->invoice_number }}</b></td>
-                        <td style="white-space: nowrap;">{{ \Carbon\Carbon::parse($invoice->due_date)->translatedFormat('d F Y') }}</td>
-                        <td style="white-space: nowrap;"><b>Rp {{ number_format($invoice->total_amount, 0, ',', '.') }},-</b></td>
+                        <td class="info-label">Diterbitkan di</td>
+                        <td style="width: 10px;">:</td>
+                        <td class="info-val">Bandung</td>
+                    </tr>
+                    <tr>
+                        <td class="info-label">Tanggal Tagihan</td>
+                        <td>:</td>
+                        <td class="info-val">{{ \Carbon\Carbon::parse($invoice->invoice_date)->translatedFormat('d F Y') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="info-label" style="color:#CC3300;">Jatuh Tempo</td>
+                        <td style="color:#CC3300;">:</td>
+                        <td class="info-val" style="color:#CC3300;">{{ \Carbon\Carbon::parse($invoice->due_date)->translatedFormat('d F Y') }}</td>
                     </tr>
                 </table>
             </td>
         </tr>
     </table>
 
-    <span class="tagihan-label">Tagihan :</span>
-    <div class="invoice-title">INVOICE</div>
+    <br>
 
-    <table class="main-table">
+    <!-- CUSTOMER INFO -->
+    <div class="customer-section">
+        <div class="customer-title">Kepada Yth :</div>
+        <div class="customer-details">
+            <div style="font-weight: bold; font-size: 12px;">{{ $invoice->customer->name }}</div>
+            <div style="margin-top: 3px; max-width: 60%;">
+                {!! nl2br(e($invoice->customer->address ?: '-')) !!}
+            </div>
+            @if($invoice->po_number)
+            <div style="margin-top: 5px; font-style: italic;">Ref/PO: {{ $invoice->po_number }}</div>
+            @endif
+        </div>
+    </div>
+
+    <!-- ITEMS -->
+    <table class="items-table">
         <thead>
             <tr>
-                <th class="col-no">No</th>
-                <th class="col-desc">Deskripsi</th>
-                <th class="col-amount">Jumlah</th>
-                <th class="col-ket">Keterangan</th>
+                <th style="width: 5%;">No</th>
+                <th style="width: 45%; text-align: left;">Deskripsi</th>
+                <th style="width: 10%;">Kuantiti</th>
+                <th style="width: 20%; text-align: right;">Harga Satuan</th>
+                <th style="width: 20%; text-align: right;">Jumlah</th>
             </tr>
         </thead>
         <tbody>
             @foreach($invoice->items as $index => $item)
             <tr>
-                <td style="text-align: center;">{{ $index + 1 }}</td>
-                <td>{{ $item->description }}<br>Qty: {{ $item->qty }}</td>
-                <td class="col-amount">{{ number_format($item->subtotal, 0, ',', '.') }}</td>
-                <td class="col-ket">-</td>
+                <td class="text-center">{{ $index + 1 }}</td>
+                <td>{!! nl2br(e($item->description)) !!}</td>
+                <td class="text-center">{{ $item->qty }}</td>
+                <td class="text-right">{{ number_format($item->unit_price, 0, ',', '.') }}</td>
+                <td class="text-right">{{ number_format($item->subtotal, 0, ',', '.') }}</td>
             </tr>
             @endforeach
-            
-            @if($invoice->tax_amount > 0)
-            <tr>
-                <td></td>
-                <td class="text-right">PPN</td>
-                <td class="col-amount">{{ number_format($invoice->tax_amount, 0, ',', '.') }}</td>
-                <td></td>
-            </tr>
-            @endif
-
-            <tr style="height: 50px;"><td></td><td></td><td></td><td></td></tr>
-            <tr class="total-row">
-                <td colspan="2" class="text-right">Total Tagihan</td>
-                <td class="col-amount">{{ number_format($invoice->total_amount, 0, ',', '.') }}</td>
-                <td></td>
-            </tr>
         </tbody>
     </table>
 
-    <div class="terbilang-box">Terbilang: # {{ $terbilang }} Rupiah #</div>
+    <br>
 
-    <table class="footer-flex">
+    <!-- SUMMARY -->
+    <table class="summary-container">
         <tr>
-            <td class="payment-info">
-                <h4>Informasi Pembayaran:</h4>
-                @if(isset($invoice->customer->service->bank_credentials) && $invoice->customer->service->bank_credentials != '')
-                    <div style="font-weight: bold; font-size: 11px; white-space: pre-wrap;">{{ $invoice->customer->service->bank_credentials }}</div>
-                @else
-                    <table class="bank-table">
-                        <tr><td>Account</td><td>: PT. EDU MEDIA DIGITAL</td></tr>
-                        <tr><td>Bank</td><td>: MANDIRI</td></tr>
-                        <tr><td>No. Acc</td><td>: 132-00-2333843-8</td></tr>
-                    </table>
-                @endif
+            <td style="width: 55%; padding-right: 20px;">
+                <div class="terbilang-label">Terbilang :</div>
+                <div class="terbilang-text">
+                    {{ $terbilang }} Rupiah
+                </div>
             </td>
-
-            <td class="signature-box">
-                <div class="sign-date">Bandung, {{ \Carbon\Carbon::parse($invoice->invoice_date)->translatedFormat('d F Y') }}</div>
-                <div class="sign-company" style="margin-bottom: 5px;">
-                    {{ isset($invoice->customer->service) ? $invoice->customer->service->name : 'PT. EDU MEDIA DIGITAL' }}
-                </div>
-                
-                <!-- Signature & Stamp Area -->
-                <div style="position: relative; {{ (isset($invoice->customer->service->signature_image) && $invoice->customer->service->signature_image != '') || (isset($invoice->customer->service->stamp_image) && $invoice->customer->service->stamp_image != '') ? 'min-height: 80px;' : 'height: 45px;' }} margin: 0 auto; width: 100%; text-align: center;">
-                    
-                    @if(isset($invoice->customer->service->stamp_image) && $invoice->customer->service->stamp_image != '')
-                        <img src="{{ storage_path('app/public/' . $invoice->customer->service->stamp_image) }}" style="max-height: 75px; width: auto; position: absolute; left: 10px; top: 15px; opacity: 0.85; z-index: 1;" alt="Stamp">
+            <td style="width: 45%;">
+                <table class="totals-table">
+                    <tr>
+                        <td class="totals-label">Subtotal :</td>
+                        <td class="totals-val">{{ number_format($invoice->subtotal, 0, ',', '.') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="totals-label">Diskon :</td>
+                        <td class="totals-val">-</td>
+                    </tr>
+                    @if($invoice->tax_amount > 0)
+                    <tr>
+                        <td class="totals-label">PPN :</td>
+                        <td class="totals-val">{{ number_format($invoice->tax_amount, 0, ',', '.') }}</td>
+                    </tr>
                     @endif
-
-                    @if(isset($invoice->customer->service->signature_image) && $invoice->customer->service->signature_image != '')
-                        <img src="{{ storage_path('app/public/' . $invoice->customer->service->signature_image) }}" style="max-height: 120px; width: auto; position: relative; z-index: 2; margin: 0 auto; display: block;" alt="Signature">
-                    @endif
-
-                </div>
-                
-                <div class="sign-name" style="margin-top: -25px; position: relative; z-index: 3;">
-                    {{ isset($invoice->customer->service->signature_name) && $invoice->customer->service->signature_name != '' ? $invoice->customer->service->signature_name : 'Fourizal Novyansyah' }}
-                </div>
-                <div class="sign-role">Finance</div>
+                    <tr class="total-row">
+                        <td class="totals-label">Total :</td>
+                        <td class="totals-val">{{ number_format($invoice->total_amount, 0, ',', '.') }}</td>
+                    </tr>
+                </table>
             </td>
         </tr>
     </table>
 
-    <div class="instructions">
-        <b>Instruksi Pembayaran:</b>
-        <ul>
-            <li>Pembayaran dilakukan melalui Transfer Via Rekening Perusahaan yang tercantum dalam invoice.</li>
-            <li>Keterlambatan dan ketidakjelasan pembayaran akan mengakibatkan tidak tercatatnya di akunting kami.</li>
-            <li>Harap mencantumkan nomor invoice dan email bukti pembayaran.</li>
-            <li>Konfirmasi tagihan/pembayaran silahkan menghubungi:<br>
-            <b>aisitinuralisah6@gmail.com</b> (finance)<br>
-            Siti Nuralisah <b>081312703928</b> (whatsapp)</li>
-        </ul>
-        <div class="footer-quote">We'll Make It Real. There Is No Best Only Better.</div>
-    </div>
-</div>
+    <br>
+
+    <!-- FOOTER (Payment, Notes, Signature) -->
+    <table class="footer-table">
+        <tr>
+            <td style="width: 33%; padding-right: 15px;">
+                <div class="footer-title">Informasi Pembayaran</div>
+                <div class="footer-content">
+                    @if(isset($invoice->customer->service->bank_credentials) && $invoice->customer->service->bank_credentials != '')
+                        {!! nl2br(e($invoice->customer->service->bank_credentials)) !!}
+                    @else
+                        Bank : Mandiri KCP Bdg Setiabudi<br>
+                        No. Rekening : 132 00 2333843 8<br>
+                        Atas Nama : PT. Edu Media Digital<br><br>
+                        Mohon mencantumkan nomor invoice pada berita/keterangan transfer.
+                    @endif
+                </div>
+            </td>
+            <td style="width: 33%; padding-right: 15px;">
+                <div class="footer-title">Catatan</div>
+                <div class="footer-content">
+                    @if($invoice->notes)
+                        {!! nl2br(e($invoice->notes)) !!}
+                    @else
+                        1. Invoice merupakan tagihan atas jasa sesuai kesepakatan.<br>
+                        2. Pembayaran dilakukan sesuai tanggal jatuh tempo.<br>
+                        3. Bukti pembayaran dapat dikirim ke info@edumediadigital.co.id<br>
+                        4. Ketentuan pajak mengikuti ketentuan yang berlaku.
+                    @endif
+                </div>
+            </td>
+            <td style="width: 34%;">
+                <div class="signature-box">
+                    <div class="signature-title">Hormat Kami,</div>
+                    <br>
+                    
+                    <div style="position: relative; height: 70px; margin: 0 auto; width: 100%; text-align: center;">
+                        @if(isset($invoice->customer->service->stamp_image) && $invoice->customer->service->stamp_image != '')
+                            <img src="{{ storage_path('app/public/' . $invoice->customer->service->stamp_image) }}" style="max-height: 60px; width: auto; position: absolute; left: 10px; top: 0px; opacity: 0.85; z-index: 1;" alt="Stamp">
+                        @endif
+
+                        @if(isset($invoice->customer->service->signature_image) && $invoice->customer->service->signature_image != '')
+                            <img src="{{ storage_path('app/public/' . $invoice->customer->service->signature_image) }}" style="max-height: 70px; width: auto; position: relative; z-index: 2; margin: 0 auto; display: block;" alt="Signature">
+                        @endif
+                    </div>
+                    
+                    <div class="signature-name">
+                        {{ isset($invoice->customer->service->signature_name) && $invoice->customer->service->signature_name != '' ? $invoice->customer->service->signature_name : 'Ucu Komarudin' }}
+                    </div>
+                    <div class="signature-role">
+                        {{ isset($invoice->customer->service) && $invoice->customer->service->name != '' ? 'Direktur Utama' : 'Direktur Utama' }}<br>
+                        {{ isset($invoice->customer->service) ? $invoice->customer->service->name : 'PT. Edu Media Digital' }}
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
 
 </body>
 </html>

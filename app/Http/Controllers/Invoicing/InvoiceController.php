@@ -60,6 +60,7 @@ class InvoiceController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'invoice_number' => 'required|string|unique:invoices,invoice_number',
             'customer_id' => 'required|exists:customers,id',
             'invoice_date' => 'required|date',
             'due_date' => 'required|date',
@@ -75,10 +76,8 @@ class InvoiceController extends Controller
         ]);
 
         DB::transaction(function () use ($validated) {
-            $invoice_number = app(\App\Actions\Shared\GenerateRequestNumberAction::class)->execute('INV', 'invoices', 'invoice_number');
-
             $invoice = Invoice::create([
-                'invoice_number' => $invoice_number,
+                'invoice_number' => $validated['invoice_number'],
                 'customer_id' => $validated['customer_id'],
                 'invoice_date' => $validated['invoice_date'],
                 'due_date' => $validated['due_date'],
@@ -130,6 +129,7 @@ class InvoiceController extends Controller
         }
 
         $validated = $request->validate([
+            'invoice_number' => 'required|string|unique:invoices,invoice_number,' . $invoice->id,
             'customer_id' => 'required|exists:customers,id',
             'invoice_date' => 'required|date',
             'due_date' => 'required|date',
@@ -146,6 +146,7 @@ class InvoiceController extends Controller
 
         DB::transaction(function () use ($validated, $invoice) {
             $invoice->update([
+                'invoice_number' => $validated['invoice_number'],
                 'customer_id' => $validated['customer_id'],
                 'invoice_date' => $validated['invoice_date'],
                 'due_date' => $validated['due_date'],

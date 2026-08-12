@@ -14,6 +14,7 @@ const ppnMode = ref('exclude') // 'none' | 'exclude' | 'include'
 const ppnRate = ref(11) // persen, bisa diubah user
 
 const form = useForm({
+  invoice_number: props.invoice.invoice_number || '',
   customer_id: props.invoice.customer_id,
   invoice_date: props.invoice.invoice_date_raw || props.invoice.invoice_date.substring(0, 10),
   due_date: props.invoice.due_date_raw || props.invoice.due_date.substring(0, 10),
@@ -130,13 +131,19 @@ const modeLabel = computed(() => {
         <form @submit.prevent="submit" class="space-y-6">
 
           <!-- INFO DASAR -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1.5">No. Invoice <span class="text-rose-500">*</span></label>
+              <input v-model="form.invoice_number" type="text" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 text-sm font-semibold focus:border-indigo-500 focus:ring-indigo-500" placeholder="Contoh: INV/2026/08/001">
+              <p class="text-[10px] text-rose-500 mt-1" v-if="form.errors.invoice_number">{{ form.errors.invoice_number }}</p>
+            </div>
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1.5">Pilih Customer <span class="text-rose-500">*</span></label>
               <select v-model="form.customer_id" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 text-sm font-semibold focus:border-indigo-500 focus:ring-indigo-500">
                 <option value="" disabled>-- Pilih Klien / Perusahaan --</option>
                 <option v-for="c in customers" :key="c.id" :value="c.id">{{ c.name }}</option>
               </select>
+              <p class="text-[10px] text-rose-500 mt-1" v-if="form.errors.customer_id">{{ form.errors.customer_id }}</p>
             </div>
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1.5">Nomor PO / Referensi (Opsional)</label>
