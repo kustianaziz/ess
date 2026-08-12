@@ -246,7 +246,11 @@ const formatRupiah = (angka) => {
               <span class="font-semibold text-slate-500">Subtotal</span>
               <span class="font-bold text-slate-800">{{ formatRupiah(invoice.subtotal) }}</span>
             </div>
-            <div v-if="invoice.tax_amount > 0" class="flex justify-between text-sm">
+            <div v-if="invoice.discount_amount > 0" class="flex justify-between text-sm mt-1">
+              <span class="font-semibold text-slate-500">Diskon</span>
+              <span class="font-bold text-slate-800">-{{ formatRupiah(invoice.discount_amount) }}</span>
+            </div>
+            <div v-if="invoice.tax_amount > 0" class="flex justify-between text-sm mt-1">
               <span class="font-semibold text-slate-500">Pajak (PPN)</span>
               <span class="font-bold text-slate-800">{{ formatRupiah(invoice.tax_amount) }}</span>
             </div>
