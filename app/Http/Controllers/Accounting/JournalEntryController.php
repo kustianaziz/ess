@@ -89,11 +89,13 @@ class JournalEntryController extends Controller
 
         // 2. Penerbitan Invoice (Piutang)
         foreach (Invoice::whereIn('status', ['sent', 'partial', 'paid', 'overdue'])->with('customer')->get() as $inv) {
-            $refKey = Invoice::class . '_' . $inv->id;
             $isRenewal = $inv->source_type === 'renewal';
+            $sourceTypeString = Invoice::class . ($isRenewal ? '_renewal' : '_general');
+            $refKey = $sourceTypeString . '_' . $inv->id;
+            
             $transactions->push([
                 'id'               => 'inv_' . $inv->id,
-                'source_type'      => Invoice::class . ($isRenewal ? '_renewal' : '_general'),
+                'source_type'      => $sourceTypeString,
                 'source_label'     => $isRenewal ? 'Invoice Renewal' : 'Invoice Tagihan',
                 'source_id'        => $inv->id,
                 'date'             => $inv->invoice_date,
@@ -108,11 +110,13 @@ class JournalEntryController extends Controller
 
         // 3. Pembayaran Invoice (Penerimaan Kas)
         foreach (InvoicePayment::with('invoice')->get() as $ip) {
-            $refKey = InvoicePayment::class . '_' . $ip->id;
             $isRenewal = $ip->invoice && $ip->invoice->source_type === 'renewal';
+            $sourceTypeString = InvoicePayment::class . ($isRenewal ? '_renewal' : '_general');
+            $refKey = $sourceTypeString . '_' . $ip->id;
+
             $transactions->push([
                 'id'               => 'ip_' . $ip->id,
-                'source_type'      => InvoicePayment::class . ($isRenewal ? '_renewal' : '_general'),
+                'source_type'      => $sourceTypeString,
                 'source_label'     => $isRenewal ? 'Pelunasan Renewal' : 'Pelunasan Tagihan',
                 'source_id'        => $ip->id,
                 'date'             => $ip->payment_date,
