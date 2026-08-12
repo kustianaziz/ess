@@ -236,6 +236,8 @@
                 <div class="footer-content">
                     @if($invoice->notes)
                         {!! nl2br(e($invoice->notes)) !!}
+                    @elseif(isset($invoice->customer->service->invoice_notes) && $invoice->customer->service->invoice_notes != '')
+                        {!! nl2br(e($invoice->customer->service->invoice_notes)) !!}
                     @else
                         1. Invoice merupakan tagihan atas jasa sesuai kesepakatan.<br>
                         2. Pembayaran dilakukan sesuai tanggal jatuh tempo.<br>
