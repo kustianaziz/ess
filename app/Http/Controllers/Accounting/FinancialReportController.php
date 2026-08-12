@@ -173,21 +173,6 @@ class FinancialReportController extends Controller
         $showZero = filter_var($request->input('show_zero', true), FILTER_VALIDATE_BOOLEAN);
         $showCode = filter_var($request->input('show_code', false), FILTER_VALIDATE_BOOLEAN);
 
-        $reportData = $this->reportService->getCoaTreeWithBalances(null, null, $asOfDate, $level, $showZero);
-        $coas = collect($reportData['flat']);
-
-        $filterByType = function($type) use ($coas) {
-            $items = $coas->filter(function($c) use ($type) {
-                return $c['type'] === $type;
-            })->values()->toArray();
-            $total = collect($items)->where('is_header', false)->sum('balance');
-            return ['items' => $items, 'total' => $total];
-        };
-
-        $assets = $filterByType('aset');
-        $liabilities = $filterByType('hutang');
-        $equities = $filterByType('modal');
-
         // Retained Earnings & Current Year Earnings settings
         $retainedEarningsCoaId = \App\Models\Setting::get('retained_earnings_coa_id');
         $currentEarningsCoaId = \App\Models\Setting::get('current_earnings_coa_id');
@@ -228,76 +213,30 @@ class FinancialReportController extends Controller
 
         $retainedEarnings = $prevRevenue - $prevExpense;
 
-        // Map or override in equities list
-        $retainedEarningsCoa = $retainedEarningsCoaId ? Coa::find($retainedEarningsCoaId) : null;
-        $currentEarningsCoa = $currentEarningsCoaId ? Coa::find($currentEarningsCoaId) : null;
-
-        $hasRetainedEarningsCoa = false;
-        $hasCurrentEarningsCoa = false;
-
-        foreach ($equities['items'] as &$item) {
-            if ($retainedEarningsCoa && $item['id'] == $retainedEarningsCoa->id) {
-                $item['balance'] += $retainedEarnings;
-                $hasRetainedEarningsCoa = true;
-            }
-            if ($currentEarningsCoa && $item['id'] == $currentEarningsCoa->id) {
-                $item['balance'] += $currentYearEarnings;
-                $hasCurrentEarningsCoa = true;
-            }
+        // Build injected balances array
+        $injectedBalances = [];
+        if ($retainedEarningsCoaId) {
+            $injectedBalances[$retainedEarningsCoaId] = $retainedEarnings;
+        }
+        if ($currentEarningsCoaId) {
+            $injectedBalances[$currentEarningsCoaId] = $currentYearEarnings;
         }
 
-        // If mapped but excluded due to zero-balance filter, force add it
-        if ($retainedEarningsCoa && !$hasRetainedEarningsCoa) {
-            $equities['items'][] = [
-                'id' => $retainedEarningsCoa->id,
-                'code' => $retainedEarningsCoa->code,
-                'name' => $retainedEarningsCoa->name,
-                'type' => 'modal',
-                'balance' => $retainedEarnings,
-                'level' => $retainedEarningsCoa->level,
-                'is_header' => false
-            ];
-        }
+        // Call the service with injected balances so it does the rollup natively
+        $reportData = $this->reportService->getCoaTreeWithBalances(null, null, $asOfDate, $level, $showZero, $injectedBalances);
+        $coas = collect($reportData['flat']);
 
-        if ($currentEarningsCoa && !$hasCurrentEarningsCoa) {
-            $equities['items'][] = [
-                'id' => $currentEarningsCoa->id,
-                'code' => $currentEarningsCoa->code,
-                'name' => $currentEarningsCoa->name,
-                'type' => 'modal',
-                'balance' => $currentYearEarnings,
-                'level' => $currentEarningsCoa->level,
-                'is_header' => false
-            ];
-        }
-
-        // Sort by code so they are in perfect tree order
-        usort($equities['items'], fn($a, $b) => strcmp($a['code'], $b['code']));
-
-        // Recalculate total equity and rollup header accounts so parent COAs show correct sums
-        $recalculateHeaders = function(&$items) {
-            foreach ($items as &$parent) {
-                if ($parent['is_header']) {
-                    $sum = 0;
-                    foreach ($items as $child) {
-                        if (!$child['is_header'] && str_starts_with($child['code'], $parent['code'] . '.')) {
-                            $sum += $child['balance'];
-                        }
-                    }
-                    $parent['balance'] = $sum;
-                }
-            }
+        $filterByType = function($type) use ($coas) {
+            $items = $coas->filter(function($c) use ($type) {
+                return $c['type'] === $type;
+            })->values()->toArray();
+            $total = collect($items)->where('is_header', false)->sum('balance');
+            return ['items' => $items, 'total' => $total];
         };
 
-        $recalculateHeaders($equities['items']);
-
-        $totalEquity = 0;
-        foreach ($equities['items'] as $item) {
-            if (!$item['is_header']) {
-                $totalEquity += $item['balance'];
-            }
-        }
-        $equities['total'] = $totalEquity;
+        $assets = $filterByType('aset');
+        $liabilities = $filterByType('hutang');
+        $equities = $filterByType('modal');
 
         $data = [
             'filters' => [

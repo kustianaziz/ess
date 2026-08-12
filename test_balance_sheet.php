@@ -57,18 +57,7 @@ echo "Current Year Revenue: " . $currentYearRevenue . "\n";
 echo "Current Year Expense: " . $currentYearExpense . "\n";
 echo "Current Year Earnings: " . $currentYearEarnings . "\n";
 
-$service = app(FinancialReportService::class);
-$reportData = $service->getCoaTreeWithBalances(null, null, $asOfDate, 5, false);
-$coas = collect($reportData['flat']);
-
-$equitiesItems = $coas->filter(function($c) {
-    return $c->type === 'modal';
-})->values()->toArray();
-
-$retainedEarningsCoa = $retainedEarningsCoaId ? Coa::find($retainedEarningsCoaId) : null;
-$currentEarningsCoa = $currentEarningsCoaId ? Coa::find($currentEarningsCoaId) : null;
-
-// Calculate Retained Earnings (previous years)
+// Retained Earnings (previous years)
 $prevRevenue = JournalItem::whereIn('coa_id', $revenueCoas)
     ->whereHas('journalEntry', function($q) use ($startOfYear) {
         $q->where('date', '<', $startOfYear)
@@ -83,44 +72,21 @@ $prevExpense = JournalItem::whereIn('coa_id', $expenseCoas)
 
 $retainedEarnings = $prevRevenue - $prevExpense;
 
-$hasRetainedEarningsCoa = false;
-$hasCurrentEarningsCoa = false;
-
-foreach ($equitiesItems as &$item) {
-    if ($retainedEarningsCoa && $item['id'] == $retainedEarningsCoa->id) {
-        $item['balance'] += $retainedEarnings;
-        $hasRetainedEarningsCoa = true;
-    }
-    if ($currentEarningsCoa && $item['id'] == $currentEarningsCoa->id) {
-        $item['balance'] += $currentYearEarnings;
-        $hasCurrentEarningsCoa = true;
-    }
+$injectedBalances = [];
+if ($retainedEarningsCoaId) {
+    $injectedBalances[$retainedEarningsCoaId] = $retainedEarnings;
+}
+if ($currentEarningsCoaId) {
+    $injectedBalances[$currentEarningsCoaId] = $currentYearEarnings;
 }
 
-// If mapped but excluded due to zero-balance filter, force add it
-if ($retainedEarningsCoa && !$hasRetainedEarningsCoa) {
-    $equitiesItems[] = [
-        'id' => $retainedEarningsCoa->id,
-        'code' => $retainedEarningsCoa->code,
-        'name' => $retainedEarningsCoa->name,
-        'type' => 'modal',
-        'balance' => $retainedEarnings,
-        'level' => 2,
-        'is_header' => false
-    ];
-}
+$service = app(FinancialReportService::class);
+$reportData = $service->getCoaTreeWithBalances(null, null, $asOfDate, 5, false, $injectedBalances);
+$coas = collect($reportData['flat']);
 
-if ($currentEarningsCoa && !$hasCurrentEarningsCoa) {
-    $equitiesItems[] = [
-        'id' => $currentEarningsCoa->id,
-        'code' => $currentEarningsCoa->code,
-        'name' => $currentEarningsCoa->name,
-        'type' => 'modal',
-        'balance' => $currentYearEarnings,
-        'level' => 2,
-        'is_header' => false
-    ];
-}
+$equitiesItems = $coas->filter(function($c) {
+    return $c->type === 'modal';
+})->values()->toArray();
 
 echo "Equities List in Report (after mapping):\n";
 foreach ($equitiesItems as $eq) {

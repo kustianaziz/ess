@@ -7,7 +7,7 @@ use App\Models\JournalItem;
 
 class FinancialReportService
 {
-    public function getCoaTreeWithBalances($startDate, $endDate, $asOfDate = null, $levelLimit = null, $showZero = true)
+    public function getCoaTreeWithBalances($startDate, $endDate, $asOfDate = null, $levelLimit = null, $showZero = true, $injectedBalances = [])
     {
         $allCoas = Coa::orderBy('code')->get();
         $grouped = $allCoas->groupBy('parent_id');
@@ -55,6 +55,20 @@ class FinancialReportService
             }
             $balances[$item->coa_id]['debit'] += $item->debit;
             $balances[$item->coa_id]['credit'] += $item->credit;
+        }
+
+        // Inject manual/dynamic balances (e.g. Laba Ditahan, Laba Tahun Berjalan)
+        foreach ($injectedBalances as $coaId => $balAmount) {
+            if ($coaId) {
+                if (!isset($balances[$coaId])) {
+                    $balances[$coaId] = ['debit' => 0, 'credit' => 0];
+                }
+                if ($balAmount >= 0) {
+                    $balances[$coaId]['credit'] += $balAmount;
+                } else {
+                    $balances[$coaId]['debit'] += abs($balAmount);
+                }
+            }
         }
 
         // Rollup balances
