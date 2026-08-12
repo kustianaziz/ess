@@ -188,35 +188,86 @@ class FinancialReportController extends Controller
         $liabilities = $filterByType('hutang');
         $equities = $filterByType('modal');
 
-        // Retained Earnings (Net Profit from beginning of time until asOfDate)
+        // Retained Earnings & Current Year Earnings settings
+        $retainedEarningsCoaId = \App\Models\Setting::get('retained_earnings_coa_id');
+        $currentEarningsCoaId = \App\Models\Setting::get('current_earnings_coa_id');
+
+        // Calculate Laba Tahun Berjalan (Current Year Earnings): from start of year to asOfDate
+        $startOfYear = Carbon::parse($asOfDate)->startOfYear()->format('Y-m-d');
+        
         $revenueCoas = Coa::where('type', 'pendapatan')->get()->pluck('id');
         $expenseCoas = Coa::where('type', 'beban')->get()->pluck('id');
 
-        $totalRevenue = JournalItem::whereIn('coa_id', $revenueCoas)
-            ->whereHas('journalEntry', function($q) use ($asOfDate) {
-                $q->where('date', '<=', $asOfDate);
-            })->get()->reduce(function($carry, $item) {
-                return $carry + ($item->credit - $item->debit);
-            }, 0);
+        // Current Year Net Profit
+        $currentYearRevenue = JournalItem::whereIn('coa_id', $revenueCoas)
+            ->whereHas('journalEntry', function($q) use ($startOfYear, $asOfDate) {
+                $q->whereBetween('date', [$startOfYear, $asOfDate]);
+            })->get()->reduce(fn($carry, $item) => $carry + ($item->credit - $item->debit), 0);
 
-        $totalExpense = JournalItem::whereIn('coa_id', $expenseCoas)
-            ->whereHas('journalEntry', function($q) use ($asOfDate) {
-                $q->where('date', '<=', $asOfDate);
-            })->get()->reduce(function($carry, $item) {
-                return $carry + ($item->debit - $item->credit);
-            }, 0);
+        $currentYearExpense = JournalItem::whereIn('coa_id', $expenseCoas)
+            ->whereHas('journalEntry', function($q) use ($startOfYear, $asOfDate) {
+                $q->whereBetween('date', [$startOfYear, $asOfDate]);
+            })->get()->reduce(fn($carry, $item) => $carry + ($item->debit - $item->credit), 0);
 
-        $retainedEarnings = $totalRevenue - $totalExpense;
+        $currentYearEarnings = $currentYearRevenue - $currentYearExpense;
 
-        if ($showZero || $retainedEarnings != 0) {
+        // Previous Years Net Profit (Retained Earnings)
+        $prevRevenue = JournalItem::whereIn('coa_id', $revenueCoas)
+            ->whereHas('journalEntry', function($q) use ($startOfYear) {
+                $q->where('date', '<', $startOfYear);
+            })->get()->reduce(fn($carry, $item) => $carry + ($item->credit - $item->debit), 0);
+
+        $prevExpense = JournalItem::whereIn('coa_id', $expenseCoas)
+            ->whereHas('journalEntry', function($q) use ($startOfYear) {
+                $q->where('date', '<', $startOfYear);
+            })->get()->reduce(fn($carry, $item) => $carry + ($item->debit - $item->credit), 0);
+
+        $retainedEarnings = $prevRevenue - $prevExpense;
+
+        // Map or override in equities list
+        $hasRetainedEarningsCoa = false;
+        $hasCurrentEarningsCoa = false;
+
+        $retainedEarningsCoa = $retainedEarningsCoaId ? Coa::find($retainedEarningsCoaId) : null;
+        $currentEarningsCoa = $currentEarningsCoaId ? Coa::find($currentEarningsCoaId) : null;
+
+        $totalEquity = 0;
+        foreach ($equities['items'] as &$item) {
+            if ($retainedEarningsCoa && $item['code'] === $retainedEarningsCoa->code) {
+                $item['balance'] += $retainedEarnings;
+                $hasRetainedEarningsCoa = true;
+            }
+            if ($currentEarningsCoa && $item['code'] === $currentEarningsCoa->code) {
+                $item['balance'] = $currentYearEarnings;
+                $hasCurrentEarningsCoa = true;
+            }
+            if (!$item['is_header']) {
+                $totalEquity += $item['balance'];
+            }
+        }
+        $equities['total'] = $totalEquity;
+
+        // If not mapped to existing list items, add virtual rows
+        if (!$hasRetainedEarningsCoa && ($showZero || $retainedEarnings != 0)) {
             $equities['items'][] = [
-                'code' => '3-RE',
-                'name' => 'Laba Ditahan (Retained Earnings)',
+                'code' => $retainedEarningsCoa ? $retainedEarningsCoa->code : '3-RE',
+                'name' => $retainedEarningsCoa ? $retainedEarningsCoa->name : 'Laba Ditahan (Retained Earnings)',
                 'balance' => $retainedEarnings,
                 'level' => 2,
                 'is_header' => false
             ];
             $equities['total'] += $retainedEarnings;
+        }
+
+        if (!$hasCurrentEarningsCoa && ($showZero || $currentYearEarnings != 0)) {
+            $equities['items'][] = [
+                'code' => $currentEarningsCoa ? $currentEarningsCoa->code : '3-CY',
+                'name' => $currentEarningsCoa ? $currentEarningsCoa->name : 'Laba Tahun Berjalan (Current Year Earnings)',
+                'balance' => $currentYearEarnings,
+                'level' => 2,
+                'is_header' => false
+            ];
+            $equities['total'] += $currentYearEarnings;
         }
 
         $data = [
@@ -415,5 +466,32 @@ class FinancialReportController extends Controller
         }
 
         return Inertia::render('Accounting/Reports/Calk', $data);
+    }
+
+    public function settings()
+    {
+        $coas = Coa::where('is_header', false)->orderBy('code')->get();
+        $settings = [
+            'retained_earnings_coa_id' => \App\Models\Setting::get('retained_earnings_coa_id'),
+            'current_earnings_coa_id' => \App\Models\Setting::get('current_earnings_coa_id'),
+        ];
+
+        return Inertia::render('Accounting/Settings/Index', [
+            'coas' => $coas,
+            'settings' => $settings,
+        ]);
+    }
+
+    public function saveSettings(Request $request)
+    {
+        $request->validate([
+            'retained_earnings_coa_id' => 'nullable|exists:coas,id',
+            'current_earnings_coa_id' => 'nullable|exists:coas,id',
+        ]);
+
+        \App\Models\Setting::set('retained_earnings_coa_id', $request->retained_earnings_coa_id);
+        \App\Models\Setting::set('current_earnings_coa_id', $request->current_earnings_coa_id);
+
+        return back()->with('success', 'Pengaturan akun laporan keuangan berhasil disimpan.');
     }
 }

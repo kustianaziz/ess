@@ -27,7 +27,8 @@ import {
   LineChart,
   Archive,
   CalendarClock,
-  CreditCard
+  CreditCard,
+  Settings
 } from 'lucide-vue-next';
 
 const page = usePage();
@@ -285,6 +286,15 @@ const isLevel1OrAbove = computed(() => {
             >
               <Scale class="w-4 h-4 text-blue-400" />
               <span>Neraca Awal</span>
+            </Link>
+            <Link
+              v-if="isHrdOrAdmin"
+              :href="route('accounting.settings')"
+              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="isCurrentRoute('accounting.settings') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+            >
+              <Settings class="w-4 h-4 text-emerald-400" />
+              <span>Pengaturan Akuntansi</span>
             </Link>
             <Link
               v-if="isHrdOrAdmin"

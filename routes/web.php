@@ -115,6 +115,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('periods/{period}/close', [\App\Http\Controllers\Accounting\AccountingPeriodController::class, 'closePeriod'])->name('periods.close');
         Route::get('beginning-balances', [\App\Http\Controllers\Accounting\BeginningBalanceController::class, 'index'])->name('beginning-balances.index');
         Route::post('beginning-balances', [\App\Http\Controllers\Accounting\BeginningBalanceController::class, 'store'])->name('beginning-balances.store');
+        Route::get('settings', [\App\Http\Controllers\Accounting\FinancialReportController::class, 'settings'])->name('settings');
+        Route::post('settings', [\App\Http\Controllers\Accounting\FinancialReportController::class, 'saveSettings'])->name('settings.save');
         
         // Financial Reports
         Route::get('reports/ledger', [\App\Http\Controllers\Accounting\FinancialReportController::class, 'ledger'])->name('reports.ledger');
