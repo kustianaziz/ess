@@ -225,50 +225,22 @@ class FinancialReportController extends Controller
         $retainedEarnings = $prevRevenue - $prevExpense;
 
         // Map or override in equities list
-        $hasRetainedEarningsCoa = false;
-        $hasCurrentEarningsCoa = false;
-
         $retainedEarningsCoa = $retainedEarningsCoaId ? Coa::find($retainedEarningsCoaId) : null;
         $currentEarningsCoa = $currentEarningsCoaId ? Coa::find($currentEarningsCoaId) : null;
 
         $totalEquity = 0;
         foreach ($equities['items'] as &$item) {
-            if ($retainedEarningsCoa && $item['code'] === $retainedEarningsCoa->code) {
+            if ($retainedEarningsCoa && $item['id'] == $retainedEarningsCoa->id) {
                 $item['balance'] += $retainedEarnings;
-                $hasRetainedEarningsCoa = true;
             }
-            if ($currentEarningsCoa && $item['code'] === $currentEarningsCoa->code) {
-                $item['balance'] = $currentYearEarnings;
-                $hasCurrentEarningsCoa = true;
+            if ($currentEarningsCoa && $item['id'] == $currentEarningsCoa->id) {
+                $item['balance'] += $currentYearEarnings;
             }
             if (!$item['is_header']) {
                 $totalEquity += $item['balance'];
             }
         }
         $equities['total'] = $totalEquity;
-
-        // If not mapped to existing list items, add virtual rows
-        if (!$hasRetainedEarningsCoa && ($showZero || $retainedEarnings != 0)) {
-            $equities['items'][] = [
-                'code' => $retainedEarningsCoa ? $retainedEarningsCoa->code : '3-RE',
-                'name' => $retainedEarningsCoa ? $retainedEarningsCoa->name : 'Laba Ditahan (Retained Earnings)',
-                'balance' => $retainedEarnings,
-                'level' => 2,
-                'is_header' => false
-            ];
-            $equities['total'] += $retainedEarnings;
-        }
-
-        if (!$hasCurrentEarningsCoa && ($showZero || $currentYearEarnings != 0)) {
-            $equities['items'][] = [
-                'code' => $currentEarningsCoa ? $currentEarningsCoa->code : '3-CY',
-                'name' => $currentEarningsCoa ? $currentEarningsCoa->name : 'Laba Tahun Berjalan (Current Year Earnings)',
-                'balance' => $currentYearEarnings,
-                'level' => 2,
-                'is_header' => false
-            ];
-            $equities['total'] += $currentYearEarnings;
-        }
 
         $data = [
             'filters' => [
