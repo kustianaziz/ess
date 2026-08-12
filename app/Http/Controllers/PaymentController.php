@@ -117,4 +117,81 @@ class PaymentController extends Controller
             return back()->with('success', "Pembayaran berhasil diproses via {$account->name} dan mutasi kas berhasil dicatat!");
         });
     }
+
+    public function cancel(
+        Request $request,
+        string $type,
+        int $id,
+        RecordStatusHistoryAction $recordHistory
+    ): RedirectResponse {
+        $user = $request->user();
+
+        return DB::transaction(function() use ($type, $id, $user, $recordHistory) {
+            $model = match($type) {
+                'reimbursement' => ReimbursementRequest::findOrFail($id),
+                'operasional' => OperationalRequest::findOrFail($id),
+                'perjalanan-dinas' => BusinessTripRequest::findOrFail($id),
+                default => abort(404),
+            };
+
+            if ($model->status->value !== RequestStatus::PAID->value && $model->status->value !== RequestStatus::COMPLETED->value) {
+                return back()->withErrors(['error' => 'Hanya pengajuan dengan status PAID yang dapat dibatalkan pembayarannya.']);
+            }
+
+            $oldStatus = $model->status->value;
+
+            // Find associated CashTransaction to reverse balance and delete it
+            $transaction = \App\Models\CashTransaction::where('source_type', get_class($model))
+                ->where('source_id', $model->id)
+                ->first();
+
+            $accountName = 'Kas';
+            if ($transaction) {
+                $cashAccount = CashAccount::lockForUpdate()->find($transaction->cash_account_id);
+                if ($cashAccount) {
+                    $cashAccount->increment('current_balance', $transaction->amount);
+                    $accountName = $cashAccount->name;
+                }
+                $transaction->delete();
+            }
+
+            // Revert model status to APPROVED and clear payment details
+            $updateData = [
+                'status' => RequestStatus::APPROVED->value,
+                'paid_at' => null,
+                'paid_by' => null,
+                'payment_reference' => null,
+            ];
+
+            if ($type === 'perjalanan-dinas') {
+                $updateData['disbursed_budget'] = null;
+                $updateData['allowance_breakdown'] = null;
+            }
+
+            $model->update($updateData);
+
+            // Delete proof of payment attachments
+            $attachments = $model->attachments()
+                ->where('file_name', 'like', 'Bukti_Transfer_%')
+                ->get();
+
+            foreach ($attachments as $attachment) {
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($attachment->file_path)) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($attachment->file_path);
+                }
+                $attachment->delete();
+            }
+
+            // Record status history
+            $recordHistory->execute(
+                $model,
+                $oldStatus,
+                RequestStatus::APPROVED->value,
+                $user->id,
+                "Pembayaran dibatalkan oleh {$user->name}. Status dikembalikan ke Disetujui (Approved) dan saldo dikembalikan ke {$accountName}."
+            );
+
+            return back()->with('success', "Pembayaran untuk {$model->request_number} berhasil dibatalkan. Saldo telah dikembalikan ke {$accountName}!");
+        });
+    }
 }

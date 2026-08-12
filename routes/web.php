@@ -69,6 +69,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Pembayaran (HRD / Finance)
     Route::post('/pembayaran/{type}/{id}', [PaymentController::class, 'process'])->name('payment.process');
+    Route::post('/pembayaran/{type}/{id}/cancel', [PaymentController::class, 'cancel'])->name('payment.cancel');
 
     // Profil Saya
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

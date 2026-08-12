@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { Head, useForm } from '@inertiajs/vue3'
+import { Head, useForm, router } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import {
   CreditCard,
@@ -11,7 +11,8 @@ import {
   FileText,
   User,
   ArrowRight,
-  Upload
+  Upload,
+  RotateCcw
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -65,6 +66,14 @@ const addBreakdownRow = () => {
 const removeBreakdownRow = (index) => {
   if (payForm.allowance_breakdown.length > 1) {
     payForm.allowance_breakdown.splice(index, 1)
+  }
+}
+
+const handleCancelPayment = (item) => {
+  if (confirm(`Apakah Anda yakin ingin membatalkan pembayaran untuk pengajuan ${item.request_number}? Saldo kas/bank akan dikembalikan dan file bukti transfer akan dihapus.`)) {
+    router.post(route('payment.cancel', { type: item.type, id: item.id }), {}, {
+      preserveScroll: true
+    })
   }
 }
 
@@ -282,15 +291,24 @@ const getBadgeColor = (type) => {
               </div>
             </div>
 
-            <!-- Tombol Buka Detail / Bukti -->
-            <div class="pt-2 border-t border-slate-50">
+            <!-- Tombol Buka Detail / Bukti & Batal Bayar -->
+            <div class="pt-2 border-t border-slate-50 flex items-center gap-2">
               <a
                 :href="route('riwayat-pengajuan.show', { type: item.type, id: item.id })"
                 target="_blank"
-                class="block w-full text-center py-2 rounded-xl bg-slate-50 text-indigo-600 hover:bg-slate-100 text-xs font-bold transition-colors border border-slate-100"
+                class="flex-1 text-center py-2 rounded-xl bg-slate-50 text-indigo-600 hover:bg-slate-100 text-xs font-bold transition-colors border border-slate-100"
               >
-                Lihat Detail & Bukti Lampiran →
+                Detail & Bukti →
               </a>
+              <button
+                type="button"
+                @click="handleCancelPayment(item)"
+                class="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 text-xs font-bold transition-colors flex items-center gap-1 shrink-0"
+                title="Batal Pembayaran / Reversal"
+              >
+                <RotateCcw class="w-3.5 h-3.5" />
+                <span>Batal</span>
+              </button>
             </div>
           </div>
         </div>
