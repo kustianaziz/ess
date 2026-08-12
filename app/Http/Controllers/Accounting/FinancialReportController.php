@@ -198,15 +198,17 @@ class FinancialReportController extends Controller
         $revenueCoas = Coa::where('type', 'pendapatan')->get()->pluck('id');
         $expenseCoas = Coa::where('type', 'beban')->get()->pluck('id');
 
-        // Current Year Net Profit
+        // Exclude void journals from calculations
         $currentYearRevenue = JournalItem::whereIn('coa_id', $revenueCoas)
             ->whereHas('journalEntry', function($q) use ($startOfYear, $asOfDate) {
-                $q->whereBetween('date', [$startOfYear, $asOfDate]);
+                $q->whereBetween('date', [$startOfYear, $asOfDate])
+                  ->where('status', '!=', 'void');
             })->get()->reduce(fn($carry, $item) => $carry + ($item->credit - $item->debit), 0);
 
         $currentYearExpense = JournalItem::whereIn('coa_id', $expenseCoas)
             ->whereHas('journalEntry', function($q) use ($startOfYear, $asOfDate) {
-                $q->whereBetween('date', [$startOfYear, $asOfDate]);
+                $q->whereBetween('date', [$startOfYear, $asOfDate])
+                  ->where('status', '!=', 'void');
             })->get()->reduce(fn($carry, $item) => $carry + ($item->debit - $item->credit), 0);
 
         $currentYearEarnings = $currentYearRevenue - $currentYearExpense;
@@ -214,12 +216,14 @@ class FinancialReportController extends Controller
         // Previous Years Net Profit (Retained Earnings)
         $prevRevenue = JournalItem::whereIn('coa_id', $revenueCoas)
             ->whereHas('journalEntry', function($q) use ($startOfYear) {
-                $q->where('date', '<', $startOfYear);
+                $q->where('date', '<', $startOfYear)
+                  ->where('status', '!=', 'void');
             })->get()->reduce(fn($carry, $item) => $carry + ($item->credit - $item->debit), 0);
 
         $prevExpense = JournalItem::whereIn('coa_id', $expenseCoas)
             ->whereHas('journalEntry', function($q) use ($startOfYear) {
-                $q->where('date', '<', $startOfYear);
+                $q->where('date', '<', $startOfYear)
+                  ->where('status', '!=', 'void');
             })->get()->reduce(fn($carry, $item) => $carry + ($item->debit - $item->credit), 0);
 
         $retainedEarnings = $prevRevenue - $prevExpense;
@@ -228,14 +232,48 @@ class FinancialReportController extends Controller
         $retainedEarningsCoa = $retainedEarningsCoaId ? Coa::find($retainedEarningsCoaId) : null;
         $currentEarningsCoa = $currentEarningsCoaId ? Coa::find($currentEarningsCoaId) : null;
 
-        $totalEquity = 0;
+        $hasRetainedEarningsCoa = false;
+        $hasCurrentEarningsCoa = false;
+
         foreach ($equities['items'] as &$item) {
             if ($retainedEarningsCoa && $item['id'] == $retainedEarningsCoa->id) {
                 $item['balance'] += $retainedEarnings;
+                $hasRetainedEarningsCoa = true;
             }
             if ($currentEarningsCoa && $item['id'] == $currentEarningsCoa->id) {
                 $item['balance'] += $currentYearEarnings;
+                $hasCurrentEarningsCoa = true;
             }
+        }
+
+        // If mapped but excluded due to zero-balance filter, force add it
+        if ($retainedEarningsCoa && !$hasRetainedEarningsCoa) {
+            $equities['items'][] = [
+                'id' => $retainedEarningsCoa->id,
+                'code' => $retainedEarningsCoa->code,
+                'name' => $retainedEarningsCoa->name,
+                'type' => 'modal',
+                'balance' => $retainedEarnings,
+                'level' => 2,
+                'is_header' => false
+            ];
+        }
+
+        if ($currentEarningsCoa && !$hasCurrentEarningsCoa) {
+            $equities['items'][] = [
+                'id' => $currentEarningsCoa->id,
+                'code' => $currentEarningsCoa->code,
+                'name' => $currentEarningsCoa->name,
+                'type' => 'modal',
+                'balance' => $currentYearEarnings,
+                'level' => 2,
+                'is_header' => false
+            ];
+        }
+
+        // Recalculate total equity
+        $totalEquity = 0;
+        foreach ($equities['items'] as $item) {
             if (!$item['is_header']) {
                 $totalEquity += $item['balance'];
             }
