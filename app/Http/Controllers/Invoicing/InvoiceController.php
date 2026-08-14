@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\CashAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -60,7 +61,11 @@ class InvoiceController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'invoice_number' => 'required|string|unique:invoices,invoice_number',
+            'invoice_number' => [
+                'required',
+                'string',
+                Rule::unique('invoices', 'invoice_number')->whereNull('deleted_at')
+            ],
             'customer_id' => 'required|exists:customers,id',
             'invoice_date' => 'required|date',
             'due_date' => 'required|date',
@@ -131,7 +136,11 @@ class InvoiceController extends Controller
         }
 
         $validated = $request->validate([
-            'invoice_number' => 'required|string|unique:invoices,invoice_number,' . $invoice->id,
+            'invoice_number' => [
+                'required',
+                'string',
+                Rule::unique('invoices', 'invoice_number')->ignore($invoice->id)->whereNull('deleted_at')
+            ],
             'customer_id' => 'required|exists:customers,id',
             'invoice_date' => 'required|date',
             'due_date' => 'required|date',
@@ -180,7 +189,7 @@ class InvoiceController extends Controller
 
     public function destroy(Invoice $invoice)
     {
-        $invoice->delete();
+        $invoice->forceDelete();
         return redirect()->route('invoicing.invoices.index')->with('success', 'Invoice deleted successfully.');
     }
 
