@@ -189,8 +189,38 @@ class InvoiceController extends Controller
 
     public function destroy(Invoice $invoice)
     {
+        $invoice->delete();
+        return redirect()->route('invoicing.invoices.index')->with('success', 'Invoice dipindahkan ke Tong Sampah (Soft Delete).');
+    }
+
+    public function trashed(Request $request)
+    {
+        $invoices = Invoice::onlyTrashed()->with('customer')->latest('deleted_at')->get();
+        
+        return Inertia::render('Invoicing/Invoices/Trashed', [
+            'invoices' => $invoices
+        ]);
+    }
+
+    public function restore($id)
+    {
+        $invoice = Invoice::onlyTrashed()->findOrFail($id);
+        
+        // Cek jika nomor invoice bentrok dengan yang aktif
+        $exists = Invoice::where('invoice_number', $invoice->invoice_number)->exists();
+        if ($exists) {
+            return redirect()->back()->withErrors(['error' => 'Gagal memulihkan. Nomor invoice ini ('.$invoice->invoice_number.') sudah digunakan oleh invoice aktif lainnya.']);
+        }
+
+        $invoice->restore();
+        return redirect()->back()->with('success', 'Invoice berhasil dipulihkan.');
+    }
+
+    public function forceDelete($id)
+    {
+        $invoice = Invoice::onlyTrashed()->findOrFail($id);
         $invoice->forceDelete();
-        return redirect()->route('invoicing.invoices.index')->with('success', 'Invoice deleted successfully.');
+        return redirect()->back()->with('success', 'Invoice dihapus secara permanen.');
     }
 
     public function markAsSent(Invoice $invoice)

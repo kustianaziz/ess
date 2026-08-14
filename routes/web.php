@@ -148,6 +148,9 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('customers', \App\Http\Controllers\Invoicing\CustomerController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::post('invoices/{invoice}/duplicate', [\App\Http\Controllers\Invoicing\InvoiceController::class, 'duplicate'])->name('invoices.duplicate');
         Route::post('invoices/{invoice}/sent', [\App\Http\Controllers\Invoicing\InvoiceController::class, 'markAsSent'])->name('invoices.sent');
+        Route::get('invoices/trashed', [\App\Http\Controllers\Invoicing\InvoiceController::class, 'trashed'])->name('invoices.trashed');
+        Route::post('invoices/{id}/restore', [\App\Http\Controllers\Invoicing\InvoiceController::class, 'restore'])->name('invoices.restore');
+        Route::delete('invoices/{id}/force-delete', [\App\Http\Controllers\Invoicing\InvoiceController::class, 'forceDelete'])->name('invoices.force-delete');
         Route::resource('invoices', \App\Http\Controllers\Invoicing\InvoiceController::class);
         Route::get('invoices/{invoice}/pdf', [\App\Http\Controllers\Invoicing\InvoiceController::class, 'downloadPdf'])->name('invoices.pdf');
         Route::post('invoices/{invoice}/payments', [\App\Http\Controllers\Invoicing\InvoicePaymentController::class, 'store'])->name('invoices.payments.store');
