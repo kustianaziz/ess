@@ -148,6 +148,7 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('customers', \App\Http\Controllers\Invoicing\CustomerController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::post('invoices/{invoice}/duplicate', [\App\Http\Controllers\Invoicing\InvoiceController::class, 'duplicate'])->name('invoices.duplicate');
         Route::post('invoices/{invoice}/sent', [\App\Http\Controllers\Invoicing\InvoiceController::class, 'markAsSent'])->name('invoices.sent');
+        Route::post('invoices/{invoice}/unsent', [\App\Http\Controllers\Invoicing\InvoiceController::class, 'unmarkAsSent'])->name('invoices.unsent');
         Route::get('invoices/trashed', [\App\Http\Controllers\Invoicing\InvoiceController::class, 'trashed'])->name('invoices.trashed');
         Route::post('invoices/{id}/restore', [\App\Http\Controllers\Invoicing\InvoiceController::class, 'restore'])->name('invoices.restore');
         Route::delete('invoices/{id}/force-delete', [\App\Http\Controllers\Invoicing\InvoiceController::class, 'forceDelete'])->name('invoices.force-delete');

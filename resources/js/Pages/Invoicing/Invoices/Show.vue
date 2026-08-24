@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { Head, useForm, Link, router } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import { ArrowLeft, Wallet, CheckCircle2, Download, AlertCircle, FileText, Send, Pen, Trash2, Clock, Upload } from 'lucide-vue-next'
+import { ArrowLeft, Wallet, CheckCircle2, Download, AlertCircle, FileText, Send, Pen, Trash2, Clock, Upload, RotateCcw } from 'lucide-vue-next'
 
 const props = defineProps({
   invoice: Object,
@@ -81,6 +81,12 @@ const postInvoice = () => {
   }
 }
 
+const undoPostInvoice = () => {
+  if (confirm('Batalkan posting invoice ini? Status akan kembali menjadi Draft sehingga bisa diedit kembali.')) {
+    router.post(route('invoicing.invoices.unsent', props.invoice.id))
+  }
+}
+
 const cancelPayment = (payment) => {
   if (confirm(`Batalkan pembayaran sebesar ${formatRupiah(payment.amount)}?\n\nTindakan ini akan mengembalikan saldo kas dan memulihkan sisa tagihan pada invoice.`)) {
     router.delete(route('invoicing.invoices.payments.destroy', [props.invoice.id, payment.id]), { preserveScroll: true })
@@ -149,6 +155,14 @@ const formatRupiah = (angka) => {
           >
             <Send class="w-4 h-4" />
             <span>Posting</span>
+          </button>
+          <button
+            v-if="invoice.status === 'sent'"
+            @click="undoPostInvoice"
+            class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-600 hover:bg-slate-700 text-white text-xs font-bold shadow-lg shadow-slate-600/20 transition-all flex items-center justify-center gap-2"
+          >
+            <RotateCcw class="w-4 h-4" />
+            <span>Batal Posting</span>
           </button>
           <Link
             v-if="invoice.status === 'draft'"

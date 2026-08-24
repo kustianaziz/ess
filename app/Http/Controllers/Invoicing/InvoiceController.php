@@ -239,6 +239,19 @@ class InvoiceController extends Controller
         return redirect()->back()->with('success', 'Invoice telah di-posting.');
     }
 
+    public function unmarkAsSent(Invoice $invoice)
+    {
+        if ($invoice->status !== 'sent') {
+            return redirect()->back()->withErrors(['error' => 'Hanya invoice dengan status TERKIRIM yang bisa dibatalkan postingnya.']);
+        }
+
+        \DB::transaction(function () use ($invoice) {
+            $invoice->update(['status' => 'draft']);
+        });
+
+        return redirect()->back()->with('success', 'Posting invoice dibatalkan (kembali ke Draft).');
+    }
+
     public function downloadPdf(Invoice $invoice)
     {
         $invoice->load(['customer.service', 'items', 'payments']);
