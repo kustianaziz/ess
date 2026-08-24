@@ -219,6 +219,13 @@ class InvoiceController extends Controller
     public function forceDelete($id)
     {
         $invoice = Invoice::onlyTrashed()->findOrFail($id);
+
+        // Jika invoice ini digunakan oleh Renewal Request, putuskan hubungannya
+        \App\Models\RenewalRequest::where('invoice_id', $invoice->id)->update([
+            'invoice_id' => null,
+            'status' => 'pending'
+        ]);
+
         $invoice->forceDelete();
         return redirect()->back()->with('success', 'Invoice dihapus secara permanen.');
     }
