@@ -1,0 +1,153 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Actions\Shared\GenerateRequestNumberAction;
+use App\Actions\Shared\RecordStatusHistoryAction;
+use App\Enums\RequestStatus;
+use App\Models\Approval;
+use App\Models\OvertimeClaim;
+use App\Models\OvertimeRequest;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
+
+class OvertimeController extends Controller
+{
+    public function create()
+    {
+        return Inertia::render('Pengajuan/Lembur/Create');
+    }
+
+    public function store(Request $request, GenerateRequestNumberAction $generateRequestNumber, RecordStatusHistoryAction $recordHistory)
+    {
+        $validated = $request->validate([
+            'date' => 'required|date',
+            'start_time' => 'required',
+            'end_time' => 'required',
+            'task_description' => 'required|string',
+        ]);
+
+        $user = Auth::user();
+
+        if (!$user->manager_id) {
+            return redirect()->back()->withErrors(['error' => 'Anda tidak memiliki Atasan Langsung (Manager) yang diatur di sistem. Silakan hubungi HRD.']);
+        }
+
+        DB::transaction(function () use ($validated, $user, $generateRequestNumber, $recordHistory) {
+            $requestNumber = $generateRequestNumber->execute('LMBR', 'overtime_requests', 'request_number');
+
+            $overtime = OvertimeRequest::create([
+                'request_number' => $requestNumber,
+                'user_id' => $user->id,
+                'date' => $validated['date'],
+                'start_time' => $validated['start_time'],
+                'end_time' => $validated['end_time'],
+                'task_description' => $validated['task_description'],
+                'status' => RequestStatus::SUBMITTED->value,
+                'current_approval_level' => 1,
+                'submitted_at' => now(),
+            ]);
+
+            Approval::create([
+                'approvable_type' => OvertimeRequest::class,
+                'approvable_id' => $overtime->id,
+                'level' => 1,
+                'approver_id' => $user->manager_id,
+                'status' => 'pending',
+            ]);
+
+            $recordHistory->execute($overtime, RequestStatus::DRAFT->value, RequestStatus::SUBMITTED->value, $user->id, 'Pengajuan rencana lembur disubmit. Menunggu persetujuan Atasan.');
+        });
+
+        return redirect()->route('riwayat-pengajuan.index')->with('success', 'Rencana lembur berhasil diajukan!');
+    }
+
+    public function claimCreate(OvertimeRequest $overtimeRequest)
+    {
+        if ($overtimeRequest->status->value !== RequestStatus::APPROVED->value) {
+            return redirect()->back()->withErrors(['error' => 'Rencana lembur ini belum disetujui, tidak bisa diklaim.']);
+        }
+
+        if ($overtimeRequest->claim) {
+            return redirect()->back()->withErrors(['error' => 'Lembur ini sudah pernah diklaim.']);
+        }
+
+        // Get all managers or users to be selected as Level 2 approver
+        // Assuming anyone with role 'manager' or maybe just fetch all active users
+        $managers = User::where('status', 'active')
+            ->where('id', '!=', Auth::id())
+            ->orderBy('name')
+            ->get(['id', 'name', 'position']);
+
+        return Inertia::render('Pengajuan/Lembur/Claim', [
+            'overtimeRequest' => $overtimeRequest,
+            'level2Approvers' => $managers,
+        ]);
+    }
+
+    public function claimStore(Request $request, OvertimeRequest $overtimeRequest, GenerateRequestNumberAction $generateRequestNumber, RecordStatusHistoryAction $recordHistory)
+    {
+        if ($overtimeRequest->status->value !== RequestStatus::APPROVED->value) {
+            return redirect()->back()->withErrors(['error' => 'Rencana lembur ini belum disetujui.']);
+        }
+        if ($overtimeRequest->claim) {
+            return redirect()->back()->withErrors(['error' => 'Lembur ini sudah pernah diklaim.']);
+        }
+
+        $validated = $request->validate([
+            'actual_start_time' => 'required',
+            'actual_end_time' => 'required',
+            'amount' => 'required|numeric|min:0',
+            'level2_approver_id' => 'required|exists:users,id',
+            'attachments' => 'nullable|array',
+            'attachments.*' => 'file|max:5120',
+            'proof_link' => 'nullable|string',
+        ]);
+
+        $user = Auth::user();
+
+        DB::transaction(function () use ($validated, $overtimeRequest, $user, $generateRequestNumber, $recordHistory, $request) {
+            $claimNumber = $generateRequestNumber->execute('CLM-LMBR', 'overtime_claims', 'claim_number');
+
+            $claim = OvertimeClaim::create([
+                'claim_number' => $claimNumber,
+                'overtime_request_id' => $overtimeRequest->id,
+                'user_id' => $user->id,
+                'actual_start_time' => $validated['actual_start_time'],
+                'actual_end_time' => $validated['actual_end_time'],
+                'amount' => $validated['amount'],
+                'level2_approver_id' => $validated['level2_approver_id'],
+                'status' => RequestStatus::SUBMITTED->value,
+                'current_approval_level' => 1,
+                'submitted_at' => now(),
+            ]);
+
+            if ($request->hasFile('attachments')) {
+                foreach ($request->file('attachments') as $file) {
+                    $path = $file->store('attachments/overtime', 'public');
+                    $claim->attachments()->create([
+                        'file_path' => $path,
+                        'file_name' => $file->getClientOriginalName(),
+                        'file_type' => $file->getMimeType(),
+                    ]);
+                }
+            }
+
+            // Create Level 1 Approval (Leader)
+            Approval::create([
+                'approvable_type' => OvertimeClaim::class,
+                'approvable_id' => $claim->id,
+                'level' => 1,
+                'approver_id' => $user->manager_id ?? $user->id,
+                'status' => 'pending',
+            ]);
+
+            $recordHistory->execute($claim, RequestStatus::DRAFT->value, RequestStatus::SUBMITTED->value, $user->id, 'Klaim pencairan lembur disubmit. Menunggu persetujuan Level 1 (Atasan).');
+        });
+
+        return redirect()->route('riwayat-pengajuan.index')->with('success', 'Klaim lembur berhasil diajukan!');
+    }
+}

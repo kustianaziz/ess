@@ -87,8 +87,32 @@ class FinanceDisbursementController extends Controller
                 'paid_by_name' => $item->paidBy?->name ?? '-',
             ]);
 
+        // 4. Fetch Overtime Claims
+        $overtimeClaims = \App\Models\OvertimeClaim::with(['user.division', 'paidBy', 'attachments'])
+            ->whereIn('status', [RequestStatus::APPROVED->value, RequestStatus::PAID->value, RequestStatus::COMPLETED->value])
+            ->latest()
+            ->get()
+            ->map(fn($item) => [
+                'id' => $item->id,
+                'type' => 'klaim-lembur',
+                'type_label' => 'Klaim Lembur',
+                'request_number' => $item->claim_number,
+                'applicant_name' => $item->user->name,
+                'division' => $item->user->division?->name ?? '-',
+                'category' => 'Uang Lembur',
+                'amount' => (float)$item->amount,
+                'amount_formatted' => 'Rp ' . number_format($item->amount, 0, ',', '.'),
+                'created_at' => $item->created_at->translatedFormat('d M Y H:i'),
+                'status' => $item->status->value,
+                'status_label' => $item->status->label(),
+                'status_color' => $item->status->colorClass(),
+                'payment_reference' => $item->payment_reference,
+                'paid_at' => $item->paid_at ? $item->paid_at->translatedFormat('d M Y H:i') : null,
+                'paid_by_name' => $item->paidBy?->name ?? '-',
+            ]);
+
         // Merge all items
-        $allItems = $reimbursements->concat($operationals)->concat($businessTrips)->sortByDesc('created_at')->values();
+        $allItems = $reimbursements->concat($operationals)->concat($businessTrips)->concat($overtimeClaims)->sortByDesc('created_at')->values();
 
         $unpaidItems = $allItems->whereNotIn('status', ['paid', 'completed'])->values();
         $paidItems = $allItems->whereIn('status', ['paid', 'completed'])->values();

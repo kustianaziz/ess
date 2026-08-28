@@ -3,6 +3,7 @@ import Sidebar from '@/Components/Sidebar.vue';
 import Topbar from '@/Components/Topbar.vue';
 import MobileBottomNav from '@/Components/MobileBottomNav.vue';
 import Modal from '@/Components/Modal.vue';
+import InstallPrompt from '@/Components/InstallPrompt.vue';
 import { usePage } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import { CheckCircle2, ShieldAlert, X } from 'lucide-vue-next';
@@ -110,6 +111,9 @@ const closeModal = () => {
 
       <!-- Floating Mobile Bottom Navigation Bar -->
       <MobileBottomNav />
+
+      <!-- PWA Install Prompt -->
+      <InstallPrompt />
     </div>
   </div>
 </template>

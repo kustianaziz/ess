@@ -100,6 +100,14 @@ const getStatusColor = (status) => {
             <Plus class="w-4 h-4 text-purple-400" />
             <span>Add Cuti</span>
           </Link>
+
+          <Link
+            :href="route('pengajuan.lembur.create')"
+            class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold whitespace-nowrap border border-slate-700 shrink-0"
+          >
+            <Plus class="w-4 h-4 text-indigo-400" />
+            <span>Add Lembur</span>
+          </Link>
         </div>
 
         <!-- 3. Bottom White Sheet Container (Recent Activities List matching mockup_mobile.webp) -->
@@ -151,7 +159,7 @@ const getStatusColor = (status) => {
           <h2 class="text-lg font-bold text-slate-800 tracking-tight mb-5">
             Pilih Layanan Pengajuan
           </h2>
-          <div class="grid grid-cols-3 gap-6">
+          <div class="grid grid-cols-4 gap-6">
             <ServiceCard
               title="Reimbursement Karyawan"
               description="Ajukan penggantian biaya yang telah dikeluarkan untuk keperluan pekerjaan."
@@ -172,6 +180,13 @@ const getStatusColor = (status) => {
               :href="route('pengajuan.cuti.create')"
               button-text="Ajukan Cuti"
               variant="purple"
+            />
+            <ServiceCard
+              title="Lembur"
+              description="Ajukan rencana lembur dan klaim uang lembur Anda."
+              :href="route('pengajuan.lembur.create')"
+              button-text="Ajukan Lembur"
+              variant="indigo"
             />
           </div>
         </section>

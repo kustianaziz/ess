@@ -226,6 +226,20 @@ const isCurrentRoute = (routeName) => {
                 <p class="text-[9px] text-slate-500 truncate">Pengajuan izin/cuti</p>
               </div>
             </Link>
+
+            <Link
+              :href="route('pengajuan.lembur.create')"
+              @click="showQuickMenu = false"
+              class="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center gap-2.5 hover:bg-indigo-100/70 transition-all"
+            >
+              <div class="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                <Clock class="w-3.5 h-3.5" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-900 truncate">Lembur</p>
+                <p class="text-[9px] text-slate-500 truncate">Rencana lembur</p>
+              </div>
+            </Link>
           </div>
         </div>
 

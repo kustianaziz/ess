@@ -155,6 +155,69 @@ class RequestHistoryController extends Controller
             }
         }
 
+        // 5. Rencana Lembur (Tahap 1)
+        if (!$typeFilter || $typeFilter === 'lembur') {
+            $query = \App\Models\OvertimeRequest::with(['user.division'])
+                ->where('user_id', $user->id);
+
+            if ($statusFilter) {
+                $query->where('status', $statusFilter);
+            }
+            if ($search) {
+                $query->where(function($q) use ($search) {
+                    $q->where('request_number', 'like', "%{$search}%")
+                      ->orWhere('task_description', 'like', "%{$search}%");
+                });
+            }
+
+            foreach ($query->get() as $item) {
+                $requestsCollection->push([
+                    'id' => $item->id,
+                    'type' => 'lembur',
+                    'type_label' => 'Rencana Lembur',
+                    'request_number' => $item->request_number,
+                    'category' => 'Lembur ' . $item->date->format('d M'),
+                    'date' => $item->date->format('Y-m-d'),
+                    'amount' => 0,
+                    'status' => $item->status->value,
+                    'status_label' => $item->status->label(),
+                    'status_color' => $item->status->colorClass(),
+                    'created_at' => $item->created_at->format('Y-m-d H:i'),
+                ]);
+            }
+        }
+
+        // 6. Pencairan Lembur (Tahap 2)
+        if (!$typeFilter || $typeFilter === 'klaim-lembur') {
+            $query = \App\Models\OvertimeClaim::with(['user.division'])
+                ->where('user_id', $user->id);
+
+            if ($statusFilter) {
+                $query->where('status', $statusFilter);
+            }
+            if ($search) {
+                $query->where(function($q) use ($search) {
+                    $q->where('claim_number', 'like', "%{$search}%");
+                });
+            }
+
+            foreach ($query->get() as $item) {
+                $requestsCollection->push([
+                    'id' => $item->id,
+                    'type' => 'klaim-lembur',
+                    'type_label' => 'Klaim Lembur',
+                    'request_number' => $item->claim_number,
+                    'category' => 'Pencairan Lembur',
+                    'date' => $item->created_at->format('Y-m-d'),
+                    'amount' => (float) $item->amount,
+                    'status' => $item->status->value,
+                    'status_label' => $item->status->label(),
+                    'status_color' => $item->status->colorClass(),
+                    'created_at' => $item->created_at->format('Y-m-d H:i'),
+                ]);
+            }
+        }
+
         $sorted = $requestsCollection->sortByDesc('created_at')->values();
 
         return Inertia::render('RiwayatPengajuan/Index', [
@@ -323,6 +386,68 @@ class RequestHistoryController extends Controller
                 'status_histories' => $item->statusHistories,
                 'created_at' => $item->created_at->translatedFormat('d F Y H:i'),
             ];
+        } elseif ($type === 'lembur') {
+            $item = \App\Models\OvertimeRequest::with(['user.division', 'approvals.approver', 'statusHistories.changedBy', 'claim'])
+                ->findOrFail($id);
+            $requestData = [
+                'id' => $item->id,
+                'type' => 'lembur',
+                'type_label' => 'Rencana Lembur',
+                'request_number' => $item->request_number,
+                'applicant' => [
+                    'name' => $item->user->name,
+                    'nik' => $item->user->nik,
+                    'division' => $item->user->division?->name ?? '-',
+                    'position' => $item->user->position ?? '-',
+                ],
+                'details' => [
+                    'Tanggal Lembur' => $item->date->translatedFormat('d F Y'),
+                    'Waktu Rencana' => $item->start_time . ' - ' . $item->end_time,
+                    'Target / Deskripsi Pekerjaan' => $item->task_description,
+                ],
+                'status' => $item->status->value,
+                'status_label' => $item->status->label(),
+                'status_color' => $item->status->colorClass(),
+                'rejected_reason' => $item->rejected_reason,
+                'approvals' => $item->approvals,
+                'status_histories' => $item->statusHistories,
+                'created_at' => $item->created_at->translatedFormat('d F Y H:i'),
+                'has_claim' => $item->claim ? true : false,
+            ];
+        } elseif ($type === 'klaim-lembur') {
+            $item = \App\Models\OvertimeClaim::with(['user.division', 'request', 'level2Approver', 'attachments', 'approvals.approver', 'statusHistories.changedBy', 'paidBy'])
+                ->findOrFail($id);
+            $requestData = [
+                'id' => $item->id,
+                'type' => 'klaim-lembur',
+                'type_label' => 'Klaim Pencairan Lembur',
+                'request_number' => $item->claim_number,
+                'applicant' => [
+                    'name' => $item->user->name,
+                    'nik' => $item->user->nik,
+                    'division' => $item->user->division?->name ?? '-',
+                    'position' => $item->user->position ?? '-',
+                ],
+                'details' => array_filter([
+                    'No. Rencana Lembur' => $item->request->request_number,
+                    'Tanggal Lembur' => $item->request->date->translatedFormat('d F Y'),
+                    'Waktu Aktual' => $item->actual_start_time . ' - ' . $item->actual_end_time,
+                    'Target / Deskripsi Pekerjaan' => $item->request->task_description,
+                    'Manager Pilihan (Level 2)' => $item->level2Approver?->name,
+                    'Nominal Klaim' => 'Rp ' . number_format($item->amount, 0, ',', '.'),
+                    'Nomor Referensi Pembayaran' => $item->payment_reference,
+                    'Waktu Pembayaran' => $item->paid_at ? $item->paid_at->translatedFormat('d F Y H:i') : null,
+                    'Diproses Oleh' => $item->paidBy?->name,
+                ]),
+                'status' => $item->status->value,
+                'status_label' => $item->status->label(),
+                'status_color' => $item->status->colorClass(),
+                'rejected_reason' => $item->rejected_reason,
+                'attachments' => $item->attachments,
+                'approvals' => $item->approvals,
+                'status_histories' => $item->statusHistories,
+                'created_at' => $item->created_at->translatedFormat('d F Y H:i'),
+            ];
         }
 
         $currentUser = request()->user();
@@ -376,6 +501,8 @@ class RequestHistoryController extends Controller
             'operasional' => OperationalRequest::findOrFail($id),
             'cuti' => LeaveRequest::findOrFail($id),
             'perjalanan-dinas' => \App\Models\BusinessTripRequest::findOrFail($id),
+            'lembur' => \App\Models\OvertimeRequest::findOrFail($id),
+            'klaim-lembur' => \App\Models\OvertimeClaim::findOrFail($id),
             default => abort(404),
         };
 

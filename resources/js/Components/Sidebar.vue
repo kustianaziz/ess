@@ -146,6 +146,15 @@ const isLevel1OrAbove = computed(() => {
               <Plane class="w-4 h-4 text-sky-400" />
               <span>Perjalanan Dinas</span>
             </Link>
+
+            <Link
+              :href="route('pengajuan.lembur.create')"
+              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="isCurrentRoute('pengajuan.lembur') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold' : 'hover:bg-slate-800/60 hover:text-white'"
+            >
+              <Clock class="w-4 h-4 text-indigo-400" />
+              <span>Lembur</span>
+            </Link>
           </div>
         </div>
 

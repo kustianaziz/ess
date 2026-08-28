@@ -45,6 +45,7 @@ class ReimbursementController extends Controller
             'expense_date' => $isDraft ? 'nullable|date' : 'required|date',
             'amount' => $isDraft ? 'nullable|numeric|min:0' : 'required|numeric|min:1000',
             'description' => $isDraft ? 'nullable|string' : 'required|string|max:1000',
+            'attachments' => $isDraft ? 'nullable|array' : 'required|array|min:1',
             'attachments.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
 

@@ -39,6 +39,7 @@ class PaymentController extends Controller
                 'reimbursement' => ReimbursementRequest::findOrFail($id),
                 'operasional' => OperationalRequest::findOrFail($id),
                 'perjalanan-dinas' => BusinessTripRequest::findOrFail($id),
+                'klaim-lembur' => \App\Models\OvertimeClaim::findOrFail($id),
                 default => abort(404),
             };
 
@@ -53,6 +54,7 @@ class PaymentController extends Controller
             $amount = match($type) {
                 'reimbursement' => (float)$model->amount,
                 'operasional' => (float)$model->estimated_cost,
+                'klaim-lembur' => (float)$model->amount,
                 'perjalanan-dinas' => !empty($validated['allowance_breakdown']) 
                     ? (float)collect($validated['allowance_breakdown'])->sum('amount') 
                     : (float)($validated['disbursed_budget'] ?? $model->estimated_budget),
@@ -63,6 +65,7 @@ class PaymentController extends Controller
                 'reimbursement' => 'reimburse',
                 'operasional' => 'operasional_lain',
                 'perjalanan-dinas' => 'perjalanan_dinas',
+                'klaim-lembur' => 'lembur',
                 default => 'lainnya',
             };
 
@@ -95,6 +98,8 @@ class PaymentController extends Controller
                 }
             }
 
+            $reqNum = $model->request_number ?? $model->claim_number;
+
             // Record cash out transaction automatically for selected cash account
             $account = CashAccount::lockForUpdate()->findOrFail($cashAccountId);
             if ($amount > 0) {
@@ -103,7 +108,7 @@ class PaymentController extends Controller
                     'out',
                     $category,
                     $amount,
-                    "Pencairan {$model->request_number} via {$account->name} (Ref: {$reference})",
+                    "Pencairan {$reqNum} via {$account->name} (Ref: {$reference})",
                     $user->id,
                     $model
                 );
@@ -112,7 +117,7 @@ class PaymentController extends Controller
             $recordHistory->execute($model, $oldStatus, RequestStatus::PAID->value, $user->id, "Pembayaran berhasil diproses via {$account->name} dengan No. Referensi Transfer: {$reference}");
 
             // Notify applicant
-            $model->user?->notify(new \App\Notifications\PaymentProcessedNotification($type, $model->id, $model->request_number, $reference));
+            $model->user?->notify(new \App\Notifications\PaymentProcessedNotification($type, $model->id, $reqNum, $reference));
 
             return back()->with('success', "Pembayaran berhasil diproses via {$account->name} dan mutasi kas berhasil dicatat!");
         });
@@ -131,6 +136,7 @@ class PaymentController extends Controller
                 'reimbursement' => ReimbursementRequest::findOrFail($id),
                 'operasional' => OperationalRequest::findOrFail($id),
                 'perjalanan-dinas' => BusinessTripRequest::findOrFail($id),
+                'klaim-lembur' => \App\Models\OvertimeClaim::findOrFail($id),
                 default => abort(404),
             };
 
@@ -139,6 +145,7 @@ class PaymentController extends Controller
             }
 
             $oldStatus = $model->status->value;
+            $reqNum = $model->request_number ?? $model->claim_number;
 
             // Find associated CashTransaction to reverse balance and delete it
             $transaction = \App\Models\CashTransaction::where('source_type', get_class($model))
@@ -191,7 +198,7 @@ class PaymentController extends Controller
                 "Pembayaran dibatalkan oleh {$user->name}. Status dikembalikan ke Disetujui (Approved) dan saldo dikembalikan ke {$accountName}."
             );
 
-            return back()->with('success', "Pembayaran untuk {$model->request_number} berhasil dibatalkan. Saldo telah dikembalikan ke {$accountName}!");
+            return back()->with('success', "Pembayaran untuk {$reqNum} berhasil dibatalkan. Saldo telah dikembalikan ke {$accountName}!");
         });
     }
 }

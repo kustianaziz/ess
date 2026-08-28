@@ -290,6 +290,31 @@ const submitApproval = () => {
         </Link>
       </div>
 
+      <!-- KLAIM LEMBUR ACTION BANNER -->
+      <div
+        v-if="requestData.type === 'lembur' && requestData.status === 'approved' && !requestData.has_claim"
+        class="bg-gradient-to-r from-orange-500 to-red-600 p-4 sm:p-5 rounded-2xl text-white shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+      >
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 uppercase tracking-wider">
+              Klaim Pencairan Lembur
+            </span>
+            <h4 class="font-bold text-sm sm:text-base">Kegiatan Lembur Selesai Dilaksanakan?</h4>
+          </div>
+          <p class="text-xs text-orange-100 leading-snug">
+            Silakan ajukan klaim pencairan lembur dengan mengisi waktu aktual dan upload bukti kegiatan.
+          </p>
+        </div>
+
+        <Link
+          :href="route('pengajuan.lembur.claim.create', requestData.id)"
+          class="px-5 py-2.5 rounded-xl bg-white hover:bg-orange-50 text-orange-600 font-bold text-xs shadow transition-all shrink-0 w-full sm:w-auto text-center"
+        >
+          Ajukan Klaim Lembur →
+        </Link>
+      </div>
+
       <!-- Applicant Info Card -->
       <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">

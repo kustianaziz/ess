@@ -48,6 +48,14 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{id}/settlement', [\App\Http\Controllers\BusinessTripController::class, 'settlementStore'])->name('settlement.store');
     });
 
+    // Pengajuan Lembur & Pencairan
+    Route::prefix('pengajuan/lembur')->name('pengajuan.lembur.')->group(function () {
+        Route::get('/create', [\App\Http\Controllers\OvertimeController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\OvertimeController::class, 'store'])->name('store');
+        Route::get('/{overtimeRequest}/claim', [\App\Http\Controllers\OvertimeController::class, 'claimCreate'])->name('claim.create');
+        Route::post('/{overtimeRequest}/claim', [\App\Http\Controllers\OvertimeController::class, 'claimStore'])->name('claim.store');
+    });
+
     // Riwayat Pengajuan & Detail
     Route::get('/riwayat-pengajuan', [RequestHistoryController::class, 'index'])->name('riwayat-pengajuan.index');
     Route::get('/riwayat-pengajuan/{type}/{id}', [RequestHistoryController::class, 'show'])->name('riwayat-pengajuan.show');

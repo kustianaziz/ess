@@ -43,6 +43,12 @@ const nextStep = () => {
       return;
     }
   }
+  if (currentStep.value === 2) {
+    if (!form.attachments || form.attachments.length === 0) {
+      alert('Harap lampirkan minimal 1 bukti transaksi / struk pengeluaran.');
+      return;
+    }
+  }
   if (currentStep.value < 3) {
     currentStep.value++;
   }

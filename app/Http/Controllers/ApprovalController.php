@@ -71,6 +71,8 @@ class ApprovalController extends Controller
                 OperationalRequest::class => 'operasional',
                 LeaveRequest::class => 'cuti',
                 \App\Models\BusinessTripRequest::class => 'perjalanan-dinas',
+                \App\Models\OvertimeRequest::class => 'lembur',
+                \App\Models\OvertimeClaim::class => 'klaim-lembur',
                 default => 'unknown',
             };
 
@@ -79,11 +81,14 @@ class ApprovalController extends Controller
                 'operasional' => 'Konsumsi / Operasional',
                 'cuti' => 'Cuti Karyawan',
                 'perjalanan-dinas' => 'Perjalanan Dinas',
+                'lembur' => 'Rencana Lembur',
+                'klaim-lembur' => 'Klaim Lembur',
                 default => 'Pengajuan',
             };
 
             $l1Approval = $model->approvals->where('level', 1)->first();
             $l2Approval = $model->approvals->where('level', 2)->first();
+            $l3Approval = $model->approvals->where('level', 3)->first();
 
             return [
                 'approval_id' => $approval->id,
@@ -91,7 +96,7 @@ class ApprovalController extends Controller
                 'type' => $type,
                 'type_label' => $typeLabel,
                 'id' => $model->id,
-                'request_number' => $model->request_number,
+                'request_number' => $model->request_number ?? $model->claim_number,
                 'applicant_name' => $model->user?->name ?? 'Karyawan',
                 'applicant_division' => $model->user?->division?->name ?? '-',
                 'submitted_at' => $model->submitted_at?->format('d M Y H:i') ?? '-',
@@ -99,6 +104,8 @@ class ApprovalController extends Controller
                 'l1_approver' => $l1Approval?->approver?->name ?? 'Atasan',
                 'l2_status' => $l2Approval ? $l2Approval->status : '-',
                 'l2_approver' => $l2Approval?->approver?->name ?? 'HRD/Finance',
+                'l3_status' => $l3Approval ? $l3Approval->status : '-',
+                'l3_approver' => $l3Approval?->approver?->name ?? 'HRD/Finance',
                 'overall_status' => $model->status->value,
                 'overall_status_label' => $model->status->label(),
             ];
@@ -147,64 +154,125 @@ class ApprovalController extends Controller
                 ->delete();
 
             if ($approval->level === 1) {
-                // Fetch all HRD & Finance users
-                $hrdUsers = User::role('hrd_finance')->get();
-                if ($hrdUsers->isEmpty()) {
-                    $hrdUsers = collect([$user]);
+                if ($model instanceof \App\Models\OvertimeRequest) {
+                    // OvertimeRequest only has 1 level -> Mark as APPROVED immediately
+                    $oldStatus = $model->status->value;
+                    $model->update([
+                        'status' => RequestStatus::APPROVED->value,
+                        'current_approval_level' => 1,
+                    ]);
+                    $recordHistory->execute($model, $oldStatus, RequestStatus::APPROVED->value, $user->id, 'Rencana Lembur disetujui (Final).');
+                    // Notify
+                    $model->user?->notify(new \App\Notifications\RequestApprovedNotification($type, $model->id, $model->request_number, 1));
+                } else {
+                    if ($model instanceof \App\Models\OvertimeClaim) {
+                        // Level 1 Approved for OvertimeClaim, go to Level 2 (User Chosen)
+                        Approval::firstOrCreate([
+                            'approvable_type' => get_class($model),
+                            'approvable_id' => $model->id,
+                            'level' => 2,
+                        ], [
+                            'approver_id' => $model->level2_approver_id,
+                            'status' => 'pending',
+                        ]);
+                        $model->update(['current_approval_level' => 2]);
+                        $recordHistory->execute($model, RequestStatus::SUBMITTED->value, RequestStatus::SUBMITTED->value, $user->id, 'Klaim disetujui Atasan (Level 1). Diteruskan ke Manager Terpilih (Level 2).');
+                    } else {
+                        // Regular flow for others (Level 1 -> Level 2 HRD)
+                        $hrdUsers = User::role('hrd_finance')->get();
+                        if ($hrdUsers->isEmpty()) {
+                            $hrdUsers = collect([$user]);
+                        }
+                        
+                        $firstHrd = $hrdUsers->first() ?? $user;
+                        
+                        Approval::firstOrCreate([
+                            'approvable_type' => get_class($model),
+                            'approvable_id' => $model->id,
+                            'level' => 2,
+                        ], [
+                            'approver_id' => $firstHrd->id,
+                            'status' => 'pending',
+                        ]);
+
+                        foreach ($hrdUsers as $hrdUser) {
+                            $hrdUser->notify(new \App\Notifications\RequestSubmittedNotification($type, $model->id, $model->request_number, $model->user?->name ?? 'Karyawan'));
+                        }
+
+                        $model->update(['current_approval_level' => 2]);
+                        $recordHistory->execute($model, RequestStatus::SUBMITTED->value, RequestStatus::SUBMITTED->value, $user->id, 'Disetujui oleh Atasan (Level 1). Diteruskan ke HRD/Finance.');
+                    }
+                    $model->user?->notify(new \App\Notifications\RequestApprovedNotification($type, $model->id, $model->request_number ?? $model->claim_number, 1));
                 }
-                
-                $firstHrd = $hrdUsers->first() ?? $user;
-                
-                // Create EXACTLY ONE Level 2 pending approval record (assigned to first HRD, open to all HRD)
-                Approval::firstOrCreate([
-                    'approvable_type' => get_class($model),
-                    'approvable_id' => $model->id,
-                    'level' => 2,
-                ], [
-                    'approver_id' => $firstHrd->id,
-                    'status' => 'pending',
-                ]);
+            } elseif ($approval->level === 2) {
+                if ($model instanceof \App\Models\OvertimeClaim) {
+                    // Level 2 for OvertimeClaim is Chosen Manager. Go to Level 3 (HRD)
+                    $hrdUsers = User::role('hrd_finance')->get();
+                    if ($hrdUsers->isEmpty()) {
+                        $hrdUsers = collect([$user]);
+                    }
+                    $firstHrd = $hrdUsers->first() ?? $user;
 
-                // Notify ALL HRD users
-                foreach ($hrdUsers as $hrdUser) {
-                    $hrdUser->notify(new \App\Notifications\RequestSubmittedNotification($type, $model->id, $model->request_number, $model->user?->name ?? 'Karyawan'));
+                    Approval::firstOrCreate([
+                        'approvable_type' => get_class($model),
+                        'approvable_id' => $model->id,
+                        'level' => 3,
+                    ], [
+                        'approver_id' => $firstHrd->id,
+                        'status' => 'pending',
+                    ]);
+
+                    foreach ($hrdUsers as $hrdUser) {
+                        $hrdUser->notify(new \App\Notifications\RequestSubmittedNotification($type, $model->id, $model->claim_number, $model->user?->name ?? 'Karyawan'));
+                    }
+                    $model->update(['current_approval_level' => 3]);
+                    $recordHistory->execute($model, RequestStatus::SUBMITTED->value, RequestStatus::SUBMITTED->value, $user->id, 'Klaim disetujui Manager Pilihan (Level 2). Diteruskan ke HRD/Finance (Level 3).');
+                    $model->user?->notify(new \App\Notifications\RequestApprovedNotification($type, $model->id, $model->claim_number, 2));
+                } else {
+                    // Regular Level 2 approval -> Mark request as APPROVED
+                    $oldStatus = $model->status->value;
+                    $model->update([
+                        'status' => RequestStatus::APPROVED->value,
+                        'current_approval_level' => 2,
+                    ]);
+
+                    if ($model instanceof LeaveRequest) {
+                        $balance = LeaveBalance::where('user_id', $model->user_id)
+                            ->where('leave_type_id', $model->leave_type_id)
+                            ->where('year', date('Y', strtotime($model->start_date)))
+                            ->first();
+
+                        if ($balance) {
+                            $balance->increment('used', $model->total_days);
+                            $balance->decrement('remaining', $model->total_days);
+                        }
+                    }
+
+                    $recordHistory->execute($model, $oldStatus, RequestStatus::APPROVED->value, $user->id, 'Pengajuan disetujui sepenuhnya (Level 2 Final).');
+                    $model->user?->notify(new \App\Notifications\RequestApprovedNotification($type, $model->id, $model->request_number, 2));
+
+                    if (in_array($type, ['reimbursement', 'operasional', 'perjalanan-dinas']) && ($user->hasRole('admin') || $user->hasRole('hrd_finance'))) {
+                        return redirect()->route('keuangan.pencairan.index')->with(
+                            'success',
+                            "Pengajuan {$model->request_number} berhasil disetujui! Pengajuan kini berada di antrean Pencairan & Pembayaran Kas."
+                        );
+                    }
                 }
-
-                $model->update(['current_approval_level' => 2]);
-                $recordHistory->execute($model, RequestStatus::SUBMITTED->value, RequestStatus::SUBMITTED->value, $user->id, 'Disetujui oleh Atasan (Level 1). Diteruskan ke HRD/Finance.');
-
-                // Notify applicant that Level 1 was approved
-                $model->user?->notify(new \App\Notifications\RequestApprovedNotification($type, $model->id, $model->request_number, 1));
-            } else {
-                // Level 2 approval -> Mark request as APPROVED
+            } elseif ($approval->level === 3) {
+                // Level 3 is for OvertimeClaim (Final HRD)
                 $oldStatus = $model->status->value;
                 $model->update([
                     'status' => RequestStatus::APPROVED->value,
-                    'current_approval_level' => 2,
+                    'current_approval_level' => 3,
                 ]);
 
-                // If Leave Request, update Leave Balance used/remaining
-                if ($model instanceof LeaveRequest) {
-                    $balance = LeaveBalance::where('user_id', $model->user_id)
-                        ->where('leave_type_id', $model->leave_type_id)
-                        ->where('year', date('Y', strtotime($model->start_date)))
-                        ->first();
+                $recordHistory->execute($model, $oldStatus, RequestStatus::APPROVED->value, $user->id, 'Klaim disetujui sepenuhnya (Level 3 Final oleh Keuangan).');
+                $model->user?->notify(new \App\Notifications\RequestApprovedNotification($type, $model->id, $model->claim_number, 3));
 
-                    if ($balance) {
-                        $balance->increment('used', $model->total_days);
-                        $balance->decrement('remaining', $model->total_days);
-                    }
-                }
-
-                $recordHistory->execute($model, $oldStatus, RequestStatus::APPROVED->value, $user->id, 'Pengajuan disetujui sepenuhnya (Level 2 Final).');
-
-                // Notify applicant
-                $model->user?->notify(new \App\Notifications\RequestApprovedNotification($type, $model->id, $model->request_number, 2));
-
-                if (in_array($type, ['reimbursement', 'operasional', 'perjalanan-dinas']) && ($user->hasRole('admin') || $user->hasRole('hrd_finance'))) {
+                if ($user->hasRole('admin') || $user->hasRole('hrd_finance')) {
                     return redirect()->route('keuangan.pencairan.index')->with(
                         'success',
-                        "Pengajuan {$model->request_number} berhasil disetujui! Pengajuan kini berada di antrean Pencairan & Pembayaran Kas."
+                        "Pengajuan {$model->claim_number} berhasil disetujui! Klaim kini berada di antrean Pencairan Kas."
                     );
                 }
             }
@@ -311,11 +379,18 @@ class ApprovalController extends Controller
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
-                $q->whereHasMorph('approvable', [ReimbursementRequest::class, OperationalRequest::class, LeaveRequest::class, \App\Models\BusinessTripRequest::class], function($mq) use ($search) {
-                    $mq->where('request_number', 'like', "%{$search}%")
-                       ->orWhereHas('user', function($uq) use ($search) {
-                           $uq->where('name', 'like', "%{$search}%");
-                       });
+                $q->whereHasMorph('approvable', [ReimbursementRequest::class, OperationalRequest::class, LeaveRequest::class, \App\Models\BusinessTripRequest::class, \App\Models\OvertimeRequest::class, \App\Models\OvertimeClaim::class], function($mq, $type) use ($search) {
+                    if ($type === \App\Models\OvertimeClaim::class) {
+                        $mq->where('claim_number', 'like', "%{$search}%")
+                           ->orWhereHas('user', function($uq) use ($search) {
+                               $uq->where('name', 'like', "%{$search}%");
+                           });
+                    } else {
+                        $mq->where('request_number', 'like', "%{$search}%")
+                           ->orWhereHas('user', function($uq) use ($search) {
+                               $uq->where('name', 'like', "%{$search}%");
+                           });
+                    }
                 });
             });
         }
@@ -339,6 +414,8 @@ class ApprovalController extends Controller
                 OperationalRequest::class => 'operasional',
                 LeaveRequest::class => 'cuti',
                 \App\Models\BusinessTripRequest::class => 'perjalanan-dinas',
+                \App\Models\OvertimeRequest::class => 'lembur',
+                \App\Models\OvertimeClaim::class => 'klaim-lembur',
                 default => 'unknown',
             };
 
@@ -347,6 +424,8 @@ class ApprovalController extends Controller
                 'operasional' => 'Konsumsi / Operasional',
                 'cuti' => 'Cuti Karyawan',
                 'perjalanan-dinas' => 'Perjalanan Dinas',
+                'lembur' => 'Rencana Lembur',
+                'klaim-lembur' => 'Klaim Lembur',
                 default => 'Pengajuan',
             };
 
@@ -354,6 +433,7 @@ class ApprovalController extends Controller
                 'reimbursement' => 'Rp ' . number_format($model->amount ?? 0, 0, ',', '.'),
                 'operasional' => 'Rp ' . number_format($model->estimated_cost ?? 0, 0, ',', '.'),
                 'cuti' => ($model->total_days ?? 0) . ' Hari',
+                'klaim-lembur' => 'Rp ' . number_format($model->amount ?? 0, 0, ',', '.'),
                 default => '-',
             };
 
@@ -369,7 +449,7 @@ class ApprovalController extends Controller
                 'type_label' => $typeLabel,
                 'amount_or_days' => $amountOrDays,
                 'id' => $model->id,
-                'request_number' => $model->request_number,
+                'request_number' => $model->request_number ?? $model->claim_number,
                 'applicant_name' => $model->user?->name ?? 'Karyawan',
                 'applicant_division' => $model->user?->division?->name ?? '-',
                 'approver_id' => $approval->approver_id,
@@ -498,6 +578,8 @@ class ApprovalController extends Controller
             'operasional' => OperationalRequest::findOrFail($id),
             'cuti' => LeaveRequest::findOrFail($id),
             'perjalanan-dinas' => \App\Models\BusinessTripRequest::findOrFail($id),
+            'lembur' => \App\Models\OvertimeRequest::findOrFail($id),
+            'klaim-lembur' => \App\Models\OvertimeClaim::findOrFail($id),
             default => abort(404),
         };
     }
