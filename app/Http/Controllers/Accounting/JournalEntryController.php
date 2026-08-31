@@ -260,6 +260,35 @@ class JournalEntryController extends Controller
             }
         }
 
+        // 6.5. Pencairan Klaim Lembur (paid)
+        if ($shouldQuery(\App\Models\OvertimeClaim::class)) {
+            $lemburQuery = \App\Models\OvertimeClaim::where('status', 'paid')->with('user');
+            $exclude = $getUnjournalledIds(\App\Models\OvertimeClaim::class);
+            if (!empty($exclude)) $lemburQuery->whereNotIn('id', $exclude);
+            
+            if ($dateFrom) {
+                $lemburQuery->where('paid_at', '>=', $dateFrom);
+            }
+            if ($dateTo) {
+                $lemburQuery->where('paid_at', '<=', $dateTo);
+            }
+
+            foreach ($lemburQuery->get() as $claim) {
+                $transactions->push([
+                    'id'               => 'lembur_' . $claim->id,
+                    'source_type'      => \App\Models\OvertimeClaim::class,
+                    'source_label'     => 'Klaim Lembur',
+                    'source_id'        => $claim->id,
+                    'date'             => $claim->paid_at ?? $claim->created_at,
+                    'description'      => '[KLAIM LEMBUR] ' . ($claim->claim_number ?? '-') . ' - ' . ($claim->user->name ?? ''),
+                    'amount'           => $claim->amount,
+                    'reference_number' => $claim->claim_number ?? 'LMBR-' . $claim->id,
+                    'is_journalled'    => false,
+                    'type'             => 'out',
+                ]);
+            }
+        }
+
         // 7. Perjalanan Dinas (settlement)
         if ($shouldQuery(BusinessTripSettlement::class)) {
             $btQuery = BusinessTripSettlement::with('businessTripRequest.user')->whereHas('businessTripRequest');
@@ -349,6 +378,7 @@ class JournalEntryController extends Controller
             ['value' => ReimbursementRequest::class,  'label' => 'Reimbursement'],
             ['value' => OperationalRequest::class,    'label' => 'Biaya Operasional (Konsumsi)'],
             ['value' => BusinessTripSettlement::class,'label' => 'Perjalanan Dinas'],
+            ['value' => \App\Models\OvertimeClaim::class,'label' => 'Klaim Lembur'],
             ['value' => MonthlyBillPayment::class,    'label' => 'Tagihan Bulanan'],
             ['value' => AssetDepreciation::class,     'label' => 'Penyusutan Aset'],
         ];
