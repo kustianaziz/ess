@@ -163,8 +163,9 @@ const submitApproval = () => {
                 <th class="px-6 py-4">No. Pengajuan</th>
                 <th class="px-6 py-4">Pemohon / Divisi</th>
                 <th class="px-6 py-4">Jenis Layanan</th>
-                <th class="px-6 py-4">Status L1 (Atasan)</th>
-                <th class="px-6 py-4">Status L2 (HRD)</th>
+                <th class="px-6 py-4">Status L1 (Leader)</th>
+                <th class="px-6 py-4">Status L2 (Atasan)</th>
+                <th class="px-6 py-4">Status L3 (HRD)</th>
                 <th class="px-6 py-4">Status Keseluruhan</th>
                 <th class="px-6 py-4 text-right">Aksi Persetujuan</th>
               </tr>
@@ -219,6 +220,23 @@ const submitApproval = () => {
                       {{ item.l2_status === '-' ? '-' : 'Pending' }}
                     </span>
                     <span class="text-[9px] text-slate-400 mt-0.5">{{ item.l2_approver }}</span>
+                  </div>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex flex-col items-start gap-1">
+                    <span
+                      v-if="item.l3_status === 'approved'"
+                      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    >
+                      <CheckCircle2 class="w-3 h-3" /> Approved
+                    </span>
+                    <span
+                      v-else
+                      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200"
+                    >
+                      {{ item.l3_status === '-' ? '-' : 'Pending' }}
+                    </span>
+                    <span class="text-[9px] text-slate-400 mt-0.5">{{ item.l3_approver }}</span>
                   </div>
                 </td>
                 <td class="px-6 py-4">
