@@ -31,8 +31,8 @@ class ApprovalController extends Controller
                 }
 
                 if ($user->hasRole('hrd_finance')) {
-                    // HRD sees Level 2 pending approvals OR Level 1 where HRD is assigned explicitly
-                    $q->where('level', 2)
+                    // HRD sees Level 2 and 3 pending approvals OR Level 1 where HRD is assigned explicitly
+                    $q->whereIn('level', [2, 3])
                       ->orWhere(function($sub) use ($user) {
                           $sub->where('level', 1)->where('approver_id', $user->id);
                       });

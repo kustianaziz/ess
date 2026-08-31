@@ -18,7 +18,15 @@ class OvertimeController extends Controller
 {
     public function create()
     {
-        return Inertia::render('Pengajuan/Lembur/Create');
+        // Get all active users to be selected as Level 1 approver (Leader)
+        $leaders = User::where('status', 'active')
+            ->where('id', '!=', Auth::id())
+            ->orderBy('name')
+            ->get(['id', 'name', 'position']);
+
+        return Inertia::render('Pengajuan/Lembur/Create', [
+            'leaders' => $leaders,
+        ]);
     }
 
     public function store(Request $request, GenerateRequestNumberAction $generateRequestNumber, RecordStatusHistoryAction $recordHistory)
@@ -28,13 +36,10 @@ class OvertimeController extends Controller
             'start_time' => 'required',
             'end_time' => 'required',
             'task_description' => 'required|string',
+            'leader_id' => 'required|exists:users,id',
         ]);
 
         $user = Auth::user();
-
-        if (!$user->manager_id) {
-            return redirect()->back()->withErrors(['error' => 'Anda tidak memiliki Atasan Langsung (Manager) yang diatur di sistem. Silakan hubungi HRD.']);
-        }
 
         DB::transaction(function () use ($validated, $user, $generateRequestNumber, $recordHistory) {
             $requestNumber = $generateRequestNumber->execute('LMBR', 'overtime_requests', 'request_number');
@@ -55,11 +60,17 @@ class OvertimeController extends Controller
                 'approvable_type' => OvertimeRequest::class,
                 'approvable_id' => $overtime->id,
                 'level' => 1,
-                'approver_id' => $user->manager_id,
+                'approver_id' => $validated['leader_id'],
                 'status' => 'pending',
             ]);
 
             $recordHistory->execute($overtime, RequestStatus::DRAFT->value, RequestStatus::SUBMITTED->value, $user->id, 'Pengajuan rencana lembur disubmit. Menunggu persetujuan Atasan.');
+
+            // Send Notification to Leader
+            $leader = \App\Models\User::find($validated['leader_id']);
+            if ($leader) {
+                $leader->notify(new \App\Notifications\RequestSubmittedNotification('lembur', $overtime->id, $requestNumber, $user->name));
+            }
         });
 
         return redirect()->route('riwayat-pengajuan.index')->with('success', 'Rencana lembur berhasil diajukan!');
@@ -136,16 +147,30 @@ class OvertimeController extends Controller
                 }
             }
 
+            // Ambil approver dari pengajuan rencana lembur sebelumnya
+            $requestApproval = Approval::where('approvable_type', OvertimeRequest::class)
+                ->where('approvable_id', $overtimeRequest->id)
+                ->where('level', 1)
+                ->first();
+            
+            $leaderId = $requestApproval ? $requestApproval->approver_id : ($user->manager_id ?? $user->id);
+
             // Create Level 1 Approval (Leader)
             Approval::create([
                 'approvable_type' => OvertimeClaim::class,
                 'approvable_id' => $claim->id,
                 'level' => 1,
-                'approver_id' => $user->manager_id ?? $user->id,
+                'approver_id' => $leaderId,
                 'status' => 'pending',
             ]);
 
             $recordHistory->execute($claim, RequestStatus::DRAFT->value, RequestStatus::SUBMITTED->value, $user->id, 'Klaim pencairan lembur disubmit. Menunggu persetujuan Level 1 (Atasan).');
+
+            // Send Notification to Level 1 Approver
+            $leader = \App\Models\User::find($leaderId);
+            if ($leader) {
+                $leader->notify(new \App\Notifications\RequestSubmittedNotification('klaim-lembur', $claim->id, $claimNumber, $user->name));
+            }
         });
 
         return redirect()->route('riwayat-pengajuan.index')->with('success', 'Klaim lembur berhasil diajukan!');

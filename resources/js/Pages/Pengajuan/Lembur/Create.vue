@@ -6,7 +6,7 @@ import Stepper from '@/Components/Stepper.vue';
 import { ArrowLeft, Clock, Save, Send } from 'lucide-vue-next';
 
 const props = defineProps({
-  applicant: Object,
+  leaders: Array,
 });
 
 const currentStep = ref(1);
@@ -16,6 +16,7 @@ const form = useForm({
   start_time: '',
   end_time: '',
   task_description: '',
+  leader_id: '',
 });
 
 const submitForm = () => {
@@ -99,6 +100,20 @@ const submitForm = () => {
                   class="w-full text-xs sm:text-sm border-slate-200 rounded-xl focus:ring-orange-500 focus:border-orange-500 resize-none"
                 ></textarea>
                 <div v-if="form.errors.task_description" class="text-xs text-rose-500 mt-1">{{ form.errors.task_description }}</div>
+              </div>
+
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-semibold text-slate-700 mb-1.5">Pilih Atasan Langsung (Level 1) <span class="text-rose-500">*</span></label>
+                <select
+                  v-model="form.leader_id"
+                  class="w-full text-xs sm:text-sm border-slate-200 rounded-xl focus:ring-orange-500 focus:border-orange-500 bg-white"
+                >
+                  <option value="" disabled>-- Pilih Atasan Langsung (Leader/Manager) --</option>
+                  <option v-for="user in leaders" :key="user.id" :value="user.id">
+                    {{ user.name }} <span v-if="user.position">- {{ user.position }}</span>
+                  </option>
+                </select>
+                <div v-if="form.errors.leader_id" class="text-xs text-rose-500 mt-1">{{ form.errors.leader_id }}</div>
               </div>
             </div>
           </div>
