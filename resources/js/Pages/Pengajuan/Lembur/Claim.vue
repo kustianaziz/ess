@@ -15,7 +15,6 @@ const form = useForm({
   actual_start_time: props.overtimeRequest.start_time,
   actual_end_time: props.overtimeRequest.end_time,
   amount: '',
-  level2_approver_id: '',
   attachments: [],
 });
 
@@ -112,20 +111,6 @@ const submitForm = () => {
                 <div v-if="form.errors.amount" class="text-xs text-rose-500 mt-1">{{ form.errors.amount }}</div>
               </div>
 
-              <div class="sm:col-span-2">
-                <label class="block text-xs font-semibold text-slate-700 mb-1.5">Pilih Manager/Approver Level 2 <span class="text-rose-500">*</span></label>
-                <select
-                  v-model="form.level2_approver_id"
-                  class="w-full text-xs sm:text-sm border-slate-200 rounded-xl focus:ring-emerald-500 focus:border-emerald-500"
-                >
-                  <option value="" disabled>Pilih Manager</option>
-                  <option v-for="manager in level2Approvers" :key="manager.id" :value="manager.id">
-                    {{ manager.name }} ({{ manager.position || 'Manager' }})
-                  </option>
-                </select>
-                <p class="text-[11px] text-slate-500 mt-1">Klaim akan dialirkan ke Atasan Langsung (Level 1) kemudian diteruskan ke Manager Pilihan di atas (Level 2), sebelum akhirnya diproses Keuangan.</p>
-                <div v-if="form.errors.level2_approver_id" class="text-xs text-rose-500 mt-1">{{ form.errors.level2_approver_id }}</div>
-              </div>
             </div>
           </div>
 

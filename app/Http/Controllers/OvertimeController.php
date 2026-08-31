@@ -88,14 +88,11 @@ class OvertimeController extends Controller
 
         // Get all managers or users to be selected as Level 2 approver
         // Assuming anyone with role 'manager' or maybe just fetch all active users
-        $managers = User::where('status', 'active')
-            ->where('id', '!=', Auth::id())
-            ->orderBy('name')
-            ->get(['id', 'name', 'position']);
+        $user = Auth::user();
 
         return Inertia::render('Pengajuan/Lembur/Claim', [
+            'applicant' => $user,
             'overtimeRequest' => $overtimeRequest,
-            'level2Approvers' => $managers,
         ]);
     }
 
@@ -112,7 +109,6 @@ class OvertimeController extends Controller
             'actual_start_time' => 'required',
             'actual_end_time' => 'required',
             'amount' => 'required|numeric|min:0',
-            'level2_approver_id' => 'required|exists:users,id',
             'attachments' => 'nullable|array',
             'attachments.*' => 'file|max:5120',
             'proof_link' => 'nullable|string',
@@ -130,7 +126,7 @@ class OvertimeController extends Controller
                 'actual_start_time' => $validated['actual_start_time'],
                 'actual_end_time' => $validated['actual_end_time'],
                 'amount' => $validated['amount'],
-                'level2_approver_id' => $validated['level2_approver_id'],
+                'level2_approver_id' => $user->manager_id ?? $user->id,
                 'status' => RequestStatus::SUBMITTED->value,
                 'current_approval_level' => 1,
                 'submitted_at' => now(),

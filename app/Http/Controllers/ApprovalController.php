@@ -163,59 +163,58 @@ class ApprovalController extends Controller
                 ->delete();
 
             if ($approval->level === 1) {
-                if ($model instanceof \App\Models\OvertimeRequest) {
-                    // OvertimeRequest only has 1 level -> Mark as APPROVED immediately
-                    $oldStatus = $model->status->value;
-                    $model->update([
-                        'status' => RequestStatus::APPROVED->value,
-                        'current_approval_level' => 1,
+                if ($model instanceof \App\Models\OvertimeRequest || $model instanceof \App\Models\OvertimeClaim) {
+                    // For both OvertimeRequest and OvertimeClaim, Level 1 goes to Level 2 (Atasan Langsung)
+                    $atasanId = $model->user->manager_id ?? $model->user->id;
+                    
+                    Approval::firstOrCreate([
+                        'approvable_type' => get_class($model),
+                        'approvable_id' => $model->id,
+                        'level' => 2,
+                    ], [
+                        'approver_id' => $atasanId,
+                        'status' => 'pending',
                     ]);
-                    $recordHistory->execute($model, $oldStatus, RequestStatus::APPROVED->value, $user->id, 'Rencana Lembur disetujui (Final).');
-                    // Notify
-                    $model->user?->notify(new \App\Notifications\RequestApprovedNotification($type, $model->id, $model->request_number, 1));
-                } else {
-                    if ($model instanceof \App\Models\OvertimeClaim) {
-                        // Level 1 Approved for OvertimeClaim, go to Level 2 (User Chosen)
-                        Approval::firstOrCreate([
-                            'approvable_type' => get_class($model),
-                            'approvable_id' => $model->id,
-                            'level' => 2,
-                        ], [
-                            'approver_id' => $model->level2_approver_id,
-                            'status' => 'pending',
-                        ]);
-                        $model->update(['current_approval_level' => 2]);
-                        $recordHistory->execute($model, RequestStatus::SUBMITTED->value, RequestStatus::SUBMITTED->value, $user->id, 'Klaim disetujui Atasan (Level 1). Diteruskan ke Manager Terpilih (Level 2).');
-                    } else {
-                        // Regular flow for others (Level 1 -> Level 2 HRD)
-                        $hrdUsers = User::role('hrd_finance')->get();
-                        if ($hrdUsers->isEmpty()) {
-                            $hrdUsers = collect([$user]);
-                        }
-                        
-                        $firstHrd = $hrdUsers->first() ?? $user;
-                        
-                        Approval::firstOrCreate([
-                            'approvable_type' => get_class($model),
-                            'approvable_id' => $model->id,
-                            'level' => 2,
-                        ], [
-                            'approver_id' => $firstHrd->id,
-                            'status' => 'pending',
-                        ]);
-
-                        foreach ($hrdUsers as $hrdUser) {
-                            $hrdUser->notify(new \App\Notifications\RequestSubmittedNotification($type, $model->id, $model->request_number, $model->user?->name ?? 'Karyawan'));
-                        }
-
-                        $model->update(['current_approval_level' => 2]);
-                        $recordHistory->execute($model, RequestStatus::SUBMITTED->value, RequestStatus::SUBMITTED->value, $user->id, 'Disetujui oleh Atasan (Level 1). Diteruskan ke HRD/Finance.');
+                    
+                    $model->update(['current_approval_level' => 2]);
+                    $reqType = $model instanceof \App\Models\OvertimeRequest ? 'Rencana Lembur' : 'Klaim Lembur';
+                    $recordHistory->execute($model, RequestStatus::SUBMITTED->value, RequestStatus::SUBMITTED->value, $user->id, $reqType . ' disetujui Leader (Level 1). Diteruskan ke Atasan Langsung (Level 2).');
+                    
+                    // Notify Atasan
+                    $atasan = User::find($atasanId);
+                    if ($atasan) {
+                        $atasan->notify(new \App\Notifications\RequestSubmittedNotification($type, $model->id, $model->request_number ?? $model->claim_number, $model->user?->name ?? 'Karyawan'));
                     }
                     $model->user?->notify(new \App\Notifications\RequestApprovedNotification($type, $model->id, $model->request_number ?? $model->claim_number, 1));
+                } else {
+                    // Regular flow for others (Level 1 -> Level 2 HRD)
+                    $hrdUsers = User::role('hrd_finance')->get();
+                    if ($hrdUsers->isEmpty()) {
+                        $hrdUsers = collect([$user]);
+                    }
+                    
+                    $firstHrd = $hrdUsers->first() ?? $user;
+                    
+                    Approval::firstOrCreate([
+                        'approvable_type' => get_class($model),
+                        'approvable_id' => $model->id,
+                        'level' => 2,
+                    ], [
+                        'approver_id' => $firstHrd->id,
+                        'status' => 'pending',
+                    ]);
+
+                    foreach ($hrdUsers as $hrdUser) {
+                        $hrdUser->notify(new \App\Notifications\RequestSubmittedNotification($type, $model->id, $model->request_number, $model->user?->name ?? 'Karyawan'));
+                    }
+
+                    $model->update(['current_approval_level' => 2]);
+                    $recordHistory->execute($model, RequestStatus::SUBMITTED->value, RequestStatus::SUBMITTED->value, $user->id, 'Disetujui oleh Atasan (Level 1). Diteruskan ke HRD/Finance.');
+                    $model->user?->notify(new \App\Notifications\RequestApprovedNotification($type, $model->id, $model->request_number, 1));
                 }
             } elseif ($approval->level === 2) {
                 if ($model instanceof \App\Models\OvertimeClaim) {
-                    // Level 2 for OvertimeClaim is Chosen Manager. Go to Level 3 (HRD)
+                    // Level 2 for OvertimeClaim goes to Level 3 (HRD)
                     $hrdUsers = User::role('hrd_finance')->get();
                     if ($hrdUsers->isEmpty()) {
                         $hrdUsers = collect([$user]);
@@ -234,11 +233,21 @@ class ApprovalController extends Controller
                     foreach ($hrdUsers as $hrdUser) {
                         $hrdUser->notify(new \App\Notifications\RequestSubmittedNotification($type, $model->id, $model->claim_number, $model->user?->name ?? 'Karyawan'));
                     }
+
                     $model->update(['current_approval_level' => 3]);
-                    $recordHistory->execute($model, RequestStatus::SUBMITTED->value, RequestStatus::SUBMITTED->value, $user->id, 'Klaim disetujui Manager Pilihan (Level 2). Diteruskan ke HRD/Finance (Level 3).');
+                    $recordHistory->execute($model, RequestStatus::SUBMITTED->value, RequestStatus::SUBMITTED->value, $user->id, 'Disetujui oleh Atasan Langsung (Level 2). Diteruskan ke HRD/Finance (Level 3).');
                     $model->user?->notify(new \App\Notifications\RequestApprovedNotification($type, $model->id, $model->claim_number, 2));
+                } elseif ($model instanceof \App\Models\OvertimeRequest) {
+                    // Level 2 for OvertimeRequest is Final Approval
+                    $oldStatus = $model->status->value;
+                    $model->update([
+                        'status' => RequestStatus::APPROVED->value,
+                        'current_approval_level' => 2,
+                    ]);
+                    $recordHistory->execute($model, $oldStatus, RequestStatus::APPROVED->value, $user->id, 'Rencana Lembur disetujui Atasan Langsung (Final).');
+                    $model->user?->notify(new \App\Notifications\RequestApprovedNotification($type, $model->id, $model->request_number, 2));
                 } else {
-                    // Regular Level 2 approval -> Mark request as APPROVED
+                    // Regular flow for others (Level 2 is Final)
                     $oldStatus = $model->status->value;
                     $model->update([
                         'status' => RequestStatus::APPROVED->value,
