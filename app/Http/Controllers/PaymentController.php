@@ -92,7 +92,8 @@ class PaymentController extends Controller
                             'file_path' => $path,
                             'file_name' => 'Bukti_Transfer_' . $reference . $fileNum . '.' . $file->getClientOriginalExtension(),
                             'file_size' => $file->getSize(),
-                            'mime_type' => $file->getClientMimeType(),
+                            'file_type' => $file->getClientMimeType(),
+                            'uploaded_by' => $user->id,
                         ]);
                     }
                 }
