@@ -104,9 +104,9 @@ class ApprovalController extends Controller
                 'l1_status' => $l1Approval ? $l1Approval->status : 'pending',
                 'l1_approver' => $l1Approval?->approver?->name ?? 'Atasan',
                 'l2_status' => $l2Approval ? $l2Approval->status : '-',
-                'l2_approver' => $l2Approval?->approver?->name ?? 'HRD/Finance',
+                'l2_approver' => $l2Approval?->approver?->name ?? (in_array($type, ['lembur', 'klaim-lembur']) ? 'Atasan Langsung' : 'HRD/Finance'),
                 'l3_status' => $l3Approval ? $l3Approval->status : '-',
-                'l3_approver' => $l3Approval?->approver?->name ?? 'HRD/Finance',
+                'l3_approver' => $l3Approval?->approver?->name ?? (in_array($type, ['klaim-lembur']) ? 'HRD/Finance' : '-'),
                 'overall_status' => $model->status->value,
                 'overall_status_label' => $model->status->label(),
             ];
