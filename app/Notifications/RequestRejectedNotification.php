@@ -33,6 +33,8 @@ class RequestRejectedNotification extends Notification
             'reimbursement' => 'Reimbursement',
             'operasional' => 'Konsumsi / Operasional',
             'cuti' => 'Cuti',
+            'lembur' => 'Rencana Lembur',
+            'klaim-lembur' => 'Klaim Lembur',
             default => 'Pengajuan',
         };
 

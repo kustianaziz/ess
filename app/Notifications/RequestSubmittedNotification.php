@@ -34,6 +34,8 @@ class RequestSubmittedNotification extends Notification
             'operasional' => 'Konsumsi / Operasional',
             'cuti' => 'Cuti',
             'perjalanan-dinas' => 'Perjalanan Dinas',
+            'lembur' => 'Rencana Lembur',
+            'klaim-lembur' => 'Klaim Lembur',
             default => 'Pengajuan',
         };
 

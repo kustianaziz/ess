@@ -33,12 +33,27 @@ class RequestApprovedNotification extends Notification
             'reimbursement' => 'Reimbursement',
             'operasional' => 'Konsumsi / Operasional',
             'cuti' => 'Cuti',
+            'lembur' => 'Rencana Lembur',
+            'klaim-lembur' => 'Klaim Lembur',
             default => 'Pengajuan',
         };
 
-        $msg = $this->level === 1 
-            ? "Pengajuan {$typeLabel} ({$this->requestNumber}) telah disetujui Atasan (Level 1) dan diteruskan ke HRD/Finance."
-            : "Selamat! Pengajuan {$typeLabel} ({$this->requestNumber}) Anda telah disetujui sepenuhnya.";
+        if ($this->level === 1) {
+            if (in_array($this->type, ['lembur', 'klaim-lembur'])) {
+                $msg = "Pengajuan {$typeLabel} ({$this->requestNumber}) disetujui Leader (Level 1). Diteruskan ke Atasan Langsung (Level 2).";
+            } else {
+                $msg = "Pengajuan {$typeLabel} ({$this->requestNumber}) telah disetujui Atasan (Level 1) dan diteruskan ke HRD/Finance.";
+            }
+        } elseif ($this->level === 2) {
+            if ($this->type === 'klaim-lembur') {
+                $msg = "Pengajuan {$typeLabel} ({$this->requestNumber}) disetujui Atasan (Level 2). Diteruskan ke HRD/Finance (Level 3).";
+            } else {
+                $msg = "Selamat! Pengajuan {$typeLabel} ({$this->requestNumber}) Anda telah disetujui sepenuhnya.";
+            }
+        } else {
+            // Level 3 or higher
+            $msg = "Selamat! Pengajuan {$typeLabel} ({$this->requestNumber}) Anda telah disetujui sepenuhnya.";
+        }
 
         return [
             'title' => 'Pengajuan Disetujui',
