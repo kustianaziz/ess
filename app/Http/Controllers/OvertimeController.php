@@ -139,6 +139,7 @@ class OvertimeController extends Controller
                         'file_path' => $path,
                         'file_name' => $file->getClientOriginalName(),
                         'file_type' => $file->getMimeType(),
+                        'uploaded_by' => $user->id,
                     ]);
                 }
             }

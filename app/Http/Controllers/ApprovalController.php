@@ -100,6 +100,7 @@ class ApprovalController extends Controller
                 'applicant_name' => $model->user?->name ?? 'Karyawan',
                 'applicant_division' => $model->user?->division?->name ?? '-',
                 'submitted_at' => $model->submitted_at?->format('d M Y H:i') ?? '-',
+                'amount' => $model->amount ?? null,
                 'l1_status' => $l1Approval ? $l1Approval->status : 'pending',
                 'l1_approver' => $l1Approval?->approver?->name ?? 'Atasan',
                 'l2_status' => $l2Approval ? $l2Approval->status : '-',
@@ -129,9 +130,16 @@ class ApprovalController extends Controller
         ]);
 
         $notes = $request->input('notes', 'Pengajuan disetujui.');
+        $amount = $request->input('amount');
 
-        return DB::transaction(function() use ($type, $id, $user, $notes, $recordHistory) {
+        return DB::transaction(function() use ($type, $id, $user, $notes, $amount, $recordHistory) {
             $model = $this->getModel($type, $id);
+
+            // Update amount if provided and the model has an amount field
+            if (isset($amount) && in_array($type, ['klaim-lembur', 'reimbursement', 'operasional']) && isset($model->amount)) {
+                $model->update(['amount' => $amount]);
+            }
+
             $currentLevel = $model->current_approval_level ?? 1;
 
             $approval = Approval::where('approvable_type', get_class($model))

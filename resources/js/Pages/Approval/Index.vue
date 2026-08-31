@@ -11,9 +11,11 @@ const props = defineProps({
 const selectedItem = ref(null);
 const actionType = ref(''); // 'approve' or 'reject'
 const notesInput = ref('');
+const amountInput = ref('');
 
 const approveForm = useForm({
   notes: '',
+  amount: '',
 });
 
 const rejectForm = useForm({
@@ -28,12 +30,14 @@ const openApproveModal = (item) => {
   selectedItem.value = item;
   actionType.value = 'approve';
   notesInput.value = ['lembur', 'klaim-lembur'].includes(item.type) ? '' : 'Pengajuan disetujui.';
+  amountInput.value = item.amount || '';
 };
 
 const openRejectModal = (item) => {
   selectedItem.value = item;
   actionType.value = 'reject';
   notesInput.value = '';
+  amountInput.value = '';
 };
 
 const submitApproval = () => {
@@ -45,6 +49,7 @@ const submitApproval = () => {
       return;
     }
     approveForm.notes = notesInput.value || 'Pengajuan disetujui.';
+    approveForm.amount = amountInput.value;
     approveForm.post(route('approval.approve', { type: selectedItem.value.type, id: selectedItem.value.id }), {
       onSuccess: () => {
         selectedItem.value = null;
@@ -275,6 +280,19 @@ const submitApproval = () => {
         <p class="text-xs text-slate-500">
           Apakah Anda yakin ingin {{ actionType === 'approve' ? 'menyetujui' : 'menolak' }} pengajuan <span class="font-bold text-slate-800">{{ selectedItem.request_number }}</span> dari <span class="font-bold text-slate-800">{{ selectedItem.applicant_name }}</span>?
         </p>
+
+        <div v-if="actionType === 'approve' && selectedItem?.amount !== null">
+          <label class="block text-xs font-semibold text-slate-700 mb-1">
+            Koreksi Nominal (Rp)
+          </label>
+          <input
+            type="number"
+            v-model="amountInput"
+            class="w-full text-xs border-slate-200 rounded-xl focus:ring-indigo-500 focus:border-indigo-500"
+            placeholder="Nominal disetujui"
+          />
+          <p class="text-[10px] text-slate-400 mt-1">Atasan/HRD berhak mengubah nominal klaim untuk pencairan.</p>
+        </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">
