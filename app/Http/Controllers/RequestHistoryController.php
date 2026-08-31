@@ -428,6 +428,7 @@ class RequestHistoryController extends Controller
                     'division' => $item->user->division?->name ?? '-',
                     'position' => $item->user->position ?? '-',
                 ],
+                'amount' => $item->amount,
                 'details' => array_filter([
                     'No. Rencana Lembur' => $item->request->request_number,
                     'Tanggal Lembur' => $item->request->date->translatedFormat('d F Y'),
@@ -454,17 +455,16 @@ class RequestHistoryController extends Controller
         $canApprove = false;
         $pendingApprovalLevel = null;
 
-        if ($currentUser && $requestData && $currentUser->id !== $item->user_id) {
-            if ($item->status->value === 'submitted') {
-                if ($item->user->manager_id === $currentUser->id || $currentUser->hasRole('admin') || $currentUser->hasRole('manager')) {
-                    $canApprove = true;
-                    $pendingApprovalLevel = 1;
-                }
-            } elseif ($item->status->value === 'level_1_approved') {
-                if ($currentUser->hasRole('hrd_finance') || $currentUser->hasRole('admin')) {
-                    $canApprove = true;
-                    $pendingApprovalLevel = 2;
-                }
+        if ($currentUser && $requestData) {
+            $pendingApproval = \App\Models\Approval::where('approvable_type', get_class($item))
+                ->where('approvable_id', $item->id)
+                ->where('status', 'pending')
+                ->where('approver_id', $currentUser->id)
+                ->first();
+
+            if ($pendingApproval) {
+                $canApprove = true;
+                $pendingApprovalLevel = $pendingApproval->level;
             }
         }
 

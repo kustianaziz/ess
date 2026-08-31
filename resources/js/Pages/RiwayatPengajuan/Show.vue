@@ -40,9 +40,11 @@ const backLabel = computed(() => {
 const showModal = ref(false);
 const actionType = ref(''); // 'approve' or 'reject'
 const notesInput = ref('');
+const amountInput = ref('');
 
 const approveForm = useForm({
   notes: '',
+  amount: '',
 });
 
 const rejectForm = useForm({
@@ -128,6 +130,7 @@ const submitPayment = () => {
 const openApproveModal = () => {
   actionType.value = 'approve';
   notesInput.value = 'Pengajuan disetujui.';
+  amountInput.value = props.requestData?.amount || '';
   showModal.value = true;
 };
 
@@ -140,6 +143,7 @@ const openRejectModal = () => {
 const submitApproval = () => {
   if (actionType.value === 'approve') {
     approveForm.notes = notesInput.value;
+    approveForm.amount = amountInput.value;
     approveForm.post(route('approval.approve', { type: props.requestData.type, id: props.requestData.id }), {
       onSuccess: () => {
         showModal.value = false;
@@ -511,6 +515,19 @@ const submitApproval = () => {
         <p class="text-xs text-slate-500">
           Apakah Anda yakin ingin {{ actionType === 'approve' ? 'menyetujui' : 'menolak' }} pengajuan <span class="font-bold text-slate-800">{{ requestData.request_number }}</span> dari <span class="font-bold text-slate-800">{{ requestData.applicant.name }}</span>?
         </p>
+
+        <div v-if="actionType === 'approve' && requestData?.amount !== null && requestData?.amount !== undefined">
+          <label class="block text-xs font-semibold text-slate-700 mb-1">
+            Koreksi Nominal (Rp)
+          </label>
+          <input
+            type="number"
+            v-model="amountInput"
+            class="w-full text-xs border-slate-200 rounded-xl focus:ring-indigo-500 focus:border-indigo-500"
+            placeholder="Nominal disetujui"
+          />
+          <p class="text-[10px] text-slate-400 mt-1">Atasan/HRD berhak mengubah nominal klaim untuk pencairan.</p>
+        </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">
