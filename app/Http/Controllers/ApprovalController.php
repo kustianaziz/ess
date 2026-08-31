@@ -119,6 +119,15 @@ class ApprovalController extends Controller
     public function approve(Request $request, string $type, int $id, RecordStatusHistoryAction $recordHistory): RedirectResponse
     {
         $user = $request->user();
+        
+        $rules = [];
+        if (in_array($type, ['lembur', 'klaim-lembur'])) {
+            $rules['notes'] = 'required|string|min:3';
+        }
+        $request->validate($rules, [
+            'notes.required' => 'Catatan approval wajib diisi untuk pengajuan lembur.',
+        ]);
+
         $notes = $request->input('notes', 'Pengajuan disetujui.');
 
         return DB::transaction(function() use ($type, $id, $user, $notes, $recordHistory) {

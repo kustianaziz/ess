@@ -27,7 +27,7 @@ const goToDetail = (item) => {
 const openApproveModal = (item) => {
   selectedItem.value = item;
   actionType.value = 'approve';
-  notesInput.value = 'Pengajuan disetujui.';
+  notesInput.value = ['lembur', 'klaim-lembur'].includes(item.type) ? '' : 'Pengajuan disetujui.';
 };
 
 const openRejectModal = (item) => {
@@ -40,7 +40,11 @@ const submitApproval = () => {
   if (!selectedItem.value) return;
 
   if (actionType.value === 'approve') {
-    approveForm.notes = notesInput.value;
+    if (['lembur', 'klaim-lembur'].includes(selectedItem.value.type) && !notesInput.value) {
+      alert('Catatan approval wajib diisi untuk pengajuan lembur.');
+      return;
+    }
+    approveForm.notes = notesInput.value || 'Pengajuan disetujui.';
     approveForm.post(route('approval.approve', { type: selectedItem.value.type, id: selectedItem.value.id }), {
       onSuccess: () => {
         selectedItem.value = null;
@@ -274,13 +278,21 @@ const submitApproval = () => {
 
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">
-            {{ actionType === 'approve' ? 'Catatan Approval (Opsional)' : 'Alasan Penolakan (Wajib)' }}
+            {{ 
+              actionType === 'approve' 
+                ? (['lembur', 'klaim-lembur'].includes(selectedItem?.type) ? 'Catatan Approval (Wajib)' : 'Catatan Approval (Opsional)') 
+                : 'Alasan Penolakan (Wajib)' 
+            }}
           </label>
           <textarea
             v-model="notesInput"
             rows="3"
             class="w-full text-xs border-slate-200 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 resize-none"
-            :placeholder="actionType === 'approve' ? 'Catatan tambahan...' : 'Jelaskan alasan penolakan...'"
+            :placeholder="
+              actionType === 'approve' 
+                ? (['lembur', 'klaim-lembur'].includes(selectedItem?.type) ? 'Wajib melampirkan catatan...' : 'Catatan tambahan...') 
+                : 'Jelaskan alasan penolakan...'
+            "
           ></textarea>
         </div>
 
