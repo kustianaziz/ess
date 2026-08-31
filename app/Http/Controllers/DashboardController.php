@@ -22,22 +22,36 @@ class DashboardController extends Controller
         $counts = [
             'pending_approval' => ReimbursementRequest::where('user_id', $userId)->where('status', RequestStatus::SUBMITTED->value)->count()
                 + OperationalRequest::where('user_id', $userId)->where('status', RequestStatus::SUBMITTED->value)->count()
-                + LeaveRequest::where('user_id', $userId)->where('status', RequestStatus::SUBMITTED->value)->count(),
+                + LeaveRequest::where('user_id', $userId)->where('status', RequestStatus::SUBMITTED->value)->count()
+                + \App\Models\OvertimeRequest::where('user_id', $userId)->where('status', RequestStatus::SUBMITTED->value)->count()
+                + \App\Models\OvertimeClaim::where('user_id', $userId)->where('status', RequestStatus::SUBMITTED->value)->count()
+                + \App\Models\BusinessTripRequest::where('user_id', $userId)->where('status', RequestStatus::SUBMITTED->value)->count(),
 
             'approved' => ReimbursementRequest::where('user_id', $userId)->where('status', RequestStatus::APPROVED->value)->count()
                 + OperationalRequest::where('user_id', $userId)->where('status', RequestStatus::APPROVED->value)->count()
-                + LeaveRequest::where('user_id', $userId)->where('status', RequestStatus::APPROVED->value)->count(),
+                + LeaveRequest::where('user_id', $userId)->where('status', RequestStatus::APPROVED->value)->count()
+                + \App\Models\OvertimeRequest::where('user_id', $userId)->where('status', RequestStatus::APPROVED->value)->count()
+                + \App\Models\OvertimeClaim::where('user_id', $userId)->where('status', RequestStatus::APPROVED->value)->count()
+                + \App\Models\BusinessTripRequest::where('user_id', $userId)->where('status', RequestStatus::APPROVED->value)->count(),
 
             'rejected' => ReimbursementRequest::where('user_id', $userId)->where('status', RequestStatus::REJECTED->value)->count()
                 + OperationalRequest::where('user_id', $userId)->where('status', RequestStatus::REJECTED->value)->count()
-                + LeaveRequest::where('user_id', $userId)->where('status', RequestStatus::REJECTED->value)->count(),
+                + LeaveRequest::where('user_id', $userId)->where('status', RequestStatus::REJECTED->value)->count()
+                + \App\Models\OvertimeRequest::where('user_id', $userId)->where('status', RequestStatus::REJECTED->value)->count()
+                + \App\Models\OvertimeClaim::where('user_id', $userId)->where('status', RequestStatus::REJECTED->value)->count()
+                + \App\Models\BusinessTripRequest::where('user_id', $userId)->where('status', RequestStatus::REJECTED->value)->count(),
 
             'paid' => ReimbursementRequest::where('user_id', $userId)->where('status', RequestStatus::PAID->value)->count()
-                + OperationalRequest::where('user_id', $userId)->where('status', RequestStatus::PAID->value)->count(),
+                + OperationalRequest::where('user_id', $userId)->where('status', RequestStatus::PAID->value)->count()
+                + \App\Models\OvertimeClaim::where('user_id', $userId)->where('status', RequestStatus::PAID->value)->count()
+                + \App\Models\BusinessTripRequest::where('user_id', $userId)->where('status', RequestStatus::PAID->value)->count(),
 
             'completed' => ReimbursementRequest::where('user_id', $userId)->where('status', RequestStatus::COMPLETED->value)->count()
                 + OperationalRequest::where('user_id', $userId)->where('status', RequestStatus::COMPLETED->value)->count()
-                + LeaveRequest::where('user_id', $userId)->where('status', RequestStatus::COMPLETED->value)->count(),
+                + LeaveRequest::where('user_id', $userId)->where('status', RequestStatus::COMPLETED->value)->count()
+                + \App\Models\OvertimeRequest::where('user_id', $userId)->where('status', RequestStatus::COMPLETED->value)->count()
+                + \App\Models\OvertimeClaim::where('user_id', $userId)->where('status', RequestStatus::COMPLETED->value)->count()
+                + \App\Models\BusinessTripRequest::where('user_id', $userId)->where('status', RequestStatus::COMPLETED->value)->count(),
         ];
 
         return Inertia::render('Dashboard', [
@@ -87,6 +101,48 @@ class DashboardController extends Controller
                         'type' => 'cuti',
                         'request_number' => $item->request_number,
                         'category' => $item->leaveType?->name ?? 'Cuti',
+                        'date' => $item->start_date?->format('M d') ?? $item->created_at->format('M d'),
+                        'amount' => $item->total_days . ' Hari',
+                        'status' => $item->status->value,
+                        'status_label' => $item->status->label(),
+                        'status_color' => $item->status->colorClass(),
+                        'created_at' => $item->created_at,
+                    ]);
+                }
+                foreach (\App\Models\OvertimeRequest::where('user_id', $userId)->latest()->take(5)->get() as $item) {
+                    $recent->push([
+                        'id' => $item->id,
+                        'type' => 'lembur',
+                        'request_number' => $item->request_number,
+                        'category' => 'Rencana Lembur',
+                        'date' => $item->overtime_date?->format('M d') ?? $item->created_at->format('M d'),
+                        'amount' => $item->duration . ' Jam',
+                        'status' => $item->status->value,
+                        'status_label' => $item->status->label(),
+                        'status_color' => $item->status->colorClass(),
+                        'created_at' => $item->created_at,
+                    ]);
+                }
+                foreach (\App\Models\OvertimeClaim::where('user_id', $userId)->latest()->take(5)->get() as $item) {
+                    $recent->push([
+                        'id' => $item->id,
+                        'type' => 'klaim-lembur',
+                        'request_number' => $item->claim_number,
+                        'category' => 'Klaim Lembur',
+                        'date' => $item->created_at->format('M d'),
+                        'amount' => 'Rp ' . number_format($item->amount, 0, ',', '.'),
+                        'status' => $item->status->value,
+                        'status_label' => $item->status->label(),
+                        'status_color' => $item->status->colorClass(),
+                        'created_at' => $item->created_at,
+                    ]);
+                }
+                foreach (\App\Models\BusinessTripRequest::where('user_id', $userId)->latest()->take(5)->get() as $item) {
+                    $recent->push([
+                        'id' => $item->id,
+                        'type' => 'perjalanan-dinas',
+                        'request_number' => $item->request_number,
+                        'category' => 'Perjalanan Dinas',
                         'date' => $item->start_date?->format('M d') ?? $item->created_at->format('M d'),
                         'amount' => $item->total_days . ' Hari',
                         'status' => $item->status->value,
