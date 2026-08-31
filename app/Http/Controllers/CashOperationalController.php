@@ -88,6 +88,7 @@ class CashOperationalController extends Controller
                 'pembayaran_bulanan' => 'Tagihan Bulanan',
                 'operasional_lain' => 'Operasional Lain',
                 'setoran_kas' => 'Setoran Kas',
+                'lembur' => 'Klaim Lembur',
                 default => 'Lainnya',
             },
             'amount' => (float)$tx->amount,
