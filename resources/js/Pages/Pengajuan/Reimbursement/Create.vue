@@ -4,6 +4,7 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Stepper from '@/Components/Stepper.vue';
 import FileUploader from '@/Components/FileUploader.vue';
+import InputError from '@/Components/InputError.vue';
 import { ArrowLeft, ArrowRight, Save, Send, FileText } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -36,16 +37,19 @@ const handleAmountInput = (e) => {
   displayAmount.value = 'Rp ' + new Intl.NumberFormat('id-ID').format(numeric);
 };
 
+const stepError = ref('');
+
 const nextStep = () => {
+  stepError.value = '';
   if (currentStep.value === 1) {
     if (!form.expense_type_id || !form.expense_date || !form.amount || !form.description) {
-      alert('Harap lengkapi semua kolom informasi reimbursement.');
+      stepError.value = 'Harap lengkapi semua kolom informasi reimbursement.';
       return;
     }
   }
   if (currentStep.value === 2) {
     if (!form.attachments || form.attachments.length === 0) {
-      alert('Harap lampirkan minimal 1 bukti transaksi / struk pengeluaran.');
+      stepError.value = 'Harap lampirkan minimal 1 bukti transaksi / struk pengeluaran.';
       return;
     }
   }
@@ -55,6 +59,7 @@ const nextStep = () => {
 };
 
 const prevStep = () => {
+  stepError.value = '';
   if (currentStep.value > 1) {
     currentStep.value--;
   }
@@ -113,6 +118,13 @@ const formatCurrency = (val) => {
 
       <!-- Form Container -->
       <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl border border-slate-100 shadow-sm space-y-6 sm:space-y-8">
+        
+        <!-- Step Error Alert -->
+        <div v-if="stepError" class="bg-rose-50 text-rose-600 px-4 py-3 rounded-xl text-sm font-medium border border-rose-100 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-circle"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+          {{ stepError }}
+        </div>
+
         <!-- STEP 1: Informasi -->
         <div v-if="currentStep === 1" class="space-y-6 sm:space-y-8">
           <!-- Section 1: Informasi Pengaju -->
@@ -180,20 +192,25 @@ const formatCurrency = (val) => {
                 <input
                   type="date"
                   v-model="form.expense_date"
+                  :class="{'border-red-500': form.errors.expense_date}"
                   class="w-full text-xs sm:text-sm border-slate-200 rounded-xl focus:ring-emerald-500 focus:border-emerald-500"
                 />
+                <InputError :message="form.errors.expense_date" class="mt-1" />
               </div>
               <div>
                 <label class="block text-xs font-semibold text-slate-700 mb-1.5">Jenis Pengeluaran <span class="text-rose-500">*</span></label>
                 <select
                   v-model="form.expense_type_id"
+                  :class="{'border-red-500': form.errors.expense_type_id}"
                   class="w-full text-xs sm:text-sm border-slate-200 rounded-xl focus:ring-emerald-500 focus:border-emerald-500"
                 >
                   <option value="" disabled>Pilih jenis pengeluaran</option>
+                  <option v-if="!expenseTypes || expenseTypes.length === 0" disabled>Tidak ada jenis pengeluaran</option>
                   <option v-for="type in expenseTypes" :key="type.id" :value="type.id">
                     {{ type.name }}
                   </option>
                 </select>
+                <InputError :message="form.errors.expense_type_id" class="mt-1" />
               </div>
               <div>
                 <label class="block text-xs font-semibold text-slate-700 mb-1.5">Nominal <span class="text-rose-500">*</span></label>
@@ -202,8 +219,10 @@ const formatCurrency = (val) => {
                   :value="displayAmount"
                   @input="handleAmountInput"
                   placeholder="Rp 0"
+                  :class="{'border-red-500': form.errors.amount}"
                   class="w-full text-xs sm:text-sm border-slate-200 rounded-xl focus:ring-emerald-500 focus:border-emerald-500 font-semibold text-emerald-700"
                 />
+                <InputError :message="form.errors.amount" class="mt-1" />
               </div>
               <div class="sm:col-span-2 md:col-span-3">
                 <label class="block text-xs font-semibold text-slate-700 mb-1.5">Keterangan <span class="text-rose-500">*</span></label>
@@ -211,8 +230,10 @@ const formatCurrency = (val) => {
                   v-model="form.description"
                   rows="3"
                   placeholder="Masukkan keterangan pengeluaran"
+                  :class="{'border-red-500': form.errors.description}"
                   class="w-full text-xs sm:text-sm border-slate-200 rounded-xl focus:ring-emerald-500 focus:border-emerald-500 resize-none"
                 ></textarea>
+                <InputError :message="form.errors.description" class="mt-1" />
               </div>
             </div>
           </div>
@@ -224,6 +245,7 @@ const formatCurrency = (val) => {
             Upload Bukti Transaksi / Struk
           </h3>
           <FileUploader v-model="form.attachments" accept=".jpg,.jpeg,.png,.pdf" :max-size-m-b="5" />
+          <InputError :message="form.errors.attachments" class="mt-1" />
         </div>
 
         <!-- STEP 3: Review & Kirim -->
@@ -269,10 +291,11 @@ const formatCurrency = (val) => {
             type="button"
             @click="saveDraft"
             :disabled="form.processing"
-            class="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs sm:text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
+            class="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs sm:text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            <Save class="w-4 h-4" />
-            <span>Simpan Draft</span>
+            <span v-if="form.processing && form.action === 'draft'" class="animate-spin inline-block w-4 h-4 border-[2px] border-current border-t-transparent text-slate-600 rounded-full"></span>
+            <Save v-else class="w-4 h-4" />
+            <span>{{ form.processing && form.action === 'draft' ? 'Menyimpan...' : 'Simpan Draft' }}</span>
           </button>
 
           <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
@@ -300,10 +323,11 @@ const formatCurrency = (val) => {
               type="button"
               @click="submitForm"
               :disabled="form.processing"
-              class="flex-1 sm:flex-initial px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-xs sm:text-sm font-semibold hover:bg-emerald-700 shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2"
+              class="flex-1 sm:flex-initial px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-xs sm:text-sm font-semibold hover:bg-emerald-700 shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              <Send class="w-4 h-4" />
-              <span>Kirim Pengajuan</span>
+              <span v-if="form.processing && form.action === 'submit'" class="animate-spin inline-block w-4 h-4 border-[2px] border-current border-t-transparent text-white rounded-full"></span>
+              <Send v-else class="w-4 h-4" />
+              <span>{{ form.processing && form.action === 'submit' ? 'Memproses...' : 'Kirim Pengajuan' }}</span>
             </button>
           </div>
         </div>

@@ -18,6 +18,162 @@ class DashboardController extends Controller
 
         $userId = $user->id;
 
+        // Check if user is an approver or manager (has subordinates or role manager/admin/hrd)
+        $isApprover = $user->hasRole('manager') || $user->hasRole('admin') || $user->hasRole('hrd_finance') || $user->subordinates()->exists();
+        $approverDashboard = null;
+
+        if ($isApprover) {
+            $pendingApprovalsQuery = \App\Models\Approval::with([
+                'approvable.user.division',
+                'approvable.approvals.approver'
+            ])
+            ->where('status', 'pending');
+
+            if ($user->hasRole('admin')) {
+                // Admin sees all
+            } elseif ($user->hasRole('hrd_finance')) {
+                $pendingApprovalsQuery->where(function($q) use ($user) {
+                    $q->whereIn('level', [2, 3])
+                      ->orWhere(function($sub) use ($user) {
+                          $sub->where('level', 1)->where('approver_id', $user->id);
+                      });
+                });
+            } else {
+                $pendingApprovalsQuery->where('approver_id', $user->id);
+            }
+
+            $pendingApprovals = $pendingApprovalsQuery->latest()->get();
+
+            $seenRequests = [];
+            $pendingItems = [];
+            $totalPendingAmount = 0;
+            $pendingByType = [
+                'lembur' => 0,
+                'klaim-lembur' => 0,
+                'cuti' => 0,
+                'reimbursement' => 0,
+                'operasional' => 0,
+                'perjalanan-dinas' => 0,
+            ];
+
+            foreach ($pendingApprovals as $approval) {
+                $model = $approval->approvable;
+                if (!$model) continue;
+                if ($model->status->value !== RequestStatus::SUBMITTED->value) continue;
+                if ($model->current_approval_level && (int)$model->current_approval_level !== (int)$approval->level) continue;
+
+                $requestKey = get_class($model) . '_' . $model->id;
+                if (in_array($requestKey, $seenRequests)) continue;
+                $seenRequests[] = $requestKey;
+
+                $type = match(get_class($model)) {
+                    ReimbursementRequest::class => 'reimbursement',
+                    OperationalRequest::class => 'operasional',
+                    LeaveRequest::class => 'cuti',
+                    \App\Models\BusinessTripRequest::class => 'perjalanan-dinas',
+                    \App\Models\OvertimeRequest::class => 'lembur',
+                    \App\Models\OvertimeClaim::class => 'klaim-lembur',
+                    default => 'other',
+                };
+
+                if (isset($pendingByType[$type])) {
+                    $pendingByType[$type]++;
+                }
+
+                $amount = $model->amount ?? $model->estimated_cost ?? $model->estimated_budget ?? 0;
+                $totalPendingAmount += (float)$amount;
+
+                $typeLabel = match($type) {
+                    'reimbursement' => 'Reimbursement',
+                    'operasional' => 'Operasional',
+                    'cuti' => 'Cuti Karyawan',
+                    'perjalanan-dinas' => 'Perjalanan Dinas',
+                    'lembur' => 'Rencana Lembur',
+                    'klaim-lembur' => 'Klaim Lembur',
+                    default => 'Pengajuan',
+                };
+
+                $pendingItems[] = [
+                    'approval_id' => $approval->id,
+                    'level' => $approval->level,
+                    'type' => $type,
+                    'type_label' => $typeLabel,
+                    'id' => $model->id,
+                    'request_number' => $model->request_number ?? $model->claim_number,
+                    'applicant_name' => $model->user?->name ?? 'Karyawan',
+                    'applicant_avatar' => $model->user?->avatar,
+                    'applicant_position' => $model->user?->position ?? 'Staff',
+                    'applicant_division' => $model->user?->division?->name ?? '-',
+                    'submitted_at' => $model->submitted_at?->translatedFormat('d M Y H:i') ?? $model->created_at?->translatedFormat('d M Y H:i'),
+                    'amount' => (float)$amount,
+                    'amount_formatted' => $amount > 0 ? 'Rp ' . number_format($amount, 0, ',', '.') : null,
+                    'summary_info' => match($type) {
+                        'cuti' => ($model->leaveType?->name ?? 'Cuti') . ' (' . $model->total_days . ' hari)',
+                        'lembur' => 'Durasi: ' . ($model->duration ?? '-') . ' Jam',
+                        'klaim-lembur' => 'Klaim: Rp ' . number_format($model->amount ?? 0, 0, ',', '.'),
+                        'operasional' => $model->activity_name ?? 'Operasional',
+                        'reimbursement' => $model->expenseType?->name ?? 'Reimbursement',
+                        'perjalanan-dinas' => $model->destination ?? 'Perjalanan Dinas',
+                        default => '-',
+                    },
+                    'url' => route('riwayat-pengajuan.show', ['type' => $type, 'id' => $model->id]) . '?from=approval',
+                ];
+            }
+
+            $today = now()->toDateString();
+            $subordinateIds = $user->subordinates()->pluck('id');
+
+            $teamOnLeaveToday = LeaveRequest::with(['user:id,name,avatar,position', 'leaveType'])
+                ->where('status', RequestStatus::APPROVED->value)
+                ->whereDate('start_date', '<=', $today)
+                ->whereDate('end_date', '>=', $today)
+                ->when(!$user->hasRole('admin') && !$user->hasRole('hrd_finance'), function($q) use ($subordinateIds) {
+                    $q->whereIn('user_id', $subordinateIds);
+                })
+                ->get()
+                ->map(fn($item) => [
+                    'name' => $item->user?->name,
+                    'avatar' => $item->user?->avatar,
+                    'position' => $item->user?->position,
+                    'leave_type' => $item->leaveType?->name ?? 'Cuti',
+                    'dates' => $item->start_date->format('d M') . ' - ' . $item->end_date->format('d M'),
+                ]);
+
+            $teamOvertimeToday = \App\Models\OvertimeRequest::with('user:id,name,avatar,position')
+                ->where('status', RequestStatus::APPROVED->value)
+                ->whereDate('date', $today)
+                ->when(!$user->hasRole('admin') && !$user->hasRole('hrd_finance'), function($q) use ($subordinateIds) {
+                    $q->whereIn('user_id', $subordinateIds);
+                })
+                ->get()
+                ->map(fn($item) => [
+                    'name' => $item->user?->name,
+                    'avatar' => $item->user?->avatar,
+                    'position' => $item->user?->position,
+                    'hours' => $item->start_time . ' - ' . $item->end_time,
+                    'task' => $item->task_description,
+                ]);
+
+            $startOfMonth = now()->startOfMonth();
+            $approvedThisMonth = \App\Models\Approval::where('approver_id', $user->id)
+                ->where('status', 'approved')
+                ->where('acted_at', '>=', $startOfMonth)
+                ->count();
+
+            $approverDashboard = [
+                'is_approver' => true,
+                'pending_count' => count($pendingItems),
+                'pending_amount' => $totalPendingAmount,
+                'pending_amount_formatted' => 'Rp ' . number_format($totalPendingAmount, 0, ',', '.'),
+                'pending_by_type' => $pendingByType,
+                'pending_items' => array_slice($pendingItems, 0, 6),
+                'approved_this_month' => $approvedThisMonth,
+                'subordinates_count' => $subordinateIds->count(),
+                'team_leave_today' => $teamOnLeaveToday,
+                'team_overtime_today' => $teamOvertimeToday,
+            ];
+        }
+
         // Calculate summary counts for the authenticated user
         $counts = [
             'pending_approval' => ReimbursementRequest::where('user_id', $userId)->where('status', RequestStatus::SUBMITTED->value)->count()
@@ -153,6 +309,8 @@ class DashboardController extends Controller
                 }
                 return $recent->sortByDesc('created_at')->take(5)->values();
             })(),
+            'isApprover' => $isApprover,
+            'approverDashboard' => $approverDashboard,
         ]);
     }
 }
