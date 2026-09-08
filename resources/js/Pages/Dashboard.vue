@@ -3,7 +3,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import ServiceCard from '@/Components/ServiceCard.vue';
 import SummaryCard from '@/Components/SummaryCard.vue';
 import { Head, Link } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import VueApexCharts from 'vue3-apexcharts';
+import { ref, computed } from 'vue';
 import { 
   ChevronRight, 
   Plus, 
@@ -17,7 +18,8 @@ import {
   FileText, 
   DollarSign,
   Palmtree,
-  Sparkles
+  Sparkles,
+  TrendingUp
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -38,6 +40,92 @@ const props = defineProps({
 });
 
 const activeTab = ref(props.isApprover ? 'team' : 'personal');
+
+const lineChartSeries = computed(() => [
+  {
+    name: 'Nominal Disetujui',
+    data: props.approverDashboard?.monthly_chart?.series || [0, 0, 0, 0, 0, 0],
+  }
+]);
+
+const lineChartOptions = computed(() => ({
+  chart: {
+    type: 'line',
+    height: 280,
+    fontFamily: 'Inter, sans-serif',
+    toolbar: { show: false },
+    background: 'transparent',
+    zoom: { enabled: false }
+  },
+  colors: ['#10b981'],
+  dataLabels: {
+    enabled: false,
+  },
+  stroke: {
+    curve: 'smooth',
+    width: 3,
+  },
+  markers: {
+    size: 5,
+    colors: ['#10b981'],
+    strokeColors: '#ffffff',
+    strokeWidth: 2,
+    hover: {
+      size: 7,
+    }
+  },
+  grid: {
+    borderColor: '#f1f5f9',
+    strokeDashArray: 4,
+    xaxis: {
+      lines: { show: true }
+    },
+    yaxis: {
+      lines: { show: true }
+    },
+    padding: {
+      left: 10,
+      right: 10,
+    }
+  },
+  xaxis: {
+    categories: props.approverDashboard?.monthly_chart?.labels || [],
+    axisBorder: { show: false },
+    axisTicks: { show: false },
+    labels: {
+      style: {
+        colors: '#64748b',
+        fontSize: '11px',
+        fontWeight: 600,
+      }
+    }
+  },
+  yaxis: {
+    labels: {
+      style: {
+        colors: '#64748b',
+        fontSize: '11px',
+        fontWeight: 600,
+      },
+      formatter: (val) => {
+        if (!val || val === 0) return 'Rp 0';
+        if (val >= 1000000) {
+          return 'Rp ' + (val / 1000000).toFixed(1) + ' Jt';
+        }
+        if (val >= 1000) {
+          return 'Rp ' + (val / 1000).toFixed(0) + ' Rb';
+        }
+        return 'Rp ' + val;
+      }
+    }
+  },
+  tooltip: {
+    theme: 'light',
+    y: {
+      formatter: (val) => 'Rp ' + new Intl.NumberFormat('id-ID').format(val)
+    }
+  }
+}));
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -343,6 +431,37 @@ const getTypeBadgeColor = (type) => {
                 Seluruh pengajuan dari anggota tim Anda telah diproses. Saat ini tidak ada yang membutuhkan persetujuan Anda.
               </p>
             </div>
+          </div>
+        </div>
+
+        <!-- 3.5. Trend Grafik Nominal Disetujui per Bulan (Line Chart) -->
+        <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
+            <div>
+              <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <TrendingUp class="w-5 h-5 text-emerald-600" />
+                <span>Tren Nominal yang Disetujui per Bulan</span>
+              </h3>
+              <p class="text-xs text-slate-500 mt-0.5">
+                Histori perkembangan nominal pengajuan bawahan yang telah Anda setujui selama 6 bulan terakhir.
+              </p>
+            </div>
+
+            <div class="flex items-center gap-2 self-start sm:self-auto">
+              <span class="px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Bulan Ini: {{ approverDashboard?.approved_this_month_amount_formatted || 'Rp 0' }}</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="pt-2">
+            <VueApexCharts
+              type="line"
+              height="280"
+              :options="lineChartOptions"
+              :series="lineChartSeries"
+            />
           </div>
         </div>
 

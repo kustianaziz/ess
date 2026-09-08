@@ -170,6 +170,33 @@ class DashboardController extends Controller
                 $approvedThisMonthAmount += (float)($m->amount ?? $m->estimated_cost ?? $m->estimated_budget ?? 0);
             }
 
+            // Monthly approved nominal trends (past 6 months)
+            $monthlyApprovedLabels = [];
+            $monthlyApprovedAmounts = [];
+
+            for ($i = 5; $i >= 0; $i--) {
+                $monthDate = now()->subMonths($i);
+                $startMonth = $monthDate->copy()->startOfMonth();
+                $endMonth = $monthDate->copy()->endOfMonth();
+
+                $monthlyApprovedLabels[] = $monthDate->translatedFormat('M Y');
+
+                $approvalsInMonth = \App\Models\Approval::with('approvable')
+                    ->where('approver_id', $user->id)
+                    ->where('status', 'approved')
+                    ->whereBetween('acted_at', [$startMonth, $endMonth])
+                    ->get();
+
+                $totalMonthAmount = 0;
+                foreach ($approvalsInMonth as $appr) {
+                    $m = $appr->approvable;
+                    if (!$m) continue;
+                    $totalMonthAmount += (float)($m->amount ?? $m->estimated_cost ?? $m->estimated_budget ?? 0);
+                }
+
+                $monthlyApprovedAmounts[] = round($totalMonthAmount, 2);
+            }
+
             $approverDashboard = [
                 'is_approver' => true,
                 'pending_count' => count($pendingItems),
@@ -178,6 +205,10 @@ class DashboardController extends Controller
                 'approved_this_month' => $approvedThisMonthCount,
                 'approved_this_month_amount' => $approvedThisMonthAmount,
                 'approved_this_month_amount_formatted' => 'Rp ' . number_format($approvedThisMonthAmount, 0, ',', '.'),
+                'monthly_chart' => [
+                    'labels' => $monthlyApprovedLabels,
+                    'series' => $monthlyApprovedAmounts,
+                ],
                 'pending_by_type' => $pendingByType,
                 'pending_items' => array_slice($pendingItems, 0, 6),
                 'subordinates_count' => $subordinateIds->count(),
