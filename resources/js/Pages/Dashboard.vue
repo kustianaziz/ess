@@ -171,40 +171,39 @@ const getTypeBadgeColor = (type) => {
                 </p>
               </div>
 
-              <!-- Total Nominal Pending -->
-              <div class="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-emerald-50/90 via-emerald-50/30 to-white border border-emerald-200/90 shadow-sm">
+              <!-- Total Nominal Pending (Antre) -->
+              <div class="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-amber-50/90 via-orange-50/30 to-white border border-amber-200/90 shadow-sm">
                 <div class="flex items-center justify-between">
-                  <span class="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">Total Nominal Klaim</span>
-                  <div class="w-7 h-7 rounded-lg bg-emerald-100/80 text-emerald-700 flex items-center justify-center">
+                  <span class="text-[11px] font-bold text-amber-800 uppercase tracking-wider">Nominal Antre (Pending)</span>
+                  <div class="w-7 h-7 rounded-lg bg-amber-100/80 text-amber-700 flex items-center justify-center">
                     <DollarSign class="w-4 h-4" />
                   </div>
                 </div>
                 <div class="mt-2.5">
-                  <span class="text-xl sm:text-2xl font-black text-emerald-700 block truncate">
+                  <span class="text-xl sm:text-2xl font-black text-amber-700 block truncate">
                     {{ approverDashboard?.pending_amount_formatted || 'Rp 0' }}
                   </span>
                 </div>
-                <p class="text-[11px] font-medium text-emerald-600/90 mt-1 truncate">
-                  Estimasi dana menunggu approval
+                <p class="text-[11px] font-medium text-amber-600/90 mt-1 truncate">
+                  Dana menunggu tindakan Anda
                 </p>
               </div>
 
-              <!-- Approved This Month -->
-              <div class="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-indigo-50/90 via-indigo-50/30 to-white border border-indigo-200/90 shadow-sm">
+              <!-- Total Nominal Disetujui (Bulan Ini) -->
+              <div class="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-emerald-50/90 via-emerald-50/30 to-white border border-emerald-200/90 shadow-sm">
                 <div class="flex items-center justify-between">
-                  <span class="text-[11px] font-bold text-indigo-800 uppercase tracking-wider">Disetujui Bulan Ini</span>
-                  <div class="w-7 h-7 rounded-lg bg-indigo-100/80 text-indigo-700 flex items-center justify-center">
+                  <span class="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">Nominal Disetujui (Bulan Ini)</span>
+                  <div class="w-7 h-7 rounded-lg bg-emerald-100/80 text-emerald-700 flex items-center justify-center">
                     <CheckCircle2 class="w-4 h-4" />
                   </div>
                 </div>
-                <div class="mt-2.5 flex items-baseline gap-1.5">
-                  <span class="text-2xl sm:text-3xl font-black text-indigo-700">
-                    {{ approverDashboard?.approved_this_month || 0 }}
+                <div class="mt-2.5">
+                  <span class="text-xl sm:text-2xl font-black text-emerald-700 block truncate">
+                    {{ approverDashboard?.approved_this_month_amount_formatted || 'Rp 0' }}
                   </span>
-                  <span class="text-xs font-bold text-indigo-500">Selesai</span>
                 </div>
-                <p class="text-[11px] font-medium text-indigo-600/90 mt-1 truncate">
-                  Persetujuan lancar bulan ini
+                <p class="text-[11px] font-medium text-emerald-600/90 mt-1 truncate">
+                  Dari {{ approverDashboard?.approved_this_month || 0 }} pengajuan selesai
                 </p>
               </div>
 

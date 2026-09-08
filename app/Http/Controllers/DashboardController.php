@@ -155,19 +155,31 @@ class DashboardController extends Controller
                 ]);
 
             $startOfMonth = now()->startOfMonth();
-            $approvedThisMonth = \App\Models\Approval::where('approver_id', $user->id)
+            $approvedApprovals = \App\Models\Approval::with('approvable')
+                ->where('approver_id', $user->id)
                 ->where('status', 'approved')
                 ->where('acted_at', '>=', $startOfMonth)
-                ->count();
+                ->get();
+
+            $approvedThisMonthCount = $approvedApprovals->count();
+            $approvedThisMonthAmount = 0;
+
+            foreach ($approvedApprovals as $appr) {
+                $m = $appr->approvable;
+                if (!$m) continue;
+                $approvedThisMonthAmount += (float)($m->amount ?? $m->estimated_cost ?? $m->estimated_budget ?? 0);
+            }
 
             $approverDashboard = [
                 'is_approver' => true,
                 'pending_count' => count($pendingItems),
                 'pending_amount' => $totalPendingAmount,
                 'pending_amount_formatted' => 'Rp ' . number_format($totalPendingAmount, 0, ',', '.'),
+                'approved_this_month' => $approvedThisMonthCount,
+                'approved_this_month_amount' => $approvedThisMonthAmount,
+                'approved_this_month_amount_formatted' => 'Rp ' . number_format($approvedThisMonthAmount, 0, ',', '.'),
                 'pending_by_type' => $pendingByType,
                 'pending_items' => array_slice($pendingItems, 0, 6),
-                'approved_this_month' => $approvedThisMonth,
                 'subordinates_count' => $subordinateIds->count(),
                 'team_leave_today' => $teamOnLeaveToday,
                 'team_overtime_today' => $teamOvertimeToday,
