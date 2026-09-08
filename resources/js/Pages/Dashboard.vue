@@ -108,31 +108,33 @@ const getTypeBadgeColor = (type) => {
 
       <!-- APPROVER / EXECUTIVE CONTENT VIEW -->
       <div v-if="isApprover && activeTab === 'team'" class="space-y-6">
-        <!-- 1. Executive Welcome & Quick Stats Hero -->
-        <div class="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
-          <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <!-- 1. Executive Welcome & Quick Stats Hero (Bright & Positive Modern Executive Theme) -->
+        <div class="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-sm relative overflow-hidden">
+          <div class="absolute -right-16 -top-16 w-80 h-80 bg-indigo-50/70 rounded-full blur-3xl pointer-events-none"></div>
+          <div class="absolute right-1/3 -bottom-16 w-72 h-72 bg-emerald-50/60 rounded-full blur-3xl pointer-events-none"></div>
           
           <div class="relative z-10 space-y-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <div class="flex items-center gap-2 mb-1 flex-wrap">
-                  <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/30 text-indigo-300 border border-indigo-400/30 uppercase tracking-wider">
-                    Executive Portal • {{ user.position }}
+                <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                  <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles class="w-3.5 h-3.5 text-indigo-500" />
+                    <span>Portal Pimpinan • {{ user.position }}</span>
                   </span>
-                  <span class="text-xs text-slate-400">Divisi {{ user.division }}</span>
+                  <span class="text-xs font-semibold text-slate-500">Divisi {{ user.division }}</span>
                 </div>
-                <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-white">
+                <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
                   Selamat Datang, {{ user.name }}
                 </h1>
-                <p class="text-xs sm:text-sm text-slate-300 mt-1">
-                  Supervisi {{ approverDashboard?.subordinates_count || 0 }} anggota tim. Berikut rangkuman pengajuan bawahan yang memerlukan tindakan Anda hari ini.
+                <p class="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl">
+                  Supervisi <strong class="text-indigo-600 font-bold">{{ approverDashboard?.subordinates_count || 0 }} anggota tim</strong>. Berikut ringkasan produktivitas dan persetujuan pengajuan tim yang siap Anda tinjau.
                 </p>
               </div>
 
               <div class="flex items-center gap-2">
                 <Link
                   :href="route('approval.index')"
-                  class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 shrink-0"
+                  class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-200 hover:shadow-indigo-300 transition-all flex items-center gap-2 shrink-0"
                 >
                   <ShieldCheck class="w-4 h-4" />
                   <span>Buka Antrean Approval</span>
@@ -140,78 +142,88 @@ const getTypeBadgeColor = (type) => {
               </div>
             </div>
 
-            <!-- Top Executive Summary Cards Grid -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+            <!-- Top Executive Summary Cards Grid (Bright & Positive Color Accents) -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5 pt-1">
               <!-- Pending Approvals -->
               <div 
-                class="p-4 rounded-2xl border transition-all"
-                :class="approverDashboard?.pending_count > 0 ? 'bg-amber-500/20 border-amber-500/40' : 'bg-white/5 border-white/10'"
+                class="p-4 sm:p-5 rounded-2xl border transition-all"
+                :class="approverDashboard?.pending_count > 0 
+                  ? 'bg-gradient-to-br from-amber-50/90 via-amber-50/40 to-white border-amber-200/90 shadow-sm' 
+                  : 'bg-gradient-to-br from-slate-50 to-white border-slate-200/80'"
               >
                 <div class="flex items-center justify-between">
-                  <span class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Menunggu Persetujuan</span>
+                  <span class="text-[11px] font-bold uppercase tracking-wider" :class="approverDashboard?.pending_count > 0 ? 'text-amber-800' : 'text-slate-500'">
+                    Menunggu Persetujuan
+                  </span>
                   <span 
                     class="w-2.5 h-2.5 rounded-full"
-                    :class="approverDashboard?.pending_count > 0 ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'"
+                    :class="approverDashboard?.pending_count > 0 ? 'bg-amber-500 animate-ping' : 'bg-emerald-500'"
                   ></span>
                 </div>
-                <div class="mt-2 flex items-baseline gap-2">
-                  <span class="text-2xl sm:text-3xl font-black" :class="approverDashboard?.pending_count > 0 ? 'text-amber-400' : 'text-white'">
+                <div class="mt-2.5 flex items-baseline gap-1.5">
+                  <span class="text-2xl sm:text-3xl font-black" :class="approverDashboard?.pending_count > 0 ? 'text-amber-600' : 'text-slate-800'">
                     {{ approverDashboard?.pending_count || 0 }}
                   </span>
-                  <span class="text-xs text-slate-400 font-medium">Pengajuan</span>
+                  <span class="text-xs font-bold text-slate-500">Pengajuan</span>
                 </div>
-                <p class="text-[11px] text-slate-400 mt-1 truncate">
-                  {{ approverDashboard?.pending_count > 0 ? 'Perlu tindakan Anda segera' : 'Semua pengajuan telah diproses' }}
+                <p class="text-[11px] font-medium mt-1 truncate" :class="approverDashboard?.pending_count > 0 ? 'text-amber-700' : 'text-slate-400'">
+                  {{ approverDashboard?.pending_count > 0 ? 'Perlu konfirmasi Anda' : 'Semua pengajuan telah tuntas' }}
                 </p>
               </div>
 
               <!-- Total Nominal Pending -->
-              <div class="p-4 rounded-2xl bg-white/5 border border-white/10">
+              <div class="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-emerald-50/90 via-emerald-50/30 to-white border border-emerald-200/90 shadow-sm">
                 <div class="flex items-center justify-between">
-                  <span class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Total Nominal Klaim</span>
-                  <DollarSign class="w-4 h-4 text-emerald-400" />
+                  <span class="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">Total Nominal Klaim</span>
+                  <div class="w-7 h-7 rounded-lg bg-emerald-100/80 text-emerald-700 flex items-center justify-center">
+                    <DollarSign class="w-4 h-4" />
+                  </div>
                 </div>
-                <div class="mt-2">
-                  <span class="text-xl sm:text-2xl font-black text-emerald-400 block truncate">
+                <div class="mt-2.5">
+                  <span class="text-xl sm:text-2xl font-black text-emerald-700 block truncate">
                     {{ approverDashboard?.pending_amount_formatted || 'Rp 0' }}
                   </span>
                 </div>
-                <p class="text-[11px] text-slate-400 mt-1 truncate">
+                <p class="text-[11px] font-medium text-emerald-600/90 mt-1 truncate">
                   Estimasi dana menunggu approval
                 </p>
               </div>
 
               <!-- Approved This Month -->
-              <div class="p-4 rounded-2xl bg-white/5 border border-white/10">
+              <div class="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-indigo-50/90 via-indigo-50/30 to-white border border-indigo-200/90 shadow-sm">
                 <div class="flex items-center justify-between">
-                  <span class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Disetujui Bulan Ini</span>
-                  <CheckCircle2 class="w-4 h-4 text-indigo-400" />
+                  <span class="text-[11px] font-bold text-indigo-800 uppercase tracking-wider">Disetujui Bulan Ini</span>
+                  <div class="w-7 h-7 rounded-lg bg-indigo-100/80 text-indigo-700 flex items-center justify-center">
+                    <CheckCircle2 class="w-4 h-4" />
+                  </div>
                 </div>
-                <div class="mt-2 flex items-baseline gap-2">
-                  <span class="text-2xl sm:text-3xl font-black text-white">
+                <div class="mt-2.5 flex items-baseline gap-1.5">
+                  <span class="text-2xl sm:text-3xl font-black text-indigo-700">
                     {{ approverDashboard?.approved_this_month || 0 }}
                   </span>
-                  <span class="text-xs text-slate-400 font-medium">Selesai</span>
+                  <span class="text-xs font-bold text-indigo-500">Selesai</span>
                 </div>
-                <p class="text-[11px] text-slate-400 mt-1 truncate">
-                  Riwayat persetujuan Anda
+                <p class="text-[11px] font-medium text-indigo-600/90 mt-1 truncate">
+                  Persetujuan lancar bulan ini
                 </p>
               </div>
 
               <!-- Team Presence / Absence -->
-              <div class="p-4 rounded-2xl bg-white/5 border border-white/10">
+              <div class="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-purple-50/90 via-purple-50/30 to-white border border-purple-200/90 shadow-sm">
                 <div class="flex items-center justify-between">
-                  <span class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Staf Cuti / Izin</span>
-                  <Palmtree class="w-4 h-4 text-purple-400" />
+                  <span class="text-[11px] font-bold text-purple-800 uppercase tracking-wider">Staf Cuti / Izin</span>
+                  <div class="w-7 h-7 rounded-lg bg-purple-100/80 text-purple-700 flex items-center justify-center">
+                    <Palmtree class="w-4 h-4" />
+                  </div>
                 </div>
-                <div class="mt-2 flex items-baseline gap-2">
-                  <span class="text-2xl sm:text-3xl font-black text-white">
+                <div class="mt-2.5 flex items-baseline gap-1.5">
+                  <span class="text-2xl sm:text-3xl font-black text-purple-700">
                     {{ approverDashboard?.team_leave_today?.length || 0 }}
                   </span>
-                  <span class="text-xs text-slate-400 font-medium">Staf Hari Ini</span>
+                  <span class="text-xs font-bold text-purple-500">Staf Hari Ini</span>
                 </div>
-                <p class="text-[11px] text-slate-400 mt-1 truncate">
-                  {{ approverDashboard?.team_leave_today?.length > 0 ? 'Sedang izin tidak hadir' : 'Seluruh staf aktif bertugas' }}
+                <p class="text-[11px] font-medium text-purple-600/90 mt-1 truncate">
+                  {{ approverDashboard?.team_leave_today?.length > 0 ? 'Sedang izin tidak hadir' : 'Seluruh staf aktif hadir' }}
                 </p>
               </div>
             </div>
