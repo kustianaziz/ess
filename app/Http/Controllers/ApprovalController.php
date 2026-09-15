@@ -44,6 +44,14 @@ class ApprovalController extends Controller
             ->latest()
             ->get();
 
+        $pendingApprovals->loadMorph('approvable', [
+            ReimbursementRequest::class => ['attachments', 'expenseType'],
+            OperationalRequest::class => ['attachments'],
+            LeaveRequest::class => ['attachments', 'leaveType'],
+            \App\Models\BusinessTripRequest::class => ['attachments'],
+            \App\Models\OvertimeClaim::class => ['attachments', 'request'],
+        ]);
+
         $seenRequests = [];
 
         $items = $pendingApprovals->map(function($approval) use (&$seenRequests) {
@@ -86,6 +94,39 @@ class ApprovalController extends Controller
                 default => 'Pengajuan',
             };
 
+            $amount = (float)($model->amount ?? $model->estimated_cost ?? $model->estimated_budget ?? 0);
+            $amountFormatted = $amount > 0 ? 'Rp ' . number_format($amount, 0, ',', '.') : null;
+
+            $notes = match($type) {
+                'cuti' => $model->reason,
+                'lembur' => $model->task_description,
+                'klaim-lembur' => $model->request?->task_description ?? 'Klaim Lembur',
+                'operasional' => $model->purpose ?: $model->activity_name,
+                'reimbursement' => $model->description,
+                'perjalanan-dinas' => $model->purpose ?: ('Tujuan: ' . ($model->destination ?? '-')),
+                default => null,
+            };
+
+            $summaryInfo = match($type) {
+                'cuti' => ($model->leaveType?->name ?? 'Cuti') . ' (' . $model->total_days . ' hari)',
+                'lembur' => 'Durasi: ' . ($model->duration ?? '-') . ' Jam',
+                'klaim-lembur' => 'Klaim: Rp ' . number_format($model->amount ?? 0, 0, ',', '.'),
+                'operasional' => $model->activity_name ?? 'Operasional',
+                'reimbursement' => $model->expenseType?->name ?? 'Reimbursement',
+                'perjalanan-dinas' => $model->destination ?? 'Perjalanan Dinas',
+                default => '-',
+            };
+
+            $attachments = [];
+            if (method_exists($model, 'attachments') && $model->relationLoaded('attachments')) {
+                $attachments = $model->attachments->map(fn($att) => [
+                    'id' => $att->id,
+                    'file_name' => $att->file_name,
+                    'file_path' => $att->file_path,
+                    'url' => asset('storage/' . $att->file_path),
+                ])->values()->all();
+            }
+
             $l1Approval = $model->approvals->where('level', 1)->first();
             $l2Approval = $model->approvals->where('level', 2)->first();
             $l3Approval = $model->approvals->where('level', 3)->first();
@@ -98,9 +139,15 @@ class ApprovalController extends Controller
                 'id' => $model->id,
                 'request_number' => $model->request_number ?? $model->claim_number,
                 'applicant_name' => $model->user?->name ?? 'Karyawan',
+                'applicant_avatar' => $model->user?->avatar,
+                'applicant_position' => $model->user?->position ?? 'Staff',
                 'applicant_division' => $model->user?->division?->name ?? '-',
-                'submitted_at' => $model->submitted_at?->format('d M Y H:i') ?? '-',
-                'amount' => $model->amount ?? null,
+                'notes' => $notes,
+                'summary_info' => $summaryInfo,
+                'attachments' => $attachments,
+                'submitted_at' => $model->submitted_at?->translatedFormat('d M Y H:i') ?? $model->created_at?->translatedFormat('d M Y H:i'),
+                'amount' => $amount > 0 ? $amount : null,
+                'amount_formatted' => $amountFormatted,
                 'l1_status' => $l1Approval ? $l1Approval->status : 'pending',
                 'l1_approver' => $l1Approval?->approver?->name ?? 'Atasan',
                 'l2_status' => $l2Approval ? $l2Approval->status : '-',
@@ -109,6 +156,7 @@ class ApprovalController extends Controller
                 'l3_approver' => $l3Approval?->approver?->name ?? (in_array($type, ['klaim-lembur']) ? 'HRD/Finance' : '-'),
                 'overall_status' => $model->status->value,
                 'overall_status_label' => $model->status->label(),
+                'url' => route('riwayat-pengajuan.show', ['type' => $type, 'id' => $model->id]) . '?from=approval',
             ];
         })->filter()->values();
 

@@ -43,6 +43,13 @@ class DashboardController extends Controller
             }
 
             $pendingApprovals = $pendingApprovalsQuery->latest()->get();
+            $pendingApprovals->loadMorph('approvable', [
+                ReimbursementRequest::class => ['attachments', 'expenseType'],
+                OperationalRequest::class => ['attachments'],
+                LeaveRequest::class => ['attachments', 'leaveType'],
+                \App\Models\BusinessTripRequest::class => ['attachments'],
+                \App\Models\OvertimeClaim::class => ['attachments', 'request'],
+            ]);
 
             $seenRequests = [];
             $pendingItems = [];
@@ -93,6 +100,26 @@ class DashboardController extends Controller
                     default => 'Pengajuan',
                 };
 
+                $notes = match($type) {
+                    'cuti' => $model->reason,
+                    'lembur' => $model->task_description,
+                    'klaim-lembur' => $model->request?->task_description ?? 'Klaim Lembur',
+                    'operasional' => $model->purpose ?: $model->activity_name,
+                    'reimbursement' => $model->description,
+                    'perjalanan-dinas' => $model->purpose ?: ('Tujuan: ' . ($model->destination ?? '-')),
+                    default => null,
+                };
+
+                $attachments = [];
+                if (method_exists($model, 'attachments') && $model->relationLoaded('attachments')) {
+                    $attachments = $model->attachments->map(fn($att) => [
+                        'id' => $att->id,
+                        'file_name' => $att->file_name,
+                        'file_path' => $att->file_path,
+                        'url' => asset('storage/' . $att->file_path),
+                    ])->values()->all();
+                }
+
                 $pendingItems[] = [
                     'approval_id' => $approval->id,
                     'level' => $approval->level,
@@ -104,6 +131,8 @@ class DashboardController extends Controller
                     'applicant_avatar' => $model->user?->avatar,
                     'applicant_position' => $model->user?->position ?? 'Staff',
                     'applicant_division' => $model->user?->division?->name ?? '-',
+                    'notes' => $notes,
+                    'attachments' => $attachments,
                     'submitted_at' => $model->submitted_at?->translatedFormat('d M Y H:i') ?? $model->created_at?->translatedFormat('d M Y H:i'),
                     'amount' => (float)$amount,
                     'amount_formatted' => $amount > 0 ? 'Rp ' . number_format($amount, 0, ',', '.') : null,

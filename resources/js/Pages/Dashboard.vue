@@ -19,7 +19,8 @@ import {
   DollarSign,
   Palmtree,
   Sparkles,
-  TrendingUp
+  TrendingUp,
+  Paperclip
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -379,7 +380,7 @@ const getTypeBadgeColor = (type) => {
                 <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-sm shrink-0 border border-indigo-200">
                   {{ item.applicant_name.charAt(0).toUpperCase() }}
                 </div>
-                <div>
+                <div class="space-y-1">
                   <div class="flex items-center gap-2 flex-wrap">
                     <h4 class="text-sm font-bold text-slate-900">{{ item.applicant_name }}</h4>
                     <span 
@@ -389,12 +390,35 @@ const getTypeBadgeColor = (type) => {
                       {{ item.type_label }} (L{{ item.level }})
                     </span>
                   </div>
-                  <div class="flex items-center gap-2 text-xs text-slate-500 mt-0.5 flex-wrap">
+                  <div class="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
                     <span class="font-medium text-slate-700">{{ item.request_number }}</span>
                     <span>•</span>
-                    <span>{{ item.applicant_position }} ({{ item.applicant_division }})</span>
+                    <span class="font-medium text-slate-600">{{ item.applicant_position }}</span>
                     <span>•</span>
                     <span class="text-slate-400">{{ item.submitted_at }}</span>
+                  </div>
+
+                  <!-- Catatan Pengajuan (Submission Note) -->
+                  <div v-if="item.notes" class="text-xs text-slate-600 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg flex items-start gap-1.5 max-w-xl">
+                    <span class="font-bold text-slate-500 shrink-0">Catatan:</span>
+                    <span class="line-clamp-2 italic text-slate-700">"{{ item.notes }}"</span>
+                  </div>
+
+                  <!-- Lampiran File (Direct Attachment Links) -->
+                  <div v-if="item.attachments?.length > 0" class="flex items-center gap-1.5 pt-0.5 flex-wrap">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lampiran:</span>
+                    <a
+                      v-for="att in item.attachments"
+                      :key="att.id"
+                      :href="att.url"
+                      target="_blank"
+                      @click.stop
+                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-semibold border border-indigo-200/80 transition-colors shadow-2xs"
+                      :title="att.file_name"
+                    >
+                      <Paperclip class="w-3 h-3 text-indigo-500" />
+                      <span class="max-w-[150px] truncate">{{ att.file_name }}</span>
+                    </a>
                   </div>
                 </div>
               </div>
