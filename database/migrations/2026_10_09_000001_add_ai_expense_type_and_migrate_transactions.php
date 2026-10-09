@@ -20,7 +20,38 @@ return new class extends Migration
             ['is_active' => true]
         );
 
-        // 2. Pindahkan dan sesuaikan transaksi reimbursement yang relevan ke kategori AI
+        // 2. Pindai dan pindahkan otomatis transaksi reimbursement di database yang mengandung kata kunci AI (gemini, agy, antigravity, claude, chat gpt, openai, cursor, copilot, dll)
+        $keywords = [
+            'gemini',
+            'agy',
+            'antigravity',
+            'claude',
+            'chatgpt',
+            'chat gpt',
+            'gpt',
+            'openai',
+            'cursor',
+            'copilot',
+            'midjourney',
+            'anthropic',
+            'perplexity',
+            'deepseek',
+            'v0.dev',
+            'ai tools',
+            'ai tool',
+            'ai subscription',
+            'langganan ai',
+        ];
+
+        ReimbursementRequest::where('expense_type_id', '!=', $aiType->id)
+            ->where(function ($q) use ($keywords) {
+                foreach ($keywords as $kw) {
+                    $q->orWhere('description', 'like', "%{$kw}%");
+                }
+            })
+            ->update(['expense_type_id' => $aiType->id]);
+
+        // 3. Pindahkan dan sesuaikan transaksi reimbursement testing lokal (jika ada) ke kategori AI
         // Transaksi 1: RMB-202609-0430 (Kustian - ChatGPT Plus & Claude Pro)
         $reimb5 = ReimbursementRequest::where('request_number', 'RMB-202609-0430')->first();
         if ($reimb5) {
