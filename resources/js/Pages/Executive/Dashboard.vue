@@ -1,10 +1,22 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ref, shallowRef, markRaw } from 'vue';
+import { ref, shallowRef, markRaw, computed } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
 import Modal from '@/Components/Modal.vue';
 import axios from 'axios';
+import { 
+  Sparkles, 
+  Layers, 
+  TrendingUp, 
+  Receipt, 
+  Building2, 
+  Plane, 
+  Wallet, 
+  Eye, 
+  ChevronRight,
+  ArrowUpRight
+} from 'lucide-vue-next';
 
 const props = defineProps({
   revenue_total: Number,
@@ -21,6 +33,7 @@ const props = defineProps({
   upcoming_renewals: Array,
   assets_by_category: Array,
   leaves_by_month: Array,
+  detailed_expense_breakdown: Object,
 });
 
 const formatRupiah = (angka) => {
@@ -236,6 +249,69 @@ function fetchBreakdownDetails(category, extraParams = {}) {
         });
 }
 
+// Detailed Expense Breakdown State
+const activeExpenseTab = ref('all');
+const expenseViewMode = ref('all'); // 'all' (semua ajuan/komitmen) vs 'paid' (hanya realisasi/cair)
+
+const currentBreakdownList = computed(() => {
+  const data = props.detailed_expense_breakdown;
+  if (!data) return [];
+  
+  let list = [];
+  if (activeExpenseTab.value === 'reimbursement') {
+    list = data.reimbursement || [];
+  } else if (activeExpenseTab.value === 'operational') {
+    list = data.operational || [];
+  } else if (activeExpenseTab.value === 'business_trip') {
+    list = data.business_trip || [];
+  } else if (activeExpenseTab.value === 'vendor_and_bills') {
+    list = data.vendor_and_bills || [];
+  } else {
+    list = data.all_subcategories || [];
+  }
+
+  // Filter based on viewMode if user only wants paid/realized
+  if (expenseViewMode.value === 'paid') {
+    return list
+      .map(cat => ({
+        ...cat,
+        display_amount: cat.paid_amount ?? cat.amount,
+        items: (cat.items || []).filter(i => ['paid', 'completed'].includes(i.status))
+      }))
+      .filter(cat => cat.display_amount > 0);
+  }
+
+  return list.map(cat => ({
+    ...cat,
+    display_amount: cat.total_amount ?? cat.amount
+  }));
+});
+
+const openItemDrilldown = (categoryName, items) => {
+  breakdownCategory.value = categoryName;
+  const filteredItems = expenseViewMode.value === 'paid'
+    ? (items || []).filter(i => ['paid', 'completed'].includes(i.status))
+    : (items || []);
+
+  breakdownData.value = filteredItems.map(item => ({
+    ...item,
+    is_transaction_item: true
+  }));
+  breakdownModalOpen.value = true;
+};
+
+const getStatusBadge = (status) => {
+  const map = {
+    paid: { label: 'Dibayar / Selesai', class: 'bg-emerald-100 text-emerald-700' },
+    completed: { label: 'Selesai', class: 'bg-emerald-100 text-emerald-700' },
+    approved: { label: 'Disetujui', class: 'bg-blue-100 text-blue-700' },
+    submitted: { label: 'Menunggu Review', class: 'bg-amber-100 text-amber-700' },
+    rejected: { label: 'Ditolak', class: 'bg-rose-100 text-rose-700' },
+  };
+  return map[status] || { label: status, class: 'bg-slate-100 text-slate-700' };
+};
+
+
 // Asset Chart
 const assetOptions = shallowRef(markRaw({
   chart: {
@@ -389,8 +465,221 @@ const leaveSeries = shallowRef([{ name: 'Jumlah Pengajuan', data: (props.leaves_
               </div>
             </div>
 
+            <!-- DETAIL PENGELUARAN PER KATEGORI SPESIFIK & AI SPOTLIGHT -->
+            <div class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 mb-8 shadow-sm">
+              <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <div class="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+                      <Layers class="w-5 h-5" />
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900">Rincian Pengeluaran per Kategori Detail</h3>
+                  </div>
+                  <p class="text-xs sm:text-sm text-slate-500 mt-1">
+                    Analisis alokasi biaya menyeluruh per jenis beban (Reimbursement, Operasional Kegiatan, Perjalanan Dinas, Tagihan/Vendor)
+                  </p>
+                </div>
+                
+                <!-- View Mode Selector: All (Committed) vs Paid (Realized) -->
+                <div class="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl self-start md:self-auto border border-slate-200">
+                  <button 
+                    type="button"
+                    @click="expenseViewMode = 'all'"
+                    :class="expenseViewMode === 'all' ? 'bg-white text-indigo-700 shadow-sm font-semibold' : 'text-slate-600 hover:text-slate-900'"
+                    class="px-3 py-1.5 text-xs rounded-lg transition-all"
+                  >
+                    Semua Komitmen / Ajuan
+                  </button>
+                  <button 
+                    type="button"
+                    @click="expenseViewMode = 'paid'"
+                    :class="expenseViewMode === 'paid' ? 'bg-white text-emerald-700 shadow-sm font-semibold' : 'text-slate-600 hover:text-slate-900'"
+                    class="px-3 py-1.5 text-xs rounded-lg transition-all"
+                  >
+                    Hanya Sudah Cair (Realisasi)
+                  </button>
+                </div>
+              </div>
+
+              <!-- AI Expense Spotlight Banner -->
+              <div v-if="detailed_expense_breakdown?.ai_summary?.total_amount > 0" class="mt-6 p-5 rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-700 text-white shadow-lg relative overflow-hidden">
+                <div class="absolute -right-6 -bottom-6 w-36 h-36 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+                <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div class="flex items-start gap-3.5">
+                    <div class="p-3 bg-white/20 backdrop-blur-md rounded-2xl border border-white/20 shrink-0">
+                      <Sparkles class="w-6 h-6 text-amber-300 animate-pulse" />
+                    </div>
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-slate-900 uppercase tracking-wider">Investasi AI</span>
+                        <span class="text-xs text-white/80">Langganan & Tools Produktivitas</span>
+                      </div>
+                      <h4 class="text-base sm:text-lg font-bold text-white mt-1">Biaya Tools AI Tim (Gemini, Claude, ChatGPT, dll)</h4>
+                      <p class="text-xs text-white/80 max-w-xl mt-0.5">
+                        Dipantau untuk mengukur return produktivitas kerja karyawan terhadap pengeluaran lisensi AI.
+                      </p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-4 bg-black/15 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/10 shrink-0">
+                    <div>
+                      <p class="text-[11px] text-white/70 uppercase font-semibold">Total Biaya AI</p>
+                      <p class="text-lg sm:text-xl font-extrabold text-white">
+                        {{ formatRupiah(expenseViewMode === 'paid' ? detailed_expense_breakdown.ai_summary.paid_amount : detailed_expense_breakdown.ai_summary.total_amount) }}
+                      </p>
+                    </div>
+                    <div class="h-8 w-px bg-white/20"></div>
+                    <div class="text-right">
+                      <p class="text-[11px] text-white/70 uppercase font-semibold">Porsi Reimbursement</p>
+                      <p class="text-base sm:text-lg font-bold text-amber-300">
+                        {{ detailed_expense_breakdown.ai_summary.share_of_reimbursement }}%
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Category Filter Tabs -->
+              <div class="mt-6 flex flex-wrap gap-2 border-b border-slate-100 pb-3">
+                <button 
+                  type="button"
+                  @click="activeExpenseTab = 'all'"
+                  :class="activeExpenseTab === 'all' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                  class="px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5"
+                >
+                  <TrendingUp class="w-3.5 h-3.5" />
+                  Semua Rincian
+                  <span class="ml-1 px-1.5 py-0.2 text-[10px] rounded-full" :class="activeExpenseTab === 'all' ? 'bg-white/20' : 'bg-slate-200 text-slate-700'">
+                    {{ detailed_expense_breakdown?.all_subcategories?.length || 0 }}
+                  </span>
+                </button>
+                <button 
+                  type="button"
+                  @click="activeExpenseTab = 'reimbursement'"
+                  :class="activeExpenseTab === 'reimbursement' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                  class="px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5"
+                >
+                  <Receipt class="w-3.5 h-3.5" />
+                  Reimbursement Karyawan
+                  <span class="ml-1 px-1.5 py-0.2 text-[10px] rounded-full" :class="activeExpenseTab === 'reimbursement' ? 'bg-white/20' : 'bg-slate-200 text-slate-700'">
+                    {{ detailed_expense_breakdown?.reimbursement?.length || 0 }}
+                  </span>
+                </button>
+                <button 
+                  type="button"
+                  @click="activeExpenseTab = 'operational'"
+                  :class="activeExpenseTab === 'operational' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                  class="px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5"
+                >
+                  <Building2 class="w-3.5 h-3.5" />
+                  Operasional Kegiatan
+                  <span class="ml-1 px-1.5 py-0.2 text-[10px] rounded-full" :class="activeExpenseTab === 'operational' ? 'bg-white/20' : 'bg-slate-200 text-slate-700'">
+                    {{ detailed_expense_breakdown?.operational?.length || 0 }}
+                  </span>
+                </button>
+                <button 
+                  type="button"
+                  @click="activeExpenseTab = 'business_trip'"
+                  :class="activeExpenseTab === 'business_trip' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                  class="px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5"
+                >
+                  <Plane class="w-3.5 h-3.5" />
+                  Perjalanan Dinas
+                  <span class="ml-1 px-1.5 py-0.2 text-[10px] rounded-full" :class="activeExpenseTab === 'business_trip' ? 'bg-white/20' : 'bg-slate-200 text-slate-700'">
+                    {{ detailed_expense_breakdown?.business_trip?.length || 0 }}
+                  </span>
+                </button>
+                <button 
+                  type="button"
+                  @click="activeExpenseTab = 'vendor_and_bills'"
+                  :class="activeExpenseTab === 'vendor_and_bills' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                  class="px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5"
+                >
+                  <Wallet class="w-3.5 h-3.5" />
+                  Vendor & Tagihan Rutin
+                  <span class="ml-1 px-1.5 py-0.2 text-[10px] rounded-full" :class="activeExpenseTab === 'vendor_and_bills' ? 'bg-white/20' : 'bg-slate-200 text-slate-700'">
+                    {{ detailed_expense_breakdown?.vendor_and_bills?.length || 0 }}
+                  </span>
+                </button>
+              </div>
+
+              <!-- List / Grid of Subcategories -->
+              <div v-if="currentBreakdownList.length === 0" class="text-center py-12 text-slate-400 italic">
+                Tidak ada data pengeluaran pada kelompok ini untuk status yang dipilih.
+              </div>
+              <div v-else class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div 
+                  v-for="(cat, idx) in currentBreakdownList" 
+                  :key="idx"
+                  class="p-4 rounded-2xl border transition-all duration-200 flex flex-col justify-between group hover:shadow-md"
+                  :class="cat.is_ai ? 'border-purple-300 bg-gradient-to-br from-purple-50/70 to-indigo-50/40 ring-1 ring-purple-200' : 'border-slate-200/80 bg-white hover:border-slate-300'"
+                >
+                  <div>
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="flex items-center gap-1.5 min-w-0">
+                        <Sparkles v-if="cat.is_ai" class="w-4 h-4 text-purple-600 shrink-0" />
+                        <h5 class="text-sm font-bold text-slate-800 truncate" :title="cat.name">
+                          {{ cat.name }}
+                        </h5>
+                      </div>
+                      <span v-if="cat.percentage !== undefined" class="text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0" :class="cat.is_ai ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600'">
+                        {{ cat.percentage }}%
+                      </span>
+                    </div>
+
+                    <p class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+                      <span>{{ cat.module_name || 'Beban Usaha' }}</span>
+                      <span>&bull;</span>
+                      <span>{{ cat.count || 0 }} item/transaksi</span>
+                    </p>
+
+                    <!-- Amount Display -->
+                    <div class="mt-3">
+                      <p class="text-xs text-slate-500 font-medium">
+                        {{ expenseViewMode === 'paid' ? 'Realisasi Cair' : 'Total Komitmen' }}
+                      </p>
+                      <p class="text-base sm:text-lg font-black" :class="cat.is_ai ? 'text-purple-700' : 'text-slate-900'">
+                        {{ formatRupiah(cat.display_amount) }}
+                      </p>
+
+                      <!-- Pending vs Paid info in 'all' view mode -->
+                      <div v-if="expenseViewMode === 'all' && (cat.pending_amount || 0) > 0" class="flex items-center gap-2 mt-1 text-[11px]">
+                        <span class="text-emerald-600 font-medium">Cair: {{ formatRupiah(cat.paid_amount || 0) }}</span>
+                        <span class="text-slate-300">|</span>
+                        <span class="text-amber-600 font-medium">Pending: {{ formatRupiah(cat.pending_amount || 0) }}</span>
+                      </div>
+                    </div>
+
+                    <!-- Mini Progress Bar -->
+                    <div class="mt-3 w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                      <div 
+                        class="h-1.5 rounded-full transition-all duration-500"
+                        :class="cat.is_ai ? 'bg-gradient-to-r from-purple-500 to-indigo-600' : 'bg-indigo-600'"
+                        :style="{ width: `${Math.min(100, Math.max(3, cat.percentage || 0))}%` }"
+                      ></div>
+                    </div>
+                  </div>
+
+                  <!-- Action Drill Down Button -->
+                  <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <span class="text-[11px] text-slate-400">
+                      {{ (cat.items || []).length }} baris data
+                    </span>
+                    <button 
+                      type="button"
+                      @click="openItemDrilldown(cat.name, cat.items)"
+                      class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors group-hover:translate-x-0.5 duration-150"
+                    >
+                      Lihat Rincian
+                      <ChevronRight class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- New Charts (Assets and Leaves) -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+
                <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl">
                   <div class="flex justify-between items-center mb-4">
                     <h4 class="text-sm font-bold text-slate-800">Nominal Aset per Kategori</h4>
@@ -476,10 +765,15 @@ const leaveSeries = shallowRef([{ name: 'Jumlah Pengajuan', data: (props.leaves_
         </div>
 
         <!-- Breakdown Modal -->
-        <Modal :show="breakdownModalOpen" @close="breakdownModalOpen = false" maxWidth="md">
+        <Modal :show="breakdownModalOpen" @close="breakdownModalOpen = false" :maxWidth="breakdownData[0]?.is_transaction_item ? '2xl' : 'md'">
             <div class="p-6">
                 <div class="flex justify-between items-center mb-5">
-                    <h2 class="text-lg font-bold text-slate-800">Detail Rincian: {{ breakdownCategory }}</h2>
+                    <div>
+                      <h2 class="text-lg font-bold text-slate-800">Detail Rincian: {{ breakdownCategory }}</h2>
+                      <p v-if="breakdownData[0]?.is_transaction_item" class="text-xs text-slate-500 mt-0.5">
+                        Menampilkan {{ breakdownData.length }} transaksi/komitmen pengeluaran
+                      </p>
+                    </div>
                     <button @click="breakdownModalOpen = false" class="text-slate-400 hover:text-slate-600">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
@@ -493,8 +787,48 @@ const leaveSeries = shallowRef([{ name: 'Jumlah Pengajuan', data: (props.leaves_
                     Belum ada data rincian untuk periode ini.
                 </div>
                 
-                <div v-else class="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-                    <template v-if="breakdownData[0]?.is_table">
+                <div v-else class="space-y-3 max-h-[65vh] overflow-y-auto pr-1 custom-scrollbar">
+                    <!-- Transaction Item Drilldown Table -->
+                    <template v-if="breakdownData[0]?.is_transaction_item">
+                        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                          <table class="w-full text-left text-xs text-slate-600">
+                              <thead class="bg-slate-100 font-bold text-slate-600 border-b border-slate-200">
+                                  <tr>
+                                      <th class="p-2.5">No / Item</th>
+                                      <th class="p-2.5">Keterangan & Pemohon</th>
+                                      <th class="p-2.5 text-center">Status</th>
+                                      <th class="p-2.5 text-center">Tanggal</th>
+                                      <th class="p-2.5 text-right">Nominal</th>
+                                  </tr>
+                              </thead>
+                              <tbody class="divide-y divide-slate-100 bg-white">
+                                  <tr v-for="(item, idx) in breakdownData" :key="idx" class="hover:bg-slate-50">
+                                      <td class="p-2.5 font-semibold text-slate-800 whitespace-nowrap">
+                                          <div>{{ item.code || '-' }}</div>
+                                          <div v-if="item.component" class="text-[10px] text-indigo-600 font-normal">{{ item.component }}</div>
+                                      </td>
+                                      <td class="p-2.5">
+                                          <div class="font-medium text-slate-800 line-clamp-2">{{ item.description || '-' }}</div>
+                                          <div class="text-[11px] text-slate-400 mt-0.5">Oleh: {{ item.user_name || '-' }}</div>
+                                      </td>
+                                      <td class="p-2.5 text-center whitespace-nowrap">
+                                          <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold" :class="getStatusBadge(item.status).class">
+                                              {{ getStatusBadge(item.status).label }}
+                                          </span>
+                                      </td>
+                                      <td class="p-2.5 text-center whitespace-nowrap text-slate-500">
+                                          {{ formatDate(item.date) }}
+                                      </td>
+                                      <td class="p-2.5 text-right font-bold text-slate-900 whitespace-nowrap">
+                                          {{ formatRupiah(item.amount) }}
+                                      </td>
+                                  </tr>
+                              </tbody>
+                          </table>
+                        </div>
+                    </template>
+
+                    <template v-else-if="breakdownData[0]?.is_table">
                         <table class="w-full text-left text-xs text-slate-600 border border-slate-200 rounded-xl overflow-hidden">
                             <thead class="bg-slate-100 font-bold text-slate-500">
                                 <tr>

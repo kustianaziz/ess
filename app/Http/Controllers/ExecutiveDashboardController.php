@@ -104,7 +104,305 @@ class ExecutiveDashboardController extends Controller
                 ->groupBy('coas.name')
                 ->get(),
             'leaves_by_month' => $this->getLeavesByMonth(),
+            'detailed_expense_breakdown' => $this->getDetailedExpenseBreakdown(),
         ]);
+    }
+
+    private function getDetailedExpenseBreakdown(): array
+    {
+        // 1. Reimbursement per ExpenseType
+        $expenseTypes = \App\Models\ExpenseType::all();
+        $reimbursementData = [];
+        $totalReimbPaid = 0;
+        $totalReimbAll = 0;
+        $aiTotalAmount = 0;
+        $aiTotalCount = 0;
+
+        foreach ($expenseTypes as $type) {
+            $requests = \App\Models\ReimbursementRequest::with('user:id,name,avatar,position')
+                ->where('expense_type_id', $type->id)
+                ->latest()
+                ->get();
+
+            if ($requests->isEmpty()) continue;
+
+            $paidTotal = (float)$requests->filter(fn($r) => in_array($r->status->value, ['paid', 'completed']))->sum('amount');
+            $pendingTotal = (float)$requests->filter(fn($r) => in_array($r->status->value, ['submitted', 'approved', 'level_1_approved']))->sum('amount');
+            $total = (float)$requests->sum('amount');
+            $isAi = str_contains(strtolower($type->name), 'ai');
+
+            if ($isAi) {
+                $aiTotalAmount += $total;
+                $aiTotalCount += $requests->count();
+            }
+
+            $totalReimbPaid += $paidTotal;
+            $totalReimbAll += $total;
+
+            $reimbursementData[] = [
+                'id' => $type->id,
+                'name' => $type->name,
+                'is_ai' => $isAi,
+                'type' => 'reimbursement',
+                'count' => $requests->count(),
+                'paid_total' => $paidTotal,
+                'pending_total' => $pendingTotal,
+                'total' => $total,
+                'items' => $requests->map(fn($r) => [
+                    'id' => $r->id,
+                    'request_number' => $r->request_number,
+                    'applicant' => $r->user?->name ?? 'Karyawan',
+                    'amount' => (float)$r->amount,
+                    'description' => $r->description,
+                    'status' => $r->status->value,
+                    'status_label' => $r->status->label(),
+                    'date' => $r->expense_date?->format('d M Y') ?? $r->created_at->format('d M Y'),
+                ])->values()->all(),
+            ];
+        }
+
+        usort($reimbursementData, fn($a, $b) => $b['total'] <=> $a['total']);
+
+        // 2. Operational per ActivityType
+        $activityTypes = \App\Models\ActivityType::all();
+        $operationalData = [];
+        $totalOpsPaid = 0;
+        $totalOpsAll = 0;
+
+        foreach ($activityTypes as $act) {
+            $requests = \App\Models\OperationalRequest::with('user:id,name,avatar,position')
+                ->where('activity_type_id', $act->id)
+                ->latest()
+                ->get();
+
+            if ($requests->isEmpty()) continue;
+
+            $paidTotal = (float)$requests->filter(fn($r) => in_array($r->status->value, ['paid', 'completed']))->sum('estimated_cost');
+            $pendingTotal = (float)$requests->filter(fn($r) => in_array($r->status->value, ['submitted', 'approved', 'level_1_approved']))->sum('estimated_cost');
+            $total = (float)$requests->sum('estimated_cost');
+
+            $totalOpsPaid += $paidTotal;
+            $totalOpsAll += $total;
+
+            $operationalData[] = [
+                'id' => $act->id,
+                'name' => $act->name,
+                'type' => 'operational',
+                'count' => $requests->count(),
+                'paid_total' => $paidTotal,
+                'pending_total' => $pendingTotal,
+                'total' => $total,
+                'items' => $requests->map(fn($r) => [
+                    'id' => $r->id,
+                    'request_number' => $r->request_number,
+                    'applicant' => $r->user?->name ?? 'Karyawan',
+                    'amount' => (float)$r->estimated_cost,
+                    'description' => $r->activity_name . ($r->purpose ? ' - ' . $r->purpose : ''),
+                    'status' => $r->status->value,
+                    'status_label' => $r->status->label(),
+                    'date' => $r->activity_date?->format('d M Y') ?? $r->created_at->format('d M Y'),
+                ])->values()->all(),
+            ];
+        }
+
+        usort($operationalData, fn($a, $b) => $b['total'] <=> $a['total']);
+
+        // 3. Business Trips Breakdown
+        $trips = \App\Models\BusinessTripRequest::with('user:id,name,avatar,position')->latest()->get();
+        $tripComponents = [];
+        $totalTripPaid = 0;
+        $totalTripAll = 0;
+
+        foreach ($trips as $t) {
+            $budget = (float)($t->disbursed_budget ?? $t->estimated_budget ?? 0);
+            $isPaid = in_array($t->status->value, ['paid', 'completed']);
+            if ($isPaid) $totalTripPaid += $budget;
+            $totalTripAll += $budget;
+
+            if (is_array($t->allowance_breakdown) && count($t->allowance_breakdown) > 0) {
+                foreach ($t->allowance_breakdown as $item) {
+                    $cat = $item['category'] ?? $item['item'] ?? 'Biaya Perjalanan';
+                    $amt = floatval($item['amount'] ?? 0);
+                    if (!isset($tripComponents[$cat])) {
+                        $tripComponents[$cat] = [
+                            'name' => $cat,
+                            'type' => 'business_trip',
+                            'count' => 0,
+                            'paid_total' => 0,
+                            'pending_total' => 0,
+                            'total' => 0,
+                            'items' => [],
+                        ];
+                    }
+                    $tripComponents[$cat]['count']++;
+                    $tripComponents[$cat]['total'] += $amt;
+                    if ($isPaid) {
+                        $tripComponents[$cat]['paid_total'] += $amt;
+                    } else {
+                        $tripComponents[$cat]['pending_total'] += $amt;
+                    }
+                    $tripComponents[$cat]['items'][] = [
+                        'id' => $t->id,
+                        'request_number' => $t->request_number,
+                        'applicant' => $t->user?->name ?? 'Karyawan',
+                        'amount' => $amt,
+                        'description' => "Tujuan: {$t->destination} ({$cat})",
+                        'status' => $t->status->value,
+                        'status_label' => $t->status->label(),
+                        'date' => $t->departure_date?->format('d M Y') ?? $t->created_at->format('d M Y'),
+                    ];
+                }
+            } else {
+                $cat = 'Biaya Terpadu';
+                if (!isset($tripComponents[$cat])) {
+                    $tripComponents[$cat] = [
+                        'name' => $cat,
+                        'type' => 'business_trip',
+                        'count' => 0,
+                        'paid_total' => 0,
+                        'pending_total' => 0,
+                        'total' => 0,
+                        'items' => [],
+                    ];
+                }
+                $tripComponents[$cat]['count']++;
+                $tripComponents[$cat]['total'] += $budget;
+                if ($isPaid) {
+                    $tripComponents[$cat]['paid_total'] += $budget;
+                } else {
+                    $tripComponents[$cat]['pending_total'] += $budget;
+                }
+                $tripComponents[$cat]['items'][] = [
+                    'id' => $t->id,
+                    'request_number' => $t->request_number,
+                    'applicant' => $t->user?->name ?? 'Karyawan',
+                    'amount' => $budget,
+                    'description' => "Tujuan: {$t->destination}",
+                    'status' => $t->status->value,
+                    'status_label' => $t->status->label(),
+                    'date' => $t->departure_date?->format('d M Y') ?? $t->created_at->format('d M Y'),
+                ];
+            }
+        }
+
+        $businessTripData = array_values($tripComponents);
+        usort($businessTripData, fn($a, $b) => $b['total'] <=> $a['total']);
+
+        // 4. Vendor & Monthly Bills
+        $vendorPayments = \App\Models\VendorPayment::with('vendor')->latest()->get();
+        $vendorData = [];
+        $totalVendorPaid = 0;
+
+        foreach ($vendorPayments as $vp) {
+            $vName = $vp->vendor?->name ?? 'Vendor Layanan';
+            if (!isset($vendorData[$vName])) {
+                $vendorData[$vName] = [
+                    'name' => $vName,
+                    'type' => 'vendor',
+                    'count' => 0,
+                    'paid_total' => 0,
+                    'pending_total' => 0,
+                    'total' => 0,
+                    'items' => [],
+                ];
+            }
+            $amt = (float)$vp->amount;
+            $vendorData[$vName]['count']++;
+            $vendorData[$vName]['total'] += $amt;
+            $vendorData[$vName]['paid_total'] += $amt;
+            $totalVendorPaid += $amt;
+            $vendorData[$vName]['items'][] = [
+                'id' => $vp->id,
+                'request_number' => $vp->payment_reference ?? 'VP-' . $vp->id,
+                'applicant' => $vName,
+                'amount' => $amt,
+                'description' => $vp->notes ?? 'Pembayaran Biaya Vendor',
+                'status' => 'paid',
+                'status_label' => 'Selesai',
+                'date' => $vp->payment_date?->format('d M Y') ?? $vp->created_at->format('d M Y'),
+            ];
+        }
+
+        $cashBills = CashTransaction::where('type', 'out')->where('category', '!=', 'mutasi')->whereNull('source_type')->latest()->get();
+        foreach ($cashBills as $cb) {
+            $bName = ucwords(str_replace('_', ' ', $cb->category ?? 'Biaya Kantor'));
+            if (!isset($vendorData[$bName])) {
+                $vendorData[$bName] = [
+                    'name' => $bName,
+                    'type' => 'vendor',
+                    'count' => 0,
+                    'paid_total' => 0,
+                    'pending_total' => 0,
+                    'total' => 0,
+                    'items' => [],
+                ];
+            }
+            $amt = (float)$cb->amount;
+            $vendorData[$bName]['count']++;
+            $vendorData[$bName]['total'] += $amt;
+            $vendorData[$bName]['paid_total'] += $amt;
+            $totalVendorPaid += $amt;
+            $vendorData[$bName]['items'][] = [
+                'id' => $cb->id,
+                'request_number' => 'CSH-' . $cb->id,
+                'applicant' => 'Keuangan Kas',
+                'amount' => $amt,
+                'description' => $cb->description ?? 'Pengeluaran Kas Operasional',
+                'status' => 'paid',
+                'status_label' => 'Selesai',
+                'date' => $cb->transaction_date ? Carbon::parse($cb->transaction_date)->format('d M Y') : $cb->created_at->format('d M Y'),
+            ];
+        }
+
+        $vendorBillData = array_values($vendorData);
+        usort($vendorBillData, fn($a, $b) => $b['total'] <=> $a['total']);
+
+        // 5. Top Subcategories across all streams
+        $allSubcategories = array_merge(
+            array_map(fn($i) => array_merge($i, ['group' => 'Reimbursement']), $reimbursementData),
+            array_map(fn($i) => array_merge($i, ['group' => 'Operasional']), $operationalData),
+            array_map(fn($i) => array_merge($i, ['group' => 'Perjalanan Dinas']), $businessTripData),
+            array_map(fn($i) => array_merge($i, ['group' => 'Vendor & Tagihan']), $vendorBillData)
+        );
+        usort($allSubcategories, fn($a, $b) => $b['total'] <=> $a['total']);
+
+        $grandTotalAll = array_sum(array_column($allSubcategories, 'total'));
+        $grandTotalPaid = array_sum(array_column($allSubcategories, 'paid_total'));
+        $grandTotalPending = array_sum(array_column($allSubcategories, 'pending_total'));
+
+        foreach ($allSubcategories as &$sub) {
+            $sub['percentage'] = $grandTotalAll > 0 ? round(($sub['total'] / $grandTotalAll) * 100, 1) : 0;
+        }
+        foreach ($reimbursementData as &$sub) {
+            $sub['percentage'] = $totalReimbAll > 0 ? round(($sub['total'] / $totalReimbAll) * 100, 1) : 0;
+        }
+        foreach ($operationalData as &$sub) {
+            $sub['percentage'] = $totalOpsAll > 0 ? round(($sub['total'] / $totalOpsAll) * 100, 1) : 0;
+        }
+        foreach ($businessTripData as &$sub) {
+            $sub['percentage'] = $totalTripAll > 0 ? round(($sub['total'] / $totalTripAll) * 100, 1) : 0;
+        }
+        foreach ($vendorBillData as &$sub) {
+            $sub['percentage'] = $totalVendorPaid > 0 ? round(($sub['total'] / $totalVendorPaid) * 100, 1) : 0;
+        }
+
+        return [
+            'totals' => [
+                'all' => $grandTotalAll,
+                'paid' => $grandTotalPaid,
+                'pending' => $grandTotalPending,
+            ],
+            'ai_summary' => [
+                'total_amount' => $aiTotalAmount,
+                'total_count' => $aiTotalCount,
+                'percentage_of_reimbursement' => $totalReimbAll > 0 ? round(($aiTotalAmount / $totalReimbAll) * 100, 1) : 0,
+            ],
+            'all_subcategories' => $allSubcategories,
+            'reimbursement' => $reimbursementData,
+            'operational' => $operationalData,
+            'business_trip' => $businessTripData,
+            'vendor_and_bills' => $vendorBillData,
+        ];
     }
 
     private function getLeavesByMonth()
