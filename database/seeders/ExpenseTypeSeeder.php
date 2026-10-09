@@ -15,6 +15,7 @@ class ExpenseTypeSeeder extends Seeder
             'Perlengkapan Kantor',
             'Kesehatan',
             'Akomodasi & Perjalanan Dinas',
+            'Langganan & Layanan AI',
             'Lainnya',
         ];
 
