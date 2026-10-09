@@ -144,6 +144,7 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
         Route::resource('users', \App\Http\Controllers\Admin\UserController::class)->except(['create', 'show', 'edit']);
         Route::resource('divisions', \App\Http\Controllers\Admin\DivisionController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::match(['get', 'post'], 'expense-types/categorize-ai', [\App\Http\Controllers\Admin\ExpenseTypeController::class, 'categorizeAi'])->name('expense-types.categorize-ai');
         Route::resource('expense-types', \App\Http\Controllers\Admin\ExpenseTypeController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('activity-types', \App\Http\Controllers\Admin\ActivityTypeController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('leave-types', \App\Http\Controllers\Admin\LeaveTypeController::class)->only(['index', 'store', 'update', 'destroy']);
